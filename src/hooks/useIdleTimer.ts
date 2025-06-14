@@ -19,8 +19,11 @@ export const useIdleTimer = () => {
       clearTimeout(warningTimerRef.current);
     }
 
-    // Only set timers if user is authenticated
-    if (isAuthenticated) {
+    // Check if the device is mobile
+    const isMobile = /Mobile|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    // Only set timers if user is authenticated and not on mobile
+    if (isAuthenticated && !isMobile) {
       // Set warning timer
       warningTimerRef.current = setTimeout(() => {
         toast.warning("You will be logged out in 1 minute due to inactivity", {

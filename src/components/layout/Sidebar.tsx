@@ -26,7 +26,7 @@ interface SidebarProps {
   onCollapseChange?: (collapsed: boolean) => void;
 }
 
-export function Sidebar({ onCollapseChange }: SidebarProps) {
+export default function Sidebar({ onCollapseChange }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, logout, isAuthenticated } = useAuth();
   const { audioRef } = useAudio();

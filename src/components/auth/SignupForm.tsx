@@ -204,59 +204,62 @@ export function SignupForm() {
 
   return (
     <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl">Create an Account</CardTitle>
-        <CardDescription>
+      <CardHeader className="space-y-1 sm:space-y-2">
+        <CardTitle className="text-xl sm:text-2xl">Create an Account</CardTitle>
+        <CardDescription className="text-sm">
           Sign up to access ECG Outage Management System
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="staffId">Staff ID</Label>
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="staffId" className="text-sm">Staff ID</Label>
               <Input
                 id="staffId"
                 value={formData.staffId}
                 onChange={handleStaffIdChange}
                 placeholder="Enter your staff ID"
+                className="h-9 sm:h-10"
               />
-              {errors.staffId && <p className="text-sm text-red-500 mt-1">{errors.staffId}</p>}
+              {errors.staffId && <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.staffId}</p>}
               <p className="text-xs text-muted-foreground mt-1">
                 Used for ECG staff identity verification.
               </p>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="name" className="text-sm">Name</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => handleChange("name", e.target.value)}
                 placeholder="Enter your name"
                 disabled={isFieldsLocked}
+                className="h-9 sm:h-10"
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="email" className="text-sm">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleChange("email", e.target.value)}
                 placeholder="Enter your email"
+                className="h-9 sm:h-10"
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="role" className="text-sm">Role</Label>
               <Select
                 value={formData.role}
                 onValueChange={(value) => handleChange("role", value)}
                 disabled={isFieldsLocked}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 sm:h-10">
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -269,22 +272,19 @@ export function SignupForm() {
                   <SelectItem value="technician">Technician</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.role && <p className="text-sm text-red-500 mt-1">{errors.role}</p>}
+              {errors.role && <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.role}</p>}
             </div>
             
             {/* Region Select (if applicable) */}
-            {(formData.role && formData.role !== "global_engineer" && formData.role !== "system_admin") && (
-              <div className="space-y-2">
-                <Label htmlFor="region">Region</Label>
+            {formData.role && formData.role !== "global_engineer" && formData.role !== "system_admin" && (
+              <div className="space-y-1 sm:space-y-2">
+                <Label htmlFor="region" className="text-sm">Region</Label>
                 <Select 
                   value={formData.region} 
-                  onValueChange={(value) => {
-                    handleChange("region", value);
-                    handleChange("district", ""); // Reset district when region changes
-                  }}
+                  onValueChange={(value) => handleChange("region", value)}
                   disabled={isFieldsLocked}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10">
                     <SelectValue placeholder="Select region" />
                   </SelectTrigger>
                   <SelectContent>
@@ -295,20 +295,20 @@ export function SignupForm() {
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.region && <p className="text-sm text-red-500 mt-1">{errors.region}</p>}
+                {errors.region && <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.region}</p>}
               </div>
             )}
             
             {/* District Select (if applicable) */}
             {(formData.role === "district_engineer" || formData.role === "technician") && (
-              <div className="space-y-2">
-                <Label htmlFor="district">District</Label>
+              <div className="space-y-1 sm:space-y-2">
+                <Label htmlFor="district" className="text-sm">District</Label>
                 <Select 
                   value={formData.district} 
                   onValueChange={(value) => handleChange("district", value)}
                   disabled={!formData.region || isFieldsLocked}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10">
                     <SelectValue placeholder="Select district" />
                   </SelectTrigger>
                   <SelectContent>
@@ -319,34 +319,36 @@ export function SignupForm() {
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.district && <p className="text-sm text-red-500 mt-1">{errors.district}</p>}
+                {errors.district && <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.district}</p>}
               </div>
             )}
             
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="password" className="text-sm">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={formData.password}
                 onChange={(e) => handleChange("password", e.target.value)}
                 placeholder="Enter your password"
+                className="h-9 sm:h-10"
               />
-              {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password}</p>}
+              {errors.password && <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.password}</p>}
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="confirmPassword" className="text-sm">Confirm Password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={formData.confirmPassword}
                 onChange={(e) => handleChange("confirmPassword", e.target.value)}
                 placeholder="Confirm your password"
+                className="h-9 sm:h-10"
               />
             </div>
             
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full h-9 sm:h-10" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -359,8 +361,8 @@ export function SignupForm() {
           </div>
         </form>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <p className="text-sm text-muted-foreground">
+      <CardFooter className="flex justify-center py-3">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link to="/login" className="text-ecg-blue hover:underline">
             Login

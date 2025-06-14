@@ -73,23 +73,23 @@ export function LoginForm() {
 
   return (
     <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4">
+      <CardHeader className="text-center space-y-2">
+        <div className="mx-auto mb-2 sm:mb-4">
           <img 
             src="/ecg-images/ecg-logo.png" 
             alt="ECG Logo" 
-            className="h-16 w-auto mx-auto"
+            className="h-12 sm:h-16 w-auto mx-auto"
           />
         </div>
-        <CardTitle className="text-2xl">Login to ECG Outage Management System</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-xl sm:text-2xl">Login to ECG Outage Management System</CardTitle>
+        <CardDescription className="text-sm">
           Enter your credentials to access your account
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+          <div className="space-y-1 sm:space-y-2">
+            <Label htmlFor="email" className="text-sm">Email</Label>
             <Input
               id="email"
               type="email"
@@ -98,12 +98,13 @@ export function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={isLocked}
+              className="h-9 sm:h-10"
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1 sm:space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link to="/forgot-password" className="text-sm text-ecg-blue hover:underline">
+              <Label htmlFor="password" className="text-sm">Password</Label>
+              <Link to="/forgot-password" className="text-xs sm:text-sm text-ecg-blue hover:underline">
                 Forgot password?
               </Link>
             </div>
@@ -115,11 +116,12 @@ export function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={isLocked}
+              className="h-9 sm:h-10"
             />
           </div>
           <Button 
             type="submit" 
-            className="w-full" 
+            className="w-full h-9 sm:h-10" 
             disabled={isSubmitting || isLocked}
           >
             {isLocked 
@@ -131,8 +133,8 @@ export function LoginForm() {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <p className="text-sm text-muted-foreground">
+      <CardFooter className="flex justify-center py-3">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Don't have an account?{" "}
           <Link to="/signup" className="text-ecg-blue hover:underline">
             Sign up

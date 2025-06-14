@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ECG Outage Management System - Power Distribution Management</title>
     
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/ecg-images/ecg-logo.png" as="image" type="image/png" />
+    <link rel="preload" href="/assets/index.js" as="script" type="application/javascript" />
+    
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="ECG OMS - Asset Management and Inspection System" />
@@ -29,7 +33,8 @@
     <meta name="twitter:description" content="Comprehensive asset management and inspection system for ECG's electrical infrastructure" />
     <meta name="twitter:image" content="/ecg-images/ecg-logo.png" />
     
-    <link rel="icon" type="image/png" href="/ecg-images/ecg-logo.png">
+    <!-- Optimize image loading -->
+    <link rel="icon" type="image/png" href="/ecg-images/ecg-logo.png" fetchpriority="high">
   </head>
 
   <body>

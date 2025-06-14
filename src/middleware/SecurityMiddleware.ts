@@ -47,6 +47,15 @@ export const securityMiddleware = async (req: any, res: any, next: any) => {
 export const sessionTimeoutMiddleware = (req: any, res: any, next: any) => {
   const user = auth.currentUser;
   if (user) {
+    // Check if the request is from a mobile device
+    const userAgent = req.headers['user-agent'] || '';
+    const isMobile = /Mobile|Android|iPhone|iPad|iPod/i.test(userAgent);
+    
+    // Skip session timeout for mobile devices
+    if (isMobile) {
+      return next();
+    }
+
     // Check if session is expired
     const lastSignInTime = user.metadata.lastSignInTime;
     if (lastSignInTime) {

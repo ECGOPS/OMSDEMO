@@ -24,8 +24,8 @@ export default function LoginPage() {
         }}
       />
       <Layout>
-        <div className="container mx-auto py-10 px-4">
-          <div className="max-w-md mx-auto">
+        <div className="container mx-auto py-4 sm:py-10 px-4">
+          <div className="max-w-[90%] sm:max-w-md mx-auto">
             <LoginForm />
           </div>
         </div>

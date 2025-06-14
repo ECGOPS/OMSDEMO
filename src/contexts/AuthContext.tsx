@@ -315,6 +315,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
+      
+      // Check if the device is mobile
+      const isMobile = /Mobile|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      
+      // Set persistence to LOCAL for mobile devices
+      if (isMobile) {
+        await setPersistence(auth, browserLocalPersistence);
+      }
+      
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
       

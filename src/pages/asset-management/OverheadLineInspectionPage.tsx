@@ -40,6 +40,7 @@ export default function OverheadLineInspectionPage() {
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [selectedFeeder, setSelectedFeeder] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   const navigate = useNavigate();
@@ -141,9 +142,14 @@ export default function OverheadLineInspectionPage() {
         filtered = filtered.filter(inspection => inspection.district === selectedDistrictName);
       }
     }
+
+    // Apply feeder filter
+    if (selectedFeeder) {
+      filtered = filtered.filter(inspection => inspection.feederName === selectedFeeder);
+    }
     
     return filtered;
-  }, [overheadLineInspections, offlineInspections, user, selectedDate, selectedMonth, selectedRegion, selectedDistrict, regions, districts]);
+  }, [overheadLineInspections, offlineInspections, user, selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, regions, districts]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredInspections.length / pageSize);
@@ -155,7 +161,7 @@ export default function OverheadLineInspectionPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedDate, selectedMonth, selectedRegion, selectedDistrict, overheadLineInspections]);
+  }, [selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, overheadLineInspections]);
 
   // Reset all filters
   const handleResetFilters = () => {
@@ -163,6 +169,7 @@ export default function OverheadLineInspectionPage() {
     setSelectedMonth(null);
     setSelectedRegion(null);
     setSelectedDistrict(null);
+    setSelectedFeeder(null);
   };
 
   const handleAddInspection = () => {
@@ -308,13 +315,46 @@ export default function OverheadLineInspectionPage() {
 
           {/* Reset Filters Button */}
           <div className="flex justify-end mb-4">
-            <Button
-              variant="outline"
-              onClick={handleResetFilters}
-              disabled={!selectedDate && !selectedMonth && !selectedRegion && !selectedDistrict}
-            >
-              Reset Filters
-            </Button>
+            <div className="flex items-end gap-4">
+              <div className="space-y-2">
+                <Label>Filter by Feeder Name</Label>
+                <div className="w-[200px]">
+                  <Select
+                    value={selectedFeeder || "all-feeders"}
+                    onValueChange={(value) => {
+                      if (value === "all-feeders") {
+                        setSelectedFeeder(null);
+                      } else {
+                        setSelectedFeeder(value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Feeders" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-feeders">All Feeders</SelectItem>
+                      {Array.from(new Set(filteredInspections
+                        .map(inspection => inspection.feederName)
+                        .filter(Boolean)))
+                        .sort()
+                        .map(feeder => (
+                          <SelectItem key={feeder} value={feeder}>
+                            {feeder}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleResetFilters}
+                disabled={!selectedDate && !selectedMonth && !selectedRegion && !selectedDistrict && !selectedFeeder}
+              >
+                Reset All Filters
+              </Button>
+            </div>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

@@ -178,13 +178,8 @@ export default function AnalyticsPage() {
     } else if (overviewRecentFaultsTab === 'control') {
       faultsToDisplay = control;
     } else {
-      // Combine both, but ensure uniqueness by id
-      const seenIds = new Set<string>();
-      faultsToDisplay = [...op5, ...control].filter(fault => {
-        if (seenIds.has(fault.id)) return false;
-        seenIds.add(fault.id);
-        return true;
-      });
+      // Show only OP5 faults in the "All Recent" tab
+      faultsToDisplay = op5;
     }
 
     // Apply status filter if needed

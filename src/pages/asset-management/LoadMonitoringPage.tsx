@@ -327,6 +327,7 @@ export default function LoadMonitoringPage() {
         ['Blue Phase Bulk Load', `${typeof record.bluePhaseBulkLoad === 'number' ? record.bluePhaseBulkLoad.toFixed(2) : '0.00'} A`],
         ['Average Current', `${typeof record.averageCurrent === 'number' ? record.averageCurrent.toFixed(2) : '0.00'} A`],
         ['Percentage Load', `${typeof record.percentageLoad === 'number' ? record.percentageLoad.toFixed(2) : '0.00'}%`],
+        ['Maximum Full Load', `${typeof record.percentageLoad === 'number' ? record.percentageLoad.toFixed(2) : '0.00'}%`],
         ['10% Rated Neutral', `${typeof record.tenPercentFullLoadNeutral === 'number' ? record.tenPercentFullLoadNeutral.toFixed(2) : '0.00'} A`],
         ['Calculated Neutral', `${typeof record.calculatedNeutral === 'number' ? record.calculatedNeutral.toFixed(2) : '0.00'} A`]
       ];
@@ -345,13 +346,24 @@ export default function LoadMonitoringPage() {
       // Add load status
       currentY -= lineHeight;
       const loadStatus = getLoadStatus(typeof record.percentageLoad === 'number' ? record.percentageLoad : 0);
-      page.drawText(`Load Status: ${loadStatus.status}`, {
+      page.drawText(`Economical Load Status: ${loadStatus.status}`, {
         x: margin,
         y: currentY,
         size: 14,
         color: loadStatus.status === "OVERLOAD" ? rgb(0.8, 0.2, 0.2) : 
                loadStatus.status === "AVERAGE" ? rgb(0.8, 0.6, 0.2) : 
                rgb(0.2, 0.6, 0.2),
+        font: boldFont,
+      });
+
+      // Add Maximum Full Load status
+      currentY -= lineHeight;
+      const maxFullLoadStatus = typeof record.percentageLoad === 'number' && record.percentageLoad >= 100 ? "OVERLOAD" : "OKAY";
+      page.drawText(`Maximum Full Load Status: ${maxFullLoadStatus}`, {
+        x: margin,
+        y: currentY,
+        size: 14,
+        color: maxFullLoadStatus === "OVERLOAD" ? rgb(0.8, 0.2, 0.2) : rgb(0.2, 0.6, 0.2),
         font: boldFont,
       });
 
@@ -660,7 +672,7 @@ export default function LoadMonitoringPage() {
               onValueChange={setSelectedLoadStatus}
             >
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Load Status" />
+                <SelectValue placeholder="Economical Load Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
@@ -694,7 +706,9 @@ export default function LoadMonitoringPage() {
                       <TableHead className="whitespace-nowrap">District</TableHead>
                       <TableHead className="whitespace-nowrap">Rating (MW)</TableHead>
                       <TableHead className="whitespace-nowrap">Load (%)</TableHead>
-                      <TableHead className="whitespace-nowrap">Load Status</TableHead>
+                      <TableHead className="whitespace-nowrap">Economical Load Status</TableHead>
+                      <TableHead className="whitespace-nowrap">Maximum Full Load</TableHead>
+                      <TableHead className="whitespace-nowrap">Full Load Status</TableHead>
                       <TableHead className="whitespace-nowrap">Peak Status</TableHead>
                       <TableHead className="whitespace-nowrap">Created By</TableHead>
                       <TableHead className="whitespace-nowrap sticky right-0 bg-background">Actions</TableHead>
@@ -725,6 +739,16 @@ export default function LoadMonitoringPage() {
                           <TableCell>
                             <Badge className={loadStatus.color}>
                               {loadStatus.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={Number(formattedPercentageLoads[record.id]) >= 100 ? 'bg-red-500' : 'bg-green-500'}>
+                              {formattedPercentageLoads[record.id] ?? "0.00"}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={Number(formattedPercentageLoads[record.id]) >= 100 ? 'bg-red-500' : 'bg-green-500'}>
+                              {Number(formattedPercentageLoads[record.id]) >= 100 ? 'OVERLOAD' : 'OKAY'}
                             </Badge>
                           </TableCell>
                           <TableCell className="whitespace-nowrap">{record.peakLoadStatus}</TableCell>
