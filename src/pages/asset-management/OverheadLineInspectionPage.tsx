@@ -314,43 +314,42 @@ export default function OverheadLineInspectionPage() {
           </div>
 
           {/* Reset Filters Button */}
-          <div className="flex justify-end mb-4">
-            <div className="flex items-end gap-4">
-              <div className="space-y-2">
+          <div className="flex flex-col sm:flex-row justify-end gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 w-full sm:w-auto">
+              <div className="space-y-2 w-full sm:w-[200px]">
                 <Label>Filter by Feeder Name</Label>
-                <div className="w-[200px]">
-                  <Select
-                    value={selectedFeeder || "all-feeders"}
-                    onValueChange={(value) => {
-                      if (value === "all-feeders") {
-                        setSelectedFeeder(null);
-                      } else {
-                        setSelectedFeeder(value);
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Feeders" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all-feeders">All Feeders</SelectItem>
-                      {Array.from(new Set(filteredInspections
-                        .map(inspection => inspection.feederName)
-                        .filter(Boolean)))
-                        .sort()
-                        .map(feeder => (
-                          <SelectItem key={feeder} value={feeder}>
-                            {feeder}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select
+                  value={selectedFeeder || "all-feeders"}
+                  onValueChange={(value) => {
+                    if (value === "all-feeders") {
+                      setSelectedFeeder(null);
+                    } else {
+                      setSelectedFeeder(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Feeders" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all-feeders">All Feeders</SelectItem>
+                    {Array.from(new Set(filteredInspections
+                      .map(inspection => inspection.feederName)
+                      .filter(Boolean)))
+                      .sort()
+                      .map(feeder => (
+                        <SelectItem key={feeder} value={feeder}>
+                          {feeder}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button
                 variant="outline"
                 onClick={handleResetFilters}
                 disabled={!selectedDate && !selectedMonth && !selectedRegion && !selectedDistrict && !selectedFeeder}
+                className="w-full sm:w-auto"
               >
                 Reset All Filters
               </Button>
