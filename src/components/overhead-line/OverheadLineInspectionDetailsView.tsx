@@ -28,6 +28,10 @@ export function OverheadLineInspectionDetailsView({
 }: OverheadLineInspectionDetailsViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const totalPages = 10;
 
   const getStatusSummary = () => {
@@ -68,6 +72,71 @@ export function OverheadLineInspectionDetailsView({
 
   const handleNextPage = () => {
     setCurrentPage(prev => Math.min(totalPages, prev + 1));
+  };
+
+  const handleZoom = (e: React.WheelEvent) => {
+    if (window.innerWidth >= 768) { // Only enable zoom on desktop
+      e.preventDefault();
+      
+      // Get the mouse position relative to the container
+      const container = e.currentTarget.getBoundingClientRect();
+      const mouseX = e.clientX - container.left;
+      const mouseY = e.clientY - container.top;
+      
+      // Calculate zoom factor based on wheel delta
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.min(Math.max(0.5, zoomLevel * delta), 8); // Increased max zoom to 800%
+      
+      // Calculate the point under the mouse before zoom
+      const pointX = (mouseX - container.width / 2 - position.x) / zoomLevel;
+      const pointY = (mouseY - container.height / 2 - position.y) / zoomLevel;
+      
+      // Calculate new position to keep the point under the mouse
+      const newX = mouseX - container.width / 2 - pointX * newZoom;
+      const newY = mouseY - container.height / 2 - pointY * newZoom;
+      
+      setZoomLevel(newZoom);
+      setPosition({ x: newX, y: newY });
+      
+      // Reset position when zooming out to fit
+      if (newZoom <= 1) {
+        setPosition({ x: 0, y: 0 });
+      }
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (window.innerWidth >= 768 && zoomLevel > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && zoomLevel > 1) {
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
+      
+      // Calculate max bounds based on zoom level and container size
+      const container = e.currentTarget.getBoundingClientRect();
+      const maxX = (container.width * (zoomLevel - 1)) / 2;
+      const maxY = (container.height * (zoomLevel - 1)) / 2;
+      
+      // Apply position with bounds checking
+      setPosition({
+        x: Math.min(Math.max(-maxX, newX), maxX),
+        y: Math.min(Math.max(-maxY, newY), maxY)
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const resetZoom = () => {
+    setZoomLevel(1);
+    setPosition({ x: 0, y: 0 });
   };
 
   const renderPage = () => {
@@ -535,33 +604,6 @@ export function OverheadLineInspectionDetailsView({
                 )}
               </CardContent>
             </Card>
-
-            <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
-              <DialogContent className="max-w-4xl w-full">
-                <DialogHeader>
-                  <DialogTitle className="flex justify-between items-center">
-                    <span>Inspection Image</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEnlargedImage(null)}
-                      className="h-8 w-8"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </DialogTitle>
-                </DialogHeader>
-                {enlargedImage && (
-                  <div className="relative w-full aspect-video">
-                    <img
-                      src={enlargedImage}
-                      alt="Enlarged inspection image"
-                      className="w-full h-full object-contain rounded-lg"
-                    />
-                  </div>
-                )}
-              </DialogContent>
-            </Dialog>
           </>
         );
     }
@@ -641,6 +683,54 @@ export function OverheadLineInspectionDetailsView({
           <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
+
+      <Dialog open={!!enlargedImage} onOpenChange={() => {
+        setEnlargedImage(null);
+        resetZoom();
+      }}>
+        <DialogContent className="max-w-[95vw] w-full p-2 sm:p-6">
+          <DialogHeader className="p-2 sm:p-4">
+            <DialogTitle className="text-base sm:text-lg">
+              Inspection Image
+            </DialogTitle>
+          </DialogHeader>
+          {enlargedImage && (
+            <div 
+              className="relative w-full h-[80vh] sm:h-[70vh] overflow-hidden flex items-center justify-center"
+              onWheel={handleZoom}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              style={{ cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+            >
+              <div 
+                className="relative w-full h-full"
+                style={{ 
+                  transform: `translate(${position.x}px, ${position.y}px)`,
+                  transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                }}
+              >
+                <img
+                  src={enlargedImage}
+                  alt="Enlarged inspection image"
+                  className="w-full h-full object-contain rounded-lg select-none pointer-events-none"
+                  style={{ 
+                    transform: `scale(${zoomLevel})`,
+                    transformOrigin: 'center',
+                    transition: 'transform 0.1s ease-out'
+                  }}
+                />
+              </div>
+              {window.innerWidth >= 768 && (
+                <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                  {Math.round(zoomLevel * 100)}%
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

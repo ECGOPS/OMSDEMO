@@ -17,6 +17,22 @@ interface MaterialsAnalysisProps {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background border rounded-lg shadow-lg p-3 text-sm">
+        <p className="font-medium text-foreground">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-muted-foreground" style={{ color: entry.color }}>
+            {entry.name}: {entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function MaterialsAnalysis({ faults }: MaterialsAnalysisProps) {
   const [stats, setStats] = useState<MaterialsStats>({
     totalMaterials: 0,
@@ -179,7 +195,7 @@ export default function MaterialsAnalysis({ faults }: MaterialsAnalysisProps) {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -195,10 +211,10 @@ export default function MaterialsAnalysis({ faults }: MaterialsAnalysisProps) {
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.byMonth}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="name" className="text-muted-foreground" />
+                  <YAxis className="text-muted-foreground" />
+                  <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="value" name="Materials Used" fill="#8884d8" />
                 </BarChart>
               </ResponsiveContainer>
@@ -219,10 +235,10 @@ export default function MaterialsAnalysis({ faults }: MaterialsAnalysisProps) {
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={150} />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis type="number" className="text-muted-foreground" />
+                <YAxis dataKey="name" type="category" width={150} className="text-muted-foreground" />
+                <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="value" name="Usage Count" fill="#82ca9d" />
               </BarChart>
             </ResponsiveContainer>

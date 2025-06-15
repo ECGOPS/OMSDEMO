@@ -66,6 +66,22 @@ const formatSafeDate = (dateString: string | undefined | null | { seconds: numbe
   }
 };
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background border rounded-lg shadow-lg p-3 text-sm">
+        <p className="font-medium text-foreground">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-muted-foreground" style={{ color: entry.color }}>
+            {entry.name}: {entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function AnalyticsPage() {
   const { toast } = useToast();
   const { isAuthenticated, user, users } = useAuth(); // Get the list of all users
@@ -75,6 +91,7 @@ export default function AnalyticsPage() {
   const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
   const [filterDistrict, setFilterDistrict] = useState<string | undefined>(undefined);
   const [filterFaultType, setFilterFaultType] = useState<string | undefined>(undefined);
+  const [filterSpecificFaultType, setFilterSpecificFaultType] = useState<string | undefined>(undefined);
   const [selectedRegion, setSelectedRegion] = useState<string>("");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("");
   const [selectedFaultType, setSelectedFaultType] = useState<string>("all");
@@ -129,7 +146,8 @@ export default function AnalyticsPage() {
     region: true,
     district: true,
     occurrenceDate: true,
-    type: true,
+    typeOfOutage: true, // moved before status
+    specificFaultType: true, // moved before status
     status: true,
     outageDuration: true,
     repairDuration: true,
@@ -137,24 +155,25 @@ export default function AnalyticsPage() {
     resolutionStatus: true,
     customersAffected: true,
     description: true,
-    typeOfOutage: true,
     remarks: true,
-    actions: true
+    actions: true,
+    restorationDate: true
   });
 
   const columnOptions = [
     { id: 'region', label: 'Region' },
     { id: 'district', label: 'District' },
     { id: 'occurrenceDate', label: 'Occurrence Date' },
-    { id: 'type', label: 'Type' },
+    { id: 'typeOfOutage', label: 'Type of Outage' }, // moved before status
+    { id: 'specificFaultType', label: 'Specific Fault Type' }, // moved before status
     { id: 'status', label: 'Status' },
     { id: 'outageDuration', label: 'Outage Duration' },
     { id: 'repairDuration', label: 'Repair Duration' },
     { id: 'estimatedResolution', label: 'Estimated Resolution' },
-    { id: 'resolutionStatus', label: 'Resolution Status' },
+    { id: 'resolutionStatus', label: 'Resolution Time' },
     { id: 'customersAffected', label: 'Customers Affected' },
+    { id: 'restorationDate', label: 'Restoration Date' },
     { id: 'description', label: 'Description' },
-    { id: 'typeOfOutage', label: 'Type of Outage' },
     { id: 'remarks', label: 'Remarks' },
     { id: 'actions', label: 'Actions' }
   ];
@@ -192,6 +211,16 @@ export default function AnalyticsPage() {
       faultsToDisplay = faultsToDisplay.filter(fault => {
         if ('faultType' in fault) {
           return fault.faultType === filterFaultType;
+        }
+        return false;
+      });
+    }
+
+    // Apply specific fault type filter if needed
+    if (filterSpecificFaultType && filterSpecificFaultType !== "all") {
+      faultsToDisplay = faultsToDisplay.filter(fault => {
+        if ('specificFaultType' in fault) {
+          return fault.specificFaultType === filterSpecificFaultType;
         }
         return false;
       });
@@ -319,6 +348,7 @@ export default function AnalyticsPage() {
     pageSize,
     filterStatus,
     filterFaultType,
+    filterSpecificFaultType,
     dateRange,
     startDate,
     endDate,
@@ -361,6 +391,16 @@ export default function AnalyticsPage() {
       faultsToDisplay = faultsToDisplay.filter(fault => {
         if ('faultType' in fault) {
           return fault.faultType === filterFaultType;
+        }
+        return false;
+      });
+    }
+
+    // Apply specific fault type filter if needed
+    if (filterSpecificFaultType && filterSpecificFaultType !== "all") {
+      faultsToDisplay = faultsToDisplay.filter(fault => {
+        if ('specificFaultType' in fault) {
+          return fault.specificFaultType === filterSpecificFaultType;
         }
         return false;
       });
@@ -464,6 +504,7 @@ export default function AnalyticsPage() {
     pageSize,
     filterStatus,
     filterFaultType,
+    filterSpecificFaultType,
     dateRange,
     startDate,
     endDate,
@@ -532,13 +573,14 @@ export default function AnalyticsPage() {
       console.log('[AnalyticsPage] OP5 faults with repairDate and restorationDate:', op5WithDates);
       loadData();
     }
-  }, [isAuthenticated, filterRegion, filterDistrict, filterFaultType, dateRange, startDate, endDate]);
+  }, [isAuthenticated, filterRegion, filterDistrict, filterFaultType, filterSpecificFaultType, dateRange, startDate, endDate]);
 
   const loadData = () => {
     console.log('[loadData] Starting with filters:', {
       filterRegion,
       filterDistrict,
       filterFaultType,
+      filterSpecificFaultType,
       filterStatus,
       dateRange,
       startDate,
@@ -565,6 +607,16 @@ export default function AnalyticsPage() {
       filteredByDate = filteredByDate.filter(fault => {
         if ('faultType' in fault) {
           return fault.faultType === filterFaultType;
+        }
+        return false;
+      });
+    }
+
+    // Apply specific fault type filter if needed
+    if (filterSpecificFaultType && filterSpecificFaultType !== "all") {
+      filteredByDate = filteredByDate.filter(fault => {
+        if ('specificFaultType' in fault) {
+          return fault.specificFaultType === filterSpecificFaultType;
         }
         return false;
       });
@@ -1506,82 +1558,117 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Total Materials Used</CardTitle>
-              <CardDescription>Across all OP5 faults</CardDescription>
+              <CardTitle className="text-lg flex items-center gap-2 text-green-800 dark:text-green-200">
+                <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-300" />
+                Rural Reliability
+              </CardTitle>
+              <CardDescription className="text-green-700 dark:text-green-200">Indices for rural areas</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{materialsStats.totalMaterials}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Materials by Type</CardTitle>
-              <CardDescription>Distribution of material types</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={materialsStats.byType}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label
-                    >
-                      {materialsStats.byType.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="space-y-4 text-green-900 dark:text-green-100">
+                <div>
+                  <Label className="text-sm text-green-700 dark:text-green-200">SAIDI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.rural?.saidi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-green-700 dark:text-green-200">Avg. Interruption Duration</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-green-700 dark:text-green-200">SAIFI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.rural?.saifi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-green-700 dark:text-green-200">Avg. Interruption Frequency</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-green-700 dark:text-green-200">CAIDI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.rural?.caidi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-green-700 dark:text-green-200">Avg. Customer Interruption Duration</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-green-700 dark:text-green-200">CAIFI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.rural?.caifi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-green-700 dark:text-green-200">Customer Avg. Interruption Frequency</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-green-700 dark:text-green-200">MAIFI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.rural?.maifi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-green-700 dark:text-green-200">Momentary Avg. Interruption Frequency</p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-blue-50 dark:bg-[#20232a] border border-blue-200 dark:border-blue-900 hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
-              <CardTitle>Monthly Usage</CardTitle>
-              <CardDescription>Materials used over time</CardDescription>
+              <CardTitle className="text-lg flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                Urban Reliability
+              </CardTitle>
+              <CardDescription className="text-blue-700 dark:text-blue-200">Indices for urban areas</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={materialsStats.byMonth}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
+               <div className="space-y-4 text-blue-900 dark:text-blue-100">
+                <div>
+                  <Label className="text-sm text-blue-700 dark:text-blue-200">SAIDI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.urban?.saidi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-200">Avg. Interruption Duration</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-blue-700 dark:text-blue-200">SAIFI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.urban?.saifi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-200">Avg. Interruption Frequency</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-blue-700 dark:text-blue-200">CAIDI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.urban?.caidi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-200">Avg. Customer Interruption Duration</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-blue-700 dark:text-blue-200">CAIFI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.urban?.caifi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-200">Customer Avg. Interruption Frequency</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-blue-700 dark:text-blue-200">MAIFI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.urban?.maifi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-200">Momentary Avg. Interruption Frequency</p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="col-span-full">
+          <Card className="bg-purple-50 dark:bg-[#241f2e] border border-purple-200 dark:border-purple-900 hover:shadow-lg transition-shadow duration-200">
             <CardHeader>
-              <CardTitle>Top Materials Used</CardTitle>
-              <CardDescription>Most frequently used materials</CardDescription>
+              <CardTitle className="text-lg flex items-center gap-2 text-purple-800 dark:text-purple-200">
+                <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-300" />
+                Metro Reliability
+              </CardTitle>
+              <CardDescription className="text-purple-700 dark:text-purple-200">Indices for metro areas</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={materialsStats.topMaterials}
-                    layout="vertical"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={150} />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#82ca9d" />
-                  </BarChart>
-                </ResponsiveContainer>
+               <div className="space-y-4 text-purple-900 dark:text-purple-100">
+                <div>
+                  <Label className="text-sm text-purple-700 dark:text-purple-200">SAIDI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.metro?.saidi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-purple-700 dark:text-purple-200">Avg. Interruption Duration</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-purple-700 dark:text-purple-200">SAIFI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.metro?.saifi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-purple-700 dark:text-purple-200">Avg. Interruption Frequency</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-purple-700 dark:text-purple-200">CAIDI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.metro?.caidi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-purple-700 dark:text-purple-200">Avg. Customer Interruption Duration</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-purple-700 dark:text-purple-200">CAIFI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.metro?.caifi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-purple-700 dark:text-purple-200">Customer Avg. Interruption Frequency</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-purple-700 dark:text-purple-200">MAIFI</Label>
+                  <p className="text-xl font-semibold">{reliabilityIndices?.metro?.maifi?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-xs text-purple-700 dark:text-purple-200">Momentary Avg. Interruption Frequency</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1632,15 +1719,16 @@ export default function AnalyticsPage() {
     if (visibleColumns.region) headers.push('Region');
     if (visibleColumns.district) headers.push('District');
     if (visibleColumns.occurrenceDate) headers.push('Occurrence Date');
-    if (visibleColumns.type) headers.push('Type');
+    if (visibleColumns.typeOfOutage) headers.push('Type of Outage'); // moved before status
+    if (visibleColumns.specificFaultType) headers.push('Specific Fault Type'); // moved before status
     if (visibleColumns.status) headers.push('Status');
+    if (visibleColumns.restorationDate) headers.push('Restoration Date');
     if (visibleColumns.outageDuration) headers.push('Outage Duration');
     if (visibleColumns.repairDuration) headers.push('Repair Duration');
     if (visibleColumns.estimatedResolution) headers.push('Estimated Resolution Time');
-    if (visibleColumns.resolutionStatus) headers.push('Resolution Status');
+    if (visibleColumns.resolutionStatus) headers.push('Resolution Time');
     if (visibleColumns.customersAffected) headers.push('Customers Affected');
     if (visibleColumns.description) headers.push('Description');
-    if (visibleColumns.typeOfOutage) headers.push('Type of Outage');
     if (visibleColumns.remarks) headers.push('Remarks');
 
     // Create data rows based on visible columns
@@ -1649,8 +1737,10 @@ export default function AnalyticsPage() {
       if (visibleColumns.region) row.push(getRegionName(fault.regionId));
       if (visibleColumns.district) row.push(getDistrictName(fault.districtId));
       if (visibleColumns.occurrenceDate) row.push(formatSafeDate(fault.occurrenceDate));
-      if (visibleColumns.type) row.push('faultLocation' in fault || 'substationName' in fault ? 'OP5' : 'Control');
-      if (visibleColumns.status) row.push(fault.status);
+      if (visibleColumns.typeOfOutage) row.push(fault.faultType || 'N/A'); // moved before status
+      if (visibleColumns.specificFaultType) row.push(fault.specificFaultType || 'N/A'); // moved before status
+      if (visibleColumns.status) row.push(fault.status === 'resolved' ? 'Resolved' : 'Pending');
+      if (visibleColumns.restorationDate) row.push(fault.restorationDate ? formatSafeDate(fault.restorationDate) : 'N/A');
       if (visibleColumns.outageDuration) {
         row.push(fault.occurrenceDate && fault.restorationDate
           ? `${((new Date(fault.restorationDate).getTime() - new Date(fault.occurrenceDate).getTime()) / (1000 * 60 * 60)).toFixed(2)} hr`
@@ -1689,7 +1779,6 @@ export default function AnalyticsPage() {
         row.push(totalCustomersAffected || 'N/A');
       }
       if (visibleColumns.description) row.push(fault.outageDescription || fault.description || 'N/A');
-      if (visibleColumns.typeOfOutage) row.push(fault.faultType || 'N/A');
       if (visibleColumns.remarks) row.push(fault.remarks || 'N/A');
       return row;
     });
@@ -1873,6 +1962,7 @@ export default function AnalyticsPage() {
     setFilterDistrict(undefined);
     setSelectedFaultType("all");
     setFilterFaultType(undefined);
+    setFilterSpecificFaultType(undefined);
     setFilterStatus(undefined);
     setDateRange("all");
     setStartDate(null);
@@ -1997,12 +2087,64 @@ export default function AnalyticsPage() {
                   <SelectValue placeholder="Select Outage Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Outage Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="Planned">Planned</SelectItem>
                   <SelectItem value="Unplanned">Unplanned</SelectItem>
                   <SelectItem value="Emergency">Emergency</SelectItem>
                   <SelectItem value="ECG Load Shedding">ECG Load Shedding</SelectItem>
-                  <SelectItem value="GridCo Outage">GridCo Outage</SelectItem>
+                  <SelectItem value="GridCo Outages">GridCo Outages</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Specific Fault Type Select */}
+            <div>
+              <Label htmlFor="specific-fault-type-select" className="text-xs text-muted-foreground">Specific Fault Type</Label>
+              <Select
+                value={filterSpecificFaultType || "all"}
+                onValueChange={setFilterSpecificFaultType}
+                disabled={selectedFaultType === "all" || selectedFaultType === "Planned" || selectedFaultType === "ECG Load Shedding" || selectedFaultType === "GridCo Outages"}
+              >
+                <SelectTrigger id="specific-fault-type-select" className="mt-1">
+                  <SelectValue placeholder="Select Specific Fault Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Specific Types</SelectItem>
+                  {/* Unplanned Fault Types */}
+                  <SelectItem value="JUMPER CUT">Jumper Cut</SelectItem>
+                  <SelectItem value="CONDUCTOR CUT">Conductor Cut</SelectItem>
+                  <SelectItem value="MERGED CONDUCTOR">Merged Conductor</SelectItem>
+                  <SelectItem value="HV/LV LINE CONTACT">HV/LV Line Contact</SelectItem>
+                  <SelectItem value="VEGETATION">Vegetation</SelectItem>
+                  <SelectItem value="CABLE FAULT">Cable Fault</SelectItem>
+                  <SelectItem value="TERMINATION FAILURE">Termination Failure</SelectItem>
+                  <SelectItem value="BROKEN POLES">Broken Poles</SelectItem>
+                  <SelectItem value="BURNT POLE">Burnt Pole</SelectItem>
+                  <SelectItem value="FAULTY ARRESTER/INSULATOR">Faulty Arrester/Insulator</SelectItem>
+                  <SelectItem value="EQIPMENT FAILURE">Equipment Failure</SelectItem>
+                  <SelectItem value="PUNCTURED CABLE">Punctured Cable</SelectItem>
+                  <SelectItem value="ANIMAL INTERRUPTION">Animal Interruption</SelectItem>
+                  <SelectItem value="BAD WEATHER">Bad Weather</SelectItem>
+                  <SelectItem value="TRANSIENT FAULTS">Transient Faults</SelectItem>
+                  <SelectItem value="PHASE OFF">Phase Off</SelectItem>
+                  <SelectItem value="BURNT PHASE">Burnt Phase</SelectItem>
+                  {/* Emergency Fault Types */}
+                  <SelectItem value="MEND CABLE">Mend Cable</SelectItem>
+                  <SelectItem value="WORK ON EQUIPMENT">Work on Equipment</SelectItem>
+                  <SelectItem value="FIRE">Fire</SelectItem>
+                  <SelectItem value="IMPROVE HV">Improve HV</SelectItem>
+                  <SelectItem value="JUMPER REPLACEMENT">Jumper Replacement</SelectItem>
+                  <SelectItem value="MEND BROKEN">Mend Broken</SelectItem>
+                  <SelectItem value="MEND JUMPER">Mend Jumper</SelectItem>
+                  <SelectItem value="MEND TERMINATION">Mend Termination</SelectItem>
+                  <SelectItem value="BROKEN POLE">Broken Pole</SelectItem>
+                  <SelectItem value="ANIMAL CONTACT">Animal Contact</SelectItem>
+                  <SelectItem value="VEGETATION SAFETY">Vegetation Safety</SelectItem>
+                  <SelectItem value="TRANSFER/RESTORE">Transfer/Restore</SelectItem>
+                  <SelectItem value="TROUBLE SHOOTING">Trouble Shooting</SelectItem>
+                  <SelectItem value="MEND LOOSE">Mend Loose</SelectItem>
+                  <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                  <SelectItem value="OTHERS">Others</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2386,11 +2528,11 @@ export default function AnalyticsPage() {
                     {filteredFaults.filter(f => 
                       ('faultLocation' in f || 'substationName' in f) && 
                       f.repairDate && 
-                      f.restorationDate
+                      f.repairEndDate
                     ).length}
                   </div>
                   <p className="text-xs text-gray-700 dark:text-gray-200 mt-1">
-                    Out of {filteredFaults.filter(f => 'faultLocation' in f).length} total OP5 faults
+                    Out of {filteredFaults.filter(f => 'faultLocation' in f || 'substationName' in f).length} total OP5 faults
                   </p>
                 </CardContent>
               </Card>
@@ -2600,7 +2742,7 @@ export default function AnalyticsPage() {
                               Basic Information
                             </DropdownMenuLabel>
                             {columnOptions.filter(col => 
-                              ['region', 'district', 'occurrenceDate', 'type', 'status'].includes(col.id)
+                              ['region', 'district', 'occurrenceDate', 'status'].includes(col.id)
                             ).map(col => (
                               <DropdownMenuCheckboxItem
                                 key={col.id}
@@ -2641,7 +2783,7 @@ export default function AnalyticsPage() {
                               Duration & Impact
                             </DropdownMenuLabel>
                             {columnOptions.filter(col => 
-                              ['outageDuration', 'repairDuration', 'estimatedResolution', 'resolutionStatus', 'customersAffected'].includes(col.id)
+                              ['outageDuration', 'repairDuration', 'estimatedResolution', 'resolutionStatus', 'customersAffected', 'restorationDate'].includes(col.id)
                             ).map(col => (
                               <DropdownMenuCheckboxItem
                                 key={col.id}
@@ -2770,15 +2912,16 @@ export default function AnalyticsPage() {
                           {visibleColumns.region && <TableHead className="text-xs sm:text-sm">Region</TableHead>}
                           {visibleColumns.district && <TableHead className="text-xs sm:text-sm">District</TableHead>}
                           {visibleColumns.occurrenceDate && <TableHead className="text-xs sm:text-sm">Occurrence Date</TableHead>}
-                          {visibleColumns.type && <TableHead className="text-xs sm:text-sm">Type</TableHead>}
+                          {visibleColumns.typeOfOutage && <TableHead className="text-xs sm:text-sm">Type of Outage</TableHead>} {/* moved before status */}
+                          {visibleColumns.specificFaultType && <TableHead className="text-xs sm:text-sm">Specific Fault Type</TableHead>} {/* moved before status */}
                           {visibleColumns.status && <TableHead className="text-xs sm:text-sm">Status</TableHead>}
+                          {visibleColumns.restorationDate && <TableHead className="text-xs sm:text-sm">Restoration Date</TableHead>}
                           {visibleColumns.outageDuration && <TableHead className="text-xs sm:text-sm">Outage Duration</TableHead>}
                           {visibleColumns.repairDuration && <TableHead className="text-xs sm:text-sm">Repair Duration</TableHead>}
                           {visibleColumns.estimatedResolution && <TableHead className="text-xs sm:text-sm">Estimated Resolution</TableHead>}
-                          {visibleColumns.resolutionStatus && <TableHead className="text-xs sm:text-sm">Resolution Status</TableHead>}
+                          {visibleColumns.resolutionStatus && <TableHead className="text-xs sm:text-sm">Resolution Time</TableHead>}
                           {visibleColumns.customersAffected && <TableHead className="text-xs sm:text-sm">Customers Affected</TableHead>}
                           {visibleColumns.description && <TableHead className="text-xs sm:text-sm">Description</TableHead>}
-                          {visibleColumns.typeOfOutage && <TableHead className="text-xs sm:text-sm">Type of Outage</TableHead>}
                           {visibleColumns.remarks && <TableHead className="text-xs sm:text-sm">Remarks</TableHead>}
                           {visibleColumns.actions && <TableHead className="text-xs sm:text-sm">Actions</TableHead>}
                         </TableRow>
@@ -2790,12 +2933,26 @@ export default function AnalyticsPage() {
                               {visibleColumns.region && <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">{getRegionName(fault.regionId)}</TableCell>}
                               {visibleColumns.district && <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">{getDistrictName(fault.districtId)}</TableCell>}
                               {visibleColumns.occurrenceDate && <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">{formatSafeDate(fault.occurrenceDate)}</TableCell>}
-                              {visibleColumns.type && <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">{op5Faults.some(f => f.id === fault.id) ? 'OP5' : 'Control'}</TableCell>}
+                              {visibleColumns.typeOfOutage && (
+                                <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">
+                                  {fault.faultType || 'N/A'}
+                                </TableCell>
+                              )}
+                              {visibleColumns.specificFaultType && (
+                                <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">
+                                  {fault.specificFaultType || 'N/A'}
+                                </TableCell>
+                              )}
                               {visibleColumns.status && (
                                 <TableCell className="py-2 px-2 sm:px-4">
-                                  <span className={`px-2 py-1 rounded-full text-xs ${fault.status === 'pending' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                    {fault.status}
+                                  <span className={`px-2 py-1 rounded-full text-xs ${fault.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    {fault.status === 'resolved' ? 'Resolved' : 'Pending'}
                                   </span>
+                                </TableCell>
+                              )}
+                              {visibleColumns.restorationDate && (
+                                <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">
+                                  {fault.restorationDate ? formatSafeDate(fault.restorationDate) : 'N/A'}
                                 </TableCell>
                               )}
                               {visibleColumns.outageDuration && (
@@ -2838,21 +2995,24 @@ export default function AnalyticsPage() {
                               )}
                               {visibleColumns.customersAffected && (
                                 <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">
-                                  {fault.affectedPopulation
-                                    ? (fault.affectedPopulation.rural + fault.affectedPopulation.urban + fault.affectedPopulation.metro)
-                                    : fault.customersAffected
-                                      ? (fault.customersAffected.rural + fault.customersAffected.urban + fault.customersAffected.metro)
-                                      : 'N/A'}
+                                  {(() => {
+                                    let totalCustomersAffected = 0;
+                                    if (fault.affectedPopulation) {
+                                      totalCustomersAffected = (fault.affectedPopulation.rural || 0) + 
+                                                             (fault.affectedPopulation.urban || 0) + 
+                                                             (fault.affectedPopulation.metro || 0);
+                                    } else if (fault.customersAffected) {
+                                      totalCustomersAffected = (fault.customersAffected.rural || 0) + 
+                                                             (fault.customersAffected.urban || 0) + 
+                                                             (fault.customersAffected.metro || 0);
+                                    }
+                                    return totalCustomersAffected || 'N/A';
+                                  })()}
                                 </TableCell>
                               )}
                               {visibleColumns.description && (
                                 <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">
                                   {fault.outageDescription || fault.description || 'N/A'}
-                                </TableCell>
-                              )}
-                              {visibleColumns.typeOfOutage && (
-                                <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">
-                                  {fault.faultType || 'N/A'}
                                 </TableCell>
                               )}
                               {visibleColumns.remarks && (
@@ -2861,10 +3021,9 @@ export default function AnalyticsPage() {
                                 </TableCell>
                               )}
                               {visibleColumns.actions && (
-                                <TableCell className="py-2 px-2 sm:px-4">
-                                  <Button variant="ghost" size="sm" className="h-7 px-1 sm:px-2" onClick={() => showFaultDetails(fault)}>
-                                    <Eye size={14} />
-                                    <span className="ml-1 hidden sm:inline">View</span>
+                                <TableCell className="text-xs sm:text-sm py-2 px-2 sm:px-4">
+                                  <Button variant="ghost" size="sm" onClick={() => showFaultDetails(fault)}>
+                                    View Details
                                   </Button>
                                 </TableCell>
                               )}
@@ -3044,7 +3203,9 @@ export default function AnalyticsPage() {
               <p>Performance metrics will be displayed here.</p>
             </TabsContent>
 
-            {renderMaterialsContent()}
+            <TabsContent value="materials" className="space-y-6">
+              <MaterialsAnalysis faults={filteredFaults} />
+            </TabsContent>
           </Tabs>
         </div>
         
