@@ -134,8 +134,15 @@ export default function LoadMonitoringPage() {
     // Apply load status filter
     if (selectedLoadStatus && selectedLoadStatus !== "all") {
       filtered = filtered.filter(record => {
-        const loadStatus = getLoadStatus(typeof record.percentageLoad === 'number' ? record.percentageLoad : 0);
-        return loadStatus.status === selectedLoadStatus;
+        const percentageLoad = typeof record.percentageLoad === 'number' ? record.percentageLoad : 0;
+        if (selectedLoadStatus === "OVERLOAD") {
+          return percentageLoad >= 100;
+        } else if (selectedLoadStatus === "Action Required") {
+          return percentageLoad >= 70 && percentageLoad < 100;
+        } else if (selectedLoadStatus === "OKAY") {
+          return percentageLoad < 70;
+        }
+        return true;
       });
     }
     
@@ -677,7 +684,7 @@ export default function LoadMonitoringPage() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="OVERLOAD">Overload</SelectItem>
-                <SelectItem value="AVERAGE">Average</SelectItem>
+                <SelectItem value="Action Required">Action Required</SelectItem>
                 <SelectItem value="OKAY">Okay</SelectItem>
               </SelectContent>
             </Select>
@@ -704,9 +711,7 @@ export default function LoadMonitoringPage() {
                       <TableHead className="whitespace-nowrap">Substation</TableHead>
                       <TableHead className="whitespace-nowrap">Region</TableHead>
                       <TableHead className="whitespace-nowrap">District</TableHead>
-                      <TableHead className="whitespace-nowrap">Rating (MW)</TableHead>
-                      <TableHead className="whitespace-nowrap">Load (%)</TableHead>
-                      <TableHead className="whitespace-nowrap">Economical Load Status</TableHead>
+                      <TableHead className="whitespace-nowrap">Rating (KVA)</TableHead>
                       <TableHead className="whitespace-nowrap">Maximum Full Load</TableHead>
                       <TableHead className="whitespace-nowrap">Full Load Status</TableHead>
                       <TableHead className="whitespace-nowrap">Peak Status</TableHead>
@@ -735,20 +740,20 @@ export default function LoadMonitoringPage() {
                           <TableCell className="whitespace-nowrap">{region?.name || 'Unknown'}</TableCell>
                           <TableCell className="whitespace-nowrap">{district?.name || 'Unknown'}</TableCell>
                           <TableCell className="whitespace-nowrap">{record.rating}</TableCell>
-                          <TableCell className="whitespace-nowrap">{formattedPercentageLoads[record.id] ?? "0.00"}</TableCell>
                           <TableCell>
-                            <Badge className={loadStatus.color}>
-                              {loadStatus.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={Number(formattedPercentageLoads[record.id]) >= 100 ? 'bg-red-500' : 'bg-green-500'}>
+                            <Badge className={Number(formattedPercentageLoads[record.id]) >= 100 ? 'bg-red-500' : 
+                                             Number(formattedPercentageLoads[record.id]) >= 70 ? 'bg-yellow-500' : 
+                                             'bg-green-500'}>
                               {formattedPercentageLoads[record.id] ?? "0.00"}%
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge className={Number(formattedPercentageLoads[record.id]) >= 100 ? 'bg-red-500' : 'bg-green-500'}>
-                              {Number(formattedPercentageLoads[record.id]) >= 100 ? 'OVERLOAD' : 'OKAY'}
+                            <Badge className={Number(formattedPercentageLoads[record.id]) >= 100 ? 'bg-red-500' : 
+                                             Number(formattedPercentageLoads[record.id]) >= 70 ? 'bg-yellow-500' : 
+                                             'bg-green-500'}>
+                              {Number(formattedPercentageLoads[record.id]) >= 100 ? 'OVERLOAD' : 
+                               Number(formattedPercentageLoads[record.id]) >= 70 ? 'Action Required' : 
+                               'OKAY'}
                             </Badge>
                           </TableCell>
                           <TableCell className="whitespace-nowrap">{record.peakLoadStatus}</TableCell>
