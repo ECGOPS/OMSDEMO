@@ -364,6 +364,7 @@ export default function OverheadLineInspectionPage() {
             <TabsContent value="inspections" className="space-y-4">
               <OverheadLineInspectionsTable 
                 inspections={paginatedInspections}
+                allInspections={filteredInspections}
                 onEdit={handleEditInspection}
                 onDelete={handleDeleteInspection}
                 onView={handleViewInspection}

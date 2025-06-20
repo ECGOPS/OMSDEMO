@@ -25,6 +25,7 @@ import autoTable from "jspdf-autotable";
 
 interface OverheadLineInspectionsTableProps {
   inspections: OverheadLineInspection[];
+  allInspections?: OverheadLineInspection[];
   onEdit: (inspection: OverheadLineInspection) => void;
   onDelete: (inspection: OverheadLineInspection) => void;
   onView: (inspection: OverheadLineInspection) => void;
@@ -33,6 +34,7 @@ interface OverheadLineInspectionsTableProps {
 
 export function OverheadLineInspectionsTable({
   inspections,
+  allInspections,
   onEdit,
   onDelete,
   onView,
@@ -456,6 +458,7 @@ export function OverheadLineInspectionsTable({
   };
 
   const exportAllToCSV = () => {
+    const dataToExport = allInspections || inspections;
     const headers = [
       'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole',
       'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Pole Location',
@@ -475,7 +478,7 @@ export function OverheadLineInspectionsTable({
       'Inspector Name'
     ];
     
-    const csvRows = inspections.map(inspection => [
+    const csvRows = dataToExport.map(inspection => [
       inspection.region || 'Unknown',
       inspection.district || 'Unknown',
           inspection.feederName,
