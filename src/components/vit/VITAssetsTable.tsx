@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { exportVITAssetToPDF } from "@/utils/pdfExport";
 
 interface VITAssetsTableProps {
   assets?: VITAsset[];
@@ -63,6 +64,12 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
     });
     
     const uniqueAssetsArray = Array.from(uniqueAssets.values());
+    // Sort by createdAt descending (most recent first)
+    uniqueAssetsArray.sort((a, b) => {
+      const dateA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.createdAt).getTime();
+      const dateB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.createdAt).getTime();
+      return dateB - dateA;
+    });
     
     if (searchTerm) {
       setFilteredAssets(
@@ -124,39 +131,48 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
     navigate(`/asset-management/vit-inspection-details/${assetId}`);
   };
 
+  const handleExportPDF = async (asset: VITAsset) => {
+    try {
+      await exportVITAssetToPDF(asset);
+    } catch (error) {
+      console.error("Failed to export PDF:", error);
+    }
+  };
+
   const exportToCsv = () => {
-    // Create headers row
+    // Create headers row matching the table columns
     const headers = [
-      "Serial Number",
-      "Type",
-      "Voltage Level",
+      "Created At",
       "Region",
       "District",
+      "Serial Number",
+      "Type",
+      "Voltage",
       "Feeder Name",
       "Location",
       "GPS Coordinates",
-      "Status",
-      "Protection",
-      "Created At"
+      "Status"
     ];
 
-    // Create data rows
+    // Create data rows matching the table columns and formatting
     const csvData = filteredAssets.map(asset => [
+      formatDate(asset.createdAt),
+      asset.region || "Unknown Region",
+      asset.district || "Unknown District",
       asset.serialNumber,
       asset.typeOfUnit,
       asset.voltageLevel,
-      asset.region || "Unknown Region",
-      asset.district || "Unknown District",
       asset.feederName || "Not specified",
       asset.location,
       asset.gpsCoordinates,
-      asset.status,
-      asset.protection,
-      formatDate(asset.createdAt)
+      asset.status
     ]);
 
-    // Combine headers and data rows
-    const csvContent = [headers.join(","), ...csvData.map(row => row.join(","))].join("\n");
+    // Properly quote all values to handle commas and special characters
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map(row => row.map(value => `"${(value ?? "").toString().replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
 
     // Create and trigger download
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -217,7 +233,9 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
               <TableHead className="font-medium">Serial Number</TableHead>
               <TableHead className="font-medium">Type</TableHead>
               <TableHead className="font-medium">Voltage</TableHead>
+              <TableHead className="font-medium">Feeder Name</TableHead>
               <TableHead className="font-medium">Location</TableHead>
+              <TableHead className="font-medium">GPS Coordinates</TableHead>
               <TableHead className="font-medium">Status</TableHead>
               <TableHead className="text-right font-medium">Actions</TableHead>
             </TableRow>
@@ -244,9 +262,11 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
                   <TableCell className="font-medium">{asset.serialNumber}</TableCell>
                   <TableCell>{asset.typeOfUnit}</TableCell>
                   <TableCell>{asset.voltageLevel}</TableCell>
+                  <TableCell>{asset.feederName || "Not specified"}</TableCell>
                   <TableCell className="max-w-[200px] truncate" title={asset.location}>
                     {asset.location}
                   </TableCell>
+                  <TableCell>{asset.gpsCoordinates}</TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(asset.status)}>
                       {asset.status}
@@ -287,6 +307,13 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
                         }}>
                           <FileText className="h-4 w-4 mr-2" />
                           Add Inspection
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportPDF(asset);
+                        }}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Export PDF
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 

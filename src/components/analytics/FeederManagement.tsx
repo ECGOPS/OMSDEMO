@@ -41,6 +41,7 @@ import { getUserRegionAndDistrict } from "@/utils/user-utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { PermissionService } from "@/services/PermissionService";
 import LoggingService from "@/services/LoggingService";
+import { OfflineStorageService } from "@/services/OfflineStorageService";
 
 interface FeederInfo {
   id: string;
@@ -88,19 +89,28 @@ export function FeederManagement() {
 
   const { user } = useAuth();
   const permissionService = PermissionService.getInstance();
+  const offlineService = OfflineStorageService.getInstance();
 
-  // Fetch feeders from Firebase
+  // Fetch feeders from IndexedDB first, then Firebase if online
   useEffect(() => {
     const fetchFeeders = async () => {
       setIsLoading(true);
       try {
-        const feedersRef = collection(db, "feeders");
-        const querySnapshot = await getDocs(feedersRef);
-        const feedersData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as FeederInfo[];
-        setFeeders(feedersData);
+        let offlineFeeders = await offlineService.getOfflineFeeders();
+        setFeeders(offlineFeeders);
+        if (navigator.onLine) {
+          const feedersRef = collection(db, "feeders");
+          const querySnapshot = await getDocs(feedersRef);
+          const feedersData = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as FeederInfo[];
+          setFeeders(feedersData);
+          // Update offline cache
+          for (const feeder of feedersData) {
+            await offlineService.saveFeederOffline(feeder);
+          }
+        }
       } catch (error) {
         console.error("Error fetching feeders:", error);
         toast.error("Failed to load feeders");
@@ -108,9 +118,8 @@ export function FeederManagement() {
         setIsLoading(false);
       }
     };
-
     fetchFeeders();
-  }, []);
+  }, [regions, districts]);
 
   // Function to download CSV template
   const downloadCSVTemplate = () => {
@@ -328,6 +337,17 @@ export function FeederManagement() {
       }
 
       toast.success("Feeder added successfully");
+
+      if (navigator.onLine) {
+        await offlineService.saveFeederOffline(feederData as FeederInfo);
+      } else {
+        // Offline: save locally only
+        const offlineId = `offline_${Date.now()}`;
+        const offlineFeeder = { ...feederData, id: offlineId } as FeederInfo;
+        await offlineService.saveFeederOffline(offlineFeeder);
+        setFeeders(prev => [...prev, offlineFeeder]);
+        toast.success("Feeder saved offline. Will sync when online.");
+      }
     } catch (error) {
       console.error("Error adding feeder:", error);
       toast.error("Failed to add feeder");
@@ -388,6 +408,17 @@ export function FeederManagement() {
       setIsEditDialogOpen(false);
       setSelectedFeeder(null);
       toast.success("Feeder updated successfully");
+
+      if (navigator.onLine) {
+        await offlineService.saveFeederOffline(selectedFeeder as FeederInfo);
+      } else {
+        // Offline: save locally only
+        const offlineId = `offline_${Date.now()}`;
+        const offlineFeeder = { ...selectedFeeder, id: offlineId } as FeederInfo;
+        await offlineService.saveFeederOffline(offlineFeeder);
+        setFeeders(prev => [...prev, offlineFeeder]);
+        toast.success("Feeder saved offline. Will sync when online.");
+      }
     } catch (error) {
       console.error("Error updating feeder:", error);
       toast.error("Failed to update feeder");
@@ -436,6 +467,15 @@ export function FeederManagement() {
       }
 
       toast.success("Feeder deleted successfully");
+
+      if (navigator.onLine) {
+        await offlineService.removeOfflineFeeder(id);
+      } else {
+        // Offline: remove locally only
+        await offlineService.removeOfflineFeeder(id);
+        setFeeders(prev => prev.filter(f => f.id !== id));
+        toast.success("Feeder removed from offline cache");
+      }
     } catch (error) {
       console.error("Error deleting feeder:", error);
       toast.error("Failed to delete feeder");

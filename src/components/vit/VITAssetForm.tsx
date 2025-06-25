@@ -942,6 +942,7 @@ export function VITAssetForm({ asset, onSubmit, onCancel }: VITAssetFormProps) {
                   <SelectItem value="Under Maintenance">Under Maintenance</SelectItem>
                   <SelectItem value="Faulty">Faulty</SelectItem>
                   <SelectItem value="Decommissioned">Decommissioned</SelectItem>
+                  <SelectItem value="Not started">Not started</SelectItem>
                 </SelectContent>
               </Select>
             </div>

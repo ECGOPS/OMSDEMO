@@ -55,12 +55,33 @@ interface VITDB extends DBSchema {
   };
 }
 
+interface FeederInfo {
+  id: string;
+  name: string;
+  bspPss: string;
+  region: string;
+  district: string;
+  regionId: string;
+  districtId: string;
+  voltageLevel: string;
+  feederType: string;
+}
+
+interface FeederDB extends DBSchema {
+  feeders: {
+    key: string;
+    value: FeederInfo;
+  };
+}
+
 export class OfflineStorageService {
   private static instance: OfflineStorageService;
   private faultDB: IDBPDatabase<FaultDB> | null = null;
   private vitDB: IDBPDatabase<VITDB> | null = null;
+  private feederDB: IDBPDatabase<FeederDB> | null = null;
   private faultDBName = 'faultStorage';
   private vitDBName = 'vitStorage';
+  private feederDBName = 'feederStorage';
   private version = 1;
   private isSyncing: boolean = false;
   private syncQueue: Promise<void> = Promise.resolve();
@@ -103,6 +124,13 @@ export class OfflineStorageService {
           }
           if (!db.objectStoreNames.contains('pendingInspections')) {
             db.createObjectStore('pendingInspections', { keyPath: 'id' });
+          }
+        },
+      });
+      this.feederDB = await openDB<FeederDB>(this.feederDBName, this.version, {
+        upgrade(db) {
+          if (!db.objectStoreNames.contains('feeders')) {
+            db.createObjectStore('feeders', { keyPath: 'id' });
           }
         },
       });
@@ -578,6 +606,25 @@ export class OfflineStorageService {
       throw new Error('Database not initialized');
     }
     return this.vitDB;
+  }
+
+  // --- Feeder offline methods ---
+  public async saveFeederOffline(feeder: FeederInfo): Promise<void> {
+    if (!this.feederDB) await this.initializeDB();
+    if (!this.feederDB) throw new Error('Feeder DB not initialized');
+    await this.feederDB.put('feeders', feeder);
+  }
+
+  public async getOfflineFeeders(): Promise<FeederInfo[]> {
+    if (!this.feederDB) await this.initializeDB();
+    if (!this.feederDB) throw new Error('Feeder DB not initialized');
+    return await this.feederDB.getAll('feeders');
+  }
+
+  public async removeOfflineFeeder(id: string): Promise<void> {
+    if (!this.feederDB) await this.initializeDB();
+    if (!this.feederDB) throw new Error('Feeder DB not initialized');
+    await this.feederDB.delete('feeders', id);
   }
 }
 

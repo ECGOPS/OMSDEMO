@@ -1,7 +1,8 @@
 import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage } from 'pdf-lib';
-import { VITAsset, VITInspectionChecklist, SubstationInspection, Region, District } from "@/lib/types";
+import { VITAsset, VITInspectionChecklist, Region, District } from "@/lib/types";
 import { formatDate } from "@/utils/calculations";
 import { format } from 'date-fns';
+import { SubstationInspection } from "@/lib/asset-types";
 
 // Add type declaration for jsPDF with autotable extensions
 declare module "jspdf" {
@@ -844,8 +845,8 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
         x: width - margin - 50,
         y: margin - 20,
         size: 10,
-        color: rgb(0.5, 0.5, 0.5),
         font: regularFont,
+        color: rgb(0.5, 0.5, 0.5),
       });
     });
 
@@ -1283,3 +1284,135 @@ async function drawTable({
   return currentY; // Return the Y position below the drawn table
 }
 // --- END TABLE HELPER --- 
+
+/**
+ * Generate comprehensive PDF report for a single VIT asset
+ */
+export const exportVITAssetToPDF = async (asset: VITAsset) => {
+  try {
+    if (!asset) throw new Error("Asset is required");
+    // Create PDF document with A4 size
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
+    const { width, height } = page.getSize();
+    const margin = 50;
+    let currentY = height - margin;
+    // Load fonts
+    const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    // --- Header ---
+    page.drawText('VIT ASSET REPORT', {
+      x: margin,
+      y: currentY,
+      size: 22,
+      font: boldFont,
+      color: rgb(0, 0.2, 0.4),
+    });
+    currentY -= 30;
+    // --- Metadata ---
+    const metaData = [
+      [`Report Generated:`, format(new Date(), 'dd/MM/yyyy HH:mm')],
+      [`Serial Number:`, asset.serialNumber],
+      [`Type:`, asset.typeOfUnit],
+      [`Voltage Level:`, asset.voltageLevel],
+      [`Region:`, asset.region],
+      [`District:`, asset.district],
+      [`Feeder Name:`, asset.feederName],
+      [`Location:`, asset.location],
+      [`GPS Coordinates:`, asset.gpsCoordinates],
+      [`Status:`, asset.status],
+      [`Protection:`, asset.protection],
+      [`Created At:`, formatDate(asset.createdAt, true)],
+      [`Updated At:`, formatDate(asset.updatedAt, true)],
+      [`Created By:`, asset.createdBy],
+    ];
+    metaData.forEach(([label, value]) => {
+      page.drawText(label, { x: margin, y: currentY, font: regularFont, size: 11, color: rgb(0.3, 0.3, 0.3) });
+      page.drawText(String(value ?? 'N/A'), { x: margin + 140, y: currentY, font: boldFont, size: 11, color: rgb(0, 0, 0) });
+      currentY -= 18;
+    });
+    // --- Asset Photo ---
+    if (asset.photoUrl) {
+      try {
+        const imageBytes = await fetch(asset.photoUrl).then(res => res.arrayBuffer());
+        const image = await pdfDoc.embedJpg(imageBytes).catch(() => pdfDoc.embedPng(imageBytes));
+        const imgDims = image.scale(0.3); // scale to fit
+        currentY -= 10;
+        page.drawText('Asset Photo:', { x: margin, y: currentY, font: boldFont, size: 13, color: rgb(0.1, 0.4, 0.6) });
+        currentY -= imgDims.height + 10;
+        page.drawImage(image, {
+          x: margin,
+          y: currentY,
+          width: imgDims.width,
+          height: imgDims.height,
+        });
+        currentY -= 20;
+      } catch (err) {
+        // If image fails, skip
+        currentY -= 10;
+        page.drawText('Asset Photo: (Failed to load image)', { x: margin, y: currentY, font: boldFont, size: 13, color: rgb(0.8, 0.2, 0.2) });
+        currentY -= 20;
+      }
+    }
+    // --- Map View ---
+    if (asset.gpsCoordinates && asset.gpsCoordinates.includes(',')) {
+      try {
+        const [lat, lng] = asset.gpsCoordinates.split(',').map(Number);
+        // Use Google Static Maps API
+        // IMPORTANT: Set VITE_GOOGLE_MAPS_API_KEY in your .env file
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        if (!apiKey) throw new Error('Google Maps API key is not set. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file.');
+        const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=400x250&markers=color:red%7C${lat},${lng}&key=${apiKey}`;
+        const mapBytes = await fetch(mapUrl).then(res => res.arrayBuffer());
+        const mapImage = await pdfDoc.embedPng(mapBytes);
+        const mapDims = mapImage.scale(0.7);
+        page.drawText('Map View:', { x: margin, y: currentY, font: boldFont, size: 13, color: rgb(0.1, 0.4, 0.6) });
+        currentY -= mapDims.height + 10;
+        page.drawImage(mapImage, {
+          x: margin,
+          y: currentY,
+          width: mapDims.width,
+          height: mapDims.height,
+        });
+        currentY -= 20;
+        // Attribution for Google Maps
+        page.drawText('Map data © Google', {
+          x: margin,
+          y: currentY,
+          font: regularFont,
+          size: 8,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        currentY -= 10;
+      } catch (err) {
+        currentY -= 10;
+        page.drawText('Map View: (Failed to load map image)', { x: margin, y: currentY, font: boldFont, size: 13, color: rgb(0.8, 0.2, 0.2) });
+        currentY -= 20;
+      }
+    }
+    // --- Download PDF ---
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    // Generate filename with safe date handling
+    let filenameDate = 'unknown-date';
+    try {
+      const dateObj = asset.createdAt?.seconds ? new Date(asset.createdAt.seconds * 1000) : new Date(asset.createdAt);
+      if (!isNaN(dateObj.getTime())) {
+        filenameDate = format(dateObj, 'yyyy-MM-dd');
+      }
+    } catch (error) {
+      // fallback
+    }
+    link.href = url;
+    link.download = `vit-asset-${asset.serialNumber}-${filenameDate}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error generating VIT asset PDF:", error);
+    throw error;
+  }
+};
