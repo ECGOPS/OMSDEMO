@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "react-hot-toast";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { exportOverheadLineInspectionsToExcel } from '@/utils/excelExport';
 
 interface OverheadLineInspectionsTableProps {
   inspections: OverheadLineInspection[];
@@ -481,9 +482,9 @@ export function OverheadLineInspectionsTable({
     const csvRows = dataToExport.map(inspection => [
       inspection.region || 'Unknown',
       inspection.district || 'Unknown',
-          inspection.feederName,
-          inspection.voltageLevel,
-          inspection.referencePole,
+      inspection.feederName,
+      inspection.voltageLevel,
+      inspection.referencePole,
       inspection.status,
       inspection.date || format(new Date(), 'dd/MM/yyyy'),
       inspection.poleId,
@@ -553,12 +554,38 @@ export function OverheadLineInspectionsTable({
     link.click();
   };
 
+  const exportAllToExcel = async () => {
+    try {
+      console.log('Starting Excel export...');
+      const dataToExport = allInspections || inspections;
+      console.log('Data to export:', dataToExport.length, 'inspections');
+      
+      if (dataToExport.length === 0) {
+        toast.error('No inspections to export');
+        return;
+      }
+      
+      toast.loading('Generating Excel file...');
+      await exportOverheadLineInspectionsToExcel(dataToExport);
+      toast.dismiss();
+      toast.success('Excel file generated successfully!');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.dismiss();
+      toast.error('Failed to generate Excel file. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button onClick={exportAllToCSV} variant="outline">
           <FileDown className="mr-2 h-4 w-4" />
           Export All to CSV
+        </Button>
+        <Button onClick={exportAllToExcel} variant="outline" className="ml-2">
+          <FileDown className="mr-2 h-4 w-4" />
+          Export All to Excel
         </Button>
       </div>
       <div className="rounded-md border">

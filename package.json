@@ -85,6 +85,8 @@
     "dompurify": "^3.2.5",
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.3.0",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
     "firebase": "^11.6.0",
     "firebase-admin": "^13.3.0",
     "firebase-functions": "^6.3.2",
@@ -118,11 +120,13 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^11.1.0",
     "vaul": "^0.9.3",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.46"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.16",
+    "@types/file-saver": "^2.0.7",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.15.21",
     "@types/node-fetch": "^2.6.12",
