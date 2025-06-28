@@ -17,7 +17,17 @@ import { initDB } from "@/utils/db";
 import { OfflineInspectionService } from "@/services/OfflineInspectionService";
 import { VITSyncService } from "@/services/VITSyncService";
 import { Card } from "@/components/ui/card";
-import { Info } from "lucide-react";
+import { Info, Database, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { VITMapView } from '@/components/vit/VITMapView';
 
 export default function VITInspectionPage() {
   const { vitAssets, vitInspections, regions, districts } = useData();
@@ -32,6 +42,11 @@ export default function VITInspectionPage() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSync, setPendingSync] = useState(false);
   const [offlineAssets, setOfflineAssets] = useState<VITAsset[]>([]);
+  const [inspectionSearchTerm, setInspectionSearchTerm] = useState("");
+  const [inspectionSelectedRegion, setInspectionSelectedRegion] = useState<string>("all");
+  const [inspectionSelectedDistrict, setInspectionSelectedDistrict] = useState<string>("all");
+  const [selectedRegion, setSelectedRegion] = useState<string>("all");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
   const offlineStorage = OfflineInspectionService.getInstance();
   const vitSyncService = VITSyncService.getInstance();
   
@@ -161,26 +176,53 @@ export default function VITInspectionPage() {
   const filteredInspections = useMemo(() => {
     if (!user) return [];
     
-    if (user.role === "system_admin" || user.role === "global_engineer") {
-      return vitInspections;
-    }
+    let filtered = [];
     
-    if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
-      return vitInspections.filter(inspection => {
+    if (user.role === "system_admin" || user.role === "global_engineer") {
+      filtered = vitInspections;
+    } else if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+      filtered = vitInspections.filter(inspection => {
         const asset = vitAssets.find(a => a.id === inspection.vitAssetId);
         return asset?.region === user.region;
       });
-    }
-    
-    if (user.role === "district_engineer" || user.role === "technician" || user.role === "district_manager") {
-      return vitInspections.filter(inspection => {
+    } else if (user.role === "district_engineer" || user.role === "technician" || user.role === "district_manager") {
+      filtered = vitInspections.filter(inspection => {
         const asset = vitAssets.find(a => a.id === inspection.vitAssetId);
         return asset?.district === user.district && asset?.region === user.region;
       });
     }
     
-    return [];
-  }, [vitInspections, vitAssets, user]);
+    // Apply additional filters
+    if (inspectionSelectedRegion && inspectionSelectedRegion !== "all") {
+      filtered = filtered.filter(inspection => {
+        const asset = vitAssets.find(a => a.id === inspection.vitAssetId);
+        return asset?.region === inspectionSelectedRegion;
+      });
+    }
+    
+    if (inspectionSelectedDistrict && inspectionSelectedDistrict !== "all") {
+      filtered = filtered.filter(inspection => {
+        const asset = vitAssets.find(a => a.id === inspection.vitAssetId);
+        return asset?.district === inspectionSelectedDistrict;
+      });
+    }
+    
+    if (inspectionSearchTerm) {
+      filtered = filtered.filter(inspection => {
+        const asset = vitAssets.find(a => a.id === inspection.vitAssetId);
+        if (!asset) return false;
+        
+        return (
+          asset.serialNumber.toLowerCase().includes(inspectionSearchTerm.toLowerCase()) ||
+          inspection.inspectedBy.toLowerCase().includes(inspectionSearchTerm.toLowerCase()) ||
+          asset.region.toLowerCase().includes(inspectionSearchTerm.toLowerCase()) ||
+          asset.district.toLowerCase().includes(inspectionSearchTerm.toLowerCase())
+        );
+      });
+    }
+    
+    return filtered;
+  }, [vitInspections, vitAssets, user, inspectionSearchTerm, inspectionSelectedRegion, inspectionSelectedDistrict]);
 
   // Add effect to handle asset added events
   useEffect(() => {
@@ -229,6 +271,17 @@ export default function VITInspectionPage() {
     navigate(`/asset-management/vit-inspection-details/${assetId}`);
   };
 
+  const clearInspectionFilters = () => {
+    setInspectionSearchTerm("");
+    setInspectionSelectedRegion("all");
+    setInspectionSelectedDistrict("all");
+  };
+
+  const clearAssetFilters = () => {
+    setSelectedRegion("all");
+    setSelectedDistrict("all");
+  };
+
   return (
     <Layout>
       <div className="container py-8">
@@ -264,9 +317,10 @@ export default function VITInspectionPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-2 w-full max-w-md">
+          <TabsList className="grid grid-cols-3 w-full max-w-md">
             <TabsTrigger value="assets">VIT Assets</TabsTrigger>
             <TabsTrigger value="inspections">Inspection Records</TabsTrigger>
+            <TabsTrigger value="map">Map View</TabsTrigger>
           </TabsList>
           
           <TabsContent value="assets" className="space-y-6">
@@ -275,6 +329,10 @@ export default function VITInspectionPage() {
               onAddAsset={handleAddAsset} 
               onEditAsset={handleEditAsset}
               onInspect={handleAddInspection}
+              selectedRegion={selectedRegion}
+              selectedDistrict={selectedDistrict}
+              onRegionChange={setSelectedRegion}
+              onDistrictChange={setSelectedDistrict}
             />
           </TabsContent>
           
@@ -286,6 +344,89 @@ export default function VITInspectionPage() {
                   View All Inspections
                 </Button>
               </div>
+              
+              {/* Inspection Filters */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search inspections..."
+                    value={inspectionSearchTerm}
+                    onChange={(e) => setInspectionSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Select value={inspectionSelectedRegion} onValueChange={setInspectionSelectedRegion}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="All Regions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Regions</SelectItem>
+                      {regions?.map((region) => (
+                        <SelectItem key={region.id} value={region.name}>
+                          {region.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={inspectionSelectedDistrict} onValueChange={setInspectionSelectedDistrict}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="All Districts" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Districts</SelectItem>
+                      {districts?.map((district) => (
+                        <SelectItem key={district.id} value={district.name}>
+                          {district.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {(inspectionSearchTerm || (inspectionSelectedRegion && inspectionSelectedRegion !== "all") || (inspectionSelectedDistrict && inspectionSelectedDistrict !== "all")) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearInspectionFilters}
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              {/* Filter Summary */}
+              {(inspectionSearchTerm || (inspectionSelectedRegion && inspectionSelectedRegion !== "all") || (inspectionSelectedDistrict && inspectionSelectedDistrict !== "all")) && (
+                <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-md">
+                  <span className="text-sm font-medium text-muted-foreground">Active filters:</span>
+                  {inspectionSearchTerm && (
+                    <Badge variant="secondary" className="text-xs">
+                      Search: "{inspectionSearchTerm}"
+                    </Badge>
+                  )}
+                  {inspectionSelectedRegion && inspectionSelectedRegion !== "all" && (
+                    <Badge variant="secondary" className="text-xs">
+                      Region: {inspectionSelectedRegion}
+                    </Badge>
+                  )}
+                  {inspectionSelectedDistrict && inspectionSelectedDistrict !== "all" && (
+                    <Badge variant="secondary" className="text-xs">
+                      District: {inspectionSelectedDistrict}
+                    </Badge>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearInspectionFilters}
+                    className="h-6 px-2 text-xs"
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              )}
               
               <div className="rounded-md border overflow-hidden">
                 <table className="min-w-full divide-y divide-border">
@@ -303,7 +444,9 @@ export default function VITInspectionPage() {
                     {filteredInspections.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-6 py-4 text-center text-sm text-muted-foreground">
-                          No inspection records found
+                          {(inspectionSearchTerm || (inspectionSelectedRegion && inspectionSelectedRegion !== "all") || (inspectionSelectedDistrict && inspectionSelectedDistrict !== "all"))
+                            ? "No inspection records found matching your filter criteria. Try adjusting your filters."
+                            : "No inspection records found"}
                         </td>
                       </tr>
                     ) : (
@@ -348,6 +491,14 @@ export default function VITInspectionPage() {
                 </table>
               </div>
             </div>
+          </TabsContent>
+          
+          <TabsContent value="map" className="space-y-6">
+            <VITMapView 
+              assets={allAssets}
+              selectedRegion={selectedRegion}
+              selectedDistrict={selectedDistrict}
+            />
           </TabsContent>
         </Tabs>
 

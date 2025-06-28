@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { OfflineInspectionService } from '@/services/OfflineInspectionService';
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/config/firebase";
+import { FeederService } from "@/services/FeederService";
 
 interface OverheadLineInspectionFormProps {
   inspection?: OverheadLineInspection | null;
@@ -59,6 +60,13 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [feeders, setFeeders] = useState<FeederInfo[]>([]);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingSync, setPendingSync] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [capturedImages, setCapturedImages] = useState<string[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  const feederService = FeederService.getInstance();
 
   const defaultInsulatorCondition = {
     brokenOrCracked: false,
@@ -554,8 +562,11 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   // Fetch feeders when region changes
   useEffect(() => {
     const fetchFeeders = async () => {
-      if (!formData.region) return;
-      
+      if (!formData.region) {
+        setFeeders([]);
+        return;
+      }
+
       try {
         const region = regions.find(r => r.name === formData.region);
         console.log('Selected region:', formData.region);
@@ -566,18 +577,8 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           return;
         }
 
-        const feedersRef = collection(db, "feeders");
-        const q = query(
-          feedersRef,
-          where("regionId", "==", region.id)
-        );
-        
-        console.log('Querying feeders for region:', region.id);
-        const querySnapshot = await getDocs(q);
-        const feedersData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as FeederInfo[];
+        // Use FeederService for offline support
+        const feedersData = await feederService.getFeedersByRegion(region.id);
         
         console.log('Fetched feeders:', feedersData);
         setFeeders(feedersData);
@@ -602,7 +603,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     };
 
     fetchFeeders();
-  }, [formData.region, regions]);
+  }, [formData.region, regions, feederService]);
 
   // Handle feeder selection
   const handleFeederChange = (feederName: string) => {

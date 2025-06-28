@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate, useLocation, NavLink } from "react-router-dom";
-import { Menu, User, LogOut, FileText, History, Music } from "lucide-react";
+import { Menu, User, LogOut, FileText, History, Music, Database } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
@@ -321,6 +321,22 @@ export function Navbar() {
                             <span>Music Management</span>
                           </div>
                         </NavLink>
+                        <NavLink 
+                          to="/test/feeder-offline"
+                          className={({ isActive }) =>
+                            cn(
+                              "px-3 py-2 rounded-md transition-colors",
+                              isActive 
+                                ? "bg-primary/10 text-primary font-medium" 
+                                : "text-foreground hover:text-primary hover:bg-primary/5"
+                            )
+                          }
+                        >
+                          <div className="flex items-center gap-2">
+                            <Database className="h-4 w-4" />
+                            <span>Feeder Offline Test</span>
+                          </div>
+                        </NavLink>
                       </>
                     )}
                     {user?.role === "global_engineer" && (
@@ -352,6 +368,22 @@ export function Navbar() {
                           <div className="flex items-center gap-2">
                             <History className="h-4 w-4" />
                             <span>User Logs</span>
+                          </div>
+                        </NavLink>
+                        <NavLink 
+                          to="/test/feeder-offline"
+                          className={({ isActive }) =>
+                            cn(
+                              "px-3 py-2 rounded-md transition-colors",
+                              isActive 
+                                ? "bg-primary/10 text-primary font-medium" 
+                                : "text-foreground hover:text-primary hover:bg-primary/5"
+                            )
+                          }
+                        >
+                          <div className="flex items-center gap-2">
+                            <Database className="h-4 w-4" />
+                            <span>Feeder Offline Test</span>
                           </div>
                         </NavLink>
                       </>

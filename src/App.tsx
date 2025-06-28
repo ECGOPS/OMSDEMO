@@ -49,6 +49,7 @@ const EditVITAssetPage = lazyLoadRoute(() => import("./pages/asset-management/Ed
 const UserLogsPage = lazyLoadRoute(() => import("@/pages/UserLogsPage"), "Loading user logs...");
 const SecondarySubstationInspectionPage = lazyLoadRoute(() => import("./pages/asset-management/SecondarySubstationInspectionPage"), "Loading secondary substation inspection...");
 const MusicManagementPage = lazyLoadRoute(() => import("@/pages/admin/MusicManagementPage"), "Loading music management...");
+const FeederOfflineTestPage = lazyLoadRoute(() => import("./pages/test/FeederOfflineTestPage"), "Loading feeder offline test...");
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -269,14 +270,23 @@ function App() {
                       </ProtectedRoute>
                     } />
 
-                    <Route
-                      path="/admin/music"
-                      element={
-                        <ProtectedRoute requiredFeature="music_management">
-                          <MusicManagementPage />
-                        </ProtectedRoute>
-                      }
-                    />
+                    <Route path="/admin/music" element={
+                      <ProtectedRoute requiredFeature="music_management">
+                        <MusicManagementPage />
+                      </ProtectedRoute>
+                    } />
+
+                    <Route path="/admin/music-management" element={
+                      <ProtectedRoute requiredFeature="music_management">
+                        <MusicManagementPage />
+                      </ProtectedRoute>
+                    } />
+
+                    <Route path="/test/feeder-offline" element={
+                      <ProtectedRoute requiredFeature="feeder_offline_testing">
+                        <FeederOfflineTestPage />
+                      </ProtectedRoute>
+                    } />
 
                     {/* Catch all */}
                     <Route path="*" element={<NotFound />} />

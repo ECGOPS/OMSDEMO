@@ -199,6 +199,11 @@ const featureCategories: FeatureCategory[] = [
         description: "Test security configurations"
       },
       {
+        id: "feeder_offline_testing",
+        name: "Feeder Offline Testing",
+        description: "Test feeder offline functionality"
+      },
+      {
         id: "music_management",
         name: "Music Management",
         description: "Manage background music for the application"

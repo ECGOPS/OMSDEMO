@@ -17,6 +17,7 @@ import {
   User,
   LogOut,
   Music,
+  Database,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { PermissionService } from "@/services/PermissionService";
@@ -191,6 +192,12 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           title: "Music Management",
           icon: Music,
           href: "/admin/music",
+          show: user?.role === "system_admin",
+        },
+        {
+          title: "Feeder Offline Test",
+          icon: Database,
+          href: "/test/feeder-offline",
           show: user?.role === "system_admin",
         },
       ]

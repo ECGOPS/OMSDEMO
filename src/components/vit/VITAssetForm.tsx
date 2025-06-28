@@ -22,6 +22,7 @@ import Webcam from "react-webcam";
 import { db } from "@/config/firebase";
 import { collection, addDoc, updateDoc, doc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 import { LocationMap } from "./LocationMap";
+import { FeederService } from "@/services/FeederService";
 
 interface VITAssetFormProps {
   asset?: VITAsset;
@@ -58,6 +59,8 @@ export function VITAssetForm({ asset, onSubmit, onCancel }: VITAssetFormProps) {
   const [isFeederDropdownOpen, setIsFeederDropdownOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   
+  const feederService = FeederService.getInstance();
+
   const [regionId, setRegionId] = useState<string>(
     asset ? regions.find(r => r.name === asset.region)?.id || "" : ""
   );
@@ -212,13 +215,8 @@ export function VITAssetForm({ asset, onSubmit, onCancel }: VITAssetFormProps) {
       }
 
       try {
-        const feedersRef = collection(db, "feeders");
-        const q = query(feedersRef, where("regionId", "==", regionId));
-        const querySnapshot = await getDocs(q);
-        const feedersData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as FeederInfo[];
+        // Use FeederService for offline support
+        const feedersData = await feederService.getFeedersByRegion(regionId);
         setFeeders(feedersData);
 
         // If editing an existing asset, find and set the selected feeder
@@ -235,7 +233,7 @@ export function VITAssetForm({ asset, onSubmit, onCancel }: VITAssetFormProps) {
     };
 
     fetchFeeders();
-  }, [regionId, asset?.feederName]);
+  }, [regionId, asset?.feederName, feederService]);
 
   // Update feeder name when feeder changes
   useEffect(() => {
@@ -951,14 +949,18 @@ export function VITAssetForm({ asset, onSubmit, onCancel }: VITAssetFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
             <div className="space-y-2">
               <Label htmlFor="typeOfUnit">Type of Unit *</Label>
-              <Input
-                id="typeOfUnit"
-                value={typeOfUnit}
-                onChange={(e) => setTypeOfUnit(e.target.value)}
-                placeholder="E.g., Ring Main Unit, Circuit Breaker"
-                required
-                className="w-full"
-              />
+              <Select 
+                value={typeOfUnit} 
+                onValueChange={(val) => setTypeOfUnit(val)}
+              >
+                <SelectTrigger id="typeOfUnit" className="w-full">
+                  <SelectValue placeholder="Select type of unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Recloser">Recloser</SelectItem>
+                  <SelectItem value="LBS">LBS</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">

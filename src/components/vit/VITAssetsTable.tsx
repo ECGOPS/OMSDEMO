@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Table,
@@ -38,12 +38,27 @@ interface VITAssetsTableProps {
   onAddAsset: () => void;
   onEditAsset: (asset: VITAsset) => void;
   onInspect: (assetId: string) => void;
+  selectedRegion?: string;
+  selectedDistrict?: string;
+  onRegionChange?: (region: string) => void;
+  onDistrictChange?: (district: string) => void;
 }
 
-export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, onInspect }: VITAssetsTableProps) {
-  const { vitAssets, deleteVITAsset } = useData();
+export function VITAssetsTable({ 
+  assets: propAssets, 
+  onAddAsset, 
+  onEditAsset, 
+  onInspect,
+  selectedRegion: propSelectedRegion = "all",
+  selectedDistrict: propSelectedDistrict = "all",
+  onRegionChange,
+  onDistrictChange
+}: VITAssetsTableProps) {
+  const { vitAssets, deleteVITAsset, regions, districts } = useData();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState<string>(propSelectedRegion);
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(propSelectedDistrict);
   const [filteredAssets, setFilteredAssets] = useState<VITAsset[]>(propAssets || vitAssets);
   const [assetToDelete, setAssetToDelete] = useState<VITAsset | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -52,6 +67,61 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const totalPages = Math.ceil(filteredAssets.length / pageSize);
+
+  // Get regions with counts
+  const regionsWithCounts = useMemo(() => {
+    const regionCounts = new Map<string, number>();
+    const sourceAssets = propAssets || vitAssets;
+    sourceAssets.forEach(asset => {
+      if (asset.region) {
+        regionCounts.set(asset.region, (regionCounts.get(asset.region) || 0) + 1);
+      }
+    });
+    return regions?.map(region => ({
+      ...region,
+      count: regionCounts.get(region.name) || 0
+    })) || [];
+  }, [regions, propAssets, vitAssets]);
+
+  // Get districts with counts
+  const districtsWithCounts = useMemo(() => {
+    const districtCounts = new Map<string, number>();
+    const sourceAssets = propAssets || vitAssets;
+    sourceAssets.forEach(asset => {
+      if (asset.district) {
+        districtCounts.set(asset.district, (districtCounts.get(asset.district) || 0) + 1);
+      }
+    });
+    return districts?.map(district => ({
+      ...district,
+      count: districtCounts.get(district.name) || 0
+    })) || [];
+  }, [districts, propAssets, vitAssets]);
+
+  // Update internal state when props change
+  useEffect(() => {
+    setSelectedRegion(propSelectedRegion);
+  }, [propSelectedRegion]);
+
+  useEffect(() => {
+    setSelectedDistrict(propSelectedDistrict);
+  }, [propSelectedDistrict]);
+
+  // Handle region change
+  const handleRegionChange = (region: string) => {
+    setSelectedRegion(region);
+    if (onRegionChange) {
+      onRegionChange(region);
+    }
+  };
+
+  // Handle district change
+  const handleDistrictChange = (district: string) => {
+    setSelectedDistrict(district);
+    if (onDistrictChange) {
+      onDistrictChange(district);
+    }
+  };
 
   useEffect(() => {
     const sourceAssets = propAssets || vitAssets;
@@ -71,23 +141,35 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
       return dateB - dateA;
     });
     
-    if (searchTerm) {
-      setFilteredAssets(
-        uniqueAssetsArray.filter(
-          (asset) =>
-            asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            asset.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            asset.typeOfUnit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            asset.region.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            asset.district.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
-    } else {
-      setFilteredAssets(uniqueAssetsArray);
+    // Apply filters
+    let filtered = uniqueAssetsArray;
+    
+    // Apply region filter
+    if (selectedRegion && selectedRegion !== "all") {
+      filtered = filtered.filter(asset => asset.region === selectedRegion);
     }
-    // Reset to first page when search term changes
+    
+    // Apply district filter
+    if (selectedDistrict && selectedDistrict !== "all") {
+      filtered = filtered.filter(asset => asset.district === selectedDistrict);
+    }
+    
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (asset) =>
+          asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          asset.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          asset.typeOfUnit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          asset.region.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          asset.district.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    setFilteredAssets(filtered);
+    // Reset to first page when filters change
     setCurrentPage(1);
-  }, [searchTerm, propAssets, vitAssets]);
+  }, [searchTerm, selectedRegion, selectedDistrict, propAssets, vitAssets]);
 
   // Get current page items
   const currentItems = filteredAssets.slice(
@@ -136,6 +218,18 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
       await exportVITAssetToPDF(asset);
     } catch (error) {
       console.error("Failed to export PDF:", error);
+    }
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedRegion("all");
+    setSelectedDistrict("all");
+    if (onRegionChange) {
+      onRegionChange("all");
+    }
+    if (onDistrictChange) {
+      onDistrictChange("all");
     }
   };
 
@@ -191,14 +285,57 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="relative w-full sm:w-auto">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search assets..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 w-full sm:w-[250px]"
-          />
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search assets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 w-full sm:w-[250px]"
+            />
+          </div>
+          
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Select value={selectedRegion} onValueChange={handleRegionChange}>
+              <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectValue placeholder="All Regions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Regions ({propAssets?.length || vitAssets.length})</SelectItem>
+                {regionsWithCounts.map((region) => (
+                  <SelectItem key={region.id} value={region.name}>
+                    {region.name} ({region.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={selectedDistrict} onValueChange={handleDistrictChange}>
+              <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectValue placeholder="All Districts" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Districts ({propAssets?.length || vitAssets.length})</SelectItem>
+                {districtsWithCounts.map((district) => (
+                  <SelectItem key={district.id} value={district.name}>
+                    {district.name} ({district.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {(searchTerm || (selectedRegion && selectedRegion !== "all") || (selectedDistrict && selectedDistrict !== "all")) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                className="flex-1 sm:flex-none"
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
         </div>
         
         <div className="flex gap-2 w-full sm:w-auto">
@@ -223,6 +360,36 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
         </div>
       </div>
 
+      {/* Filter Summary */}
+      {(searchTerm || (selectedRegion && selectedRegion !== "all") || (selectedDistrict && selectedDistrict !== "all")) && (
+        <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-md">
+          <span className="text-sm font-medium text-muted-foreground">Active filters:</span>
+          {searchTerm && (
+            <Badge variant="secondary" className="text-xs">
+              Search: "{searchTerm}"
+            </Badge>
+          )}
+          {selectedRegion && selectedRegion !== "all" && (
+            <Badge variant="secondary" className="text-xs">
+              Region: {selectedRegion}
+            </Badge>
+          )}
+          {selectedDistrict && selectedDistrict !== "all" && (
+            <Badge variant="secondary" className="text-xs">
+              District: {selectedDistrict}
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-6 px-2 text-xs"
+          >
+            Clear All
+          </Button>
+        </div>
+      )}
+
       <div className="rounded-md border overflow-hidden">
         <Table>
           <TableHeader>
@@ -243,9 +410,9 @@ export function VITAssetsTable({ assets: propAssets, onAddAsset, onEditAsset, on
           <TableBody>
             {currentItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
-                  {searchTerm 
-                    ? "No assets found matching your search criteria" 
+                <TableCell colSpan={11} className="text-center py-10 text-muted-foreground">
+                  {(searchTerm || (selectedRegion && selectedRegion !== "all") || (selectedDistrict && selectedDistrict !== "all")) 
+                    ? "No assets found matching your filter criteria. Try adjusting your filters." 
                     : "No VIT assets found. Add some to get started!"}
                 </TableCell>
               </TableRow>

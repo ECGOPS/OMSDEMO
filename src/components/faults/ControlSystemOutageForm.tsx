@@ -35,6 +35,7 @@ import OfflineStorageService from "@/services/OfflineStorageService";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import LoggingService from "@/services/LoggingService";
+import { FeederService } from "@/services/FeederService";
 
 interface ControlSystemOutageFormProps {
   defaultRegionId?: string;
@@ -55,6 +56,7 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
   const { user } = useAuth();
   const navigate = useNavigate();
   const permissionService = PermissionService.getInstance();
+  const feederService = FeederService.getInstance();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [regionId, setRegionId] = useState<string>(defaultRegionId);
@@ -476,13 +478,8 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
       }
 
       try {
-        const feedersRef = collection(db, "feeders");
-        const q = query(feedersRef, where("regionId", "==", regionId));
-        const querySnapshot = await getDocs(q);
-        const feedersData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as FeederInfo[];
+        // Use FeederService for offline support
+        const feedersData = await feederService.getFeedersByRegion(regionId);
         setFeeders(feedersData);
       } catch (error) {
         console.error("Error fetching feeders:", error);
@@ -491,7 +488,7 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
     };
 
     fetchFeeders();
-  }, [regionId]);
+  }, [regionId, feederService]);
 
   // Update BSP/PSS when feeder changes
   useEffect(() => {

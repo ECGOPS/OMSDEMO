@@ -73,6 +73,7 @@ import { SMSService } from "@/services/SMSService";
 import { VITSyncService } from "@/services/VITSyncService";
 import LoggingService from "@/services/LoggingService";
 import { COLLECTIONS } from '@/lib/constants';
+import { FeederService } from '@/services/FeederService';
 
 const DB_NAME = 'ecg-oms-db';
 const DB_VERSION = 4;  // Update from 3 to 4
@@ -380,11 +381,41 @@ export const DataContext = createContext<DataContextType>({
   },
   deleteVITAsset: async (id: string) => {
     try {
-      const docRef = doc(db, "vitAssets", id);
-      await deleteDoc(docRef);
+      // Get the asset data before deleting
+      const asset = vitAssets.find(a => a.id === id);
+      if (!asset) {
+        throw new Error("VIT asset not found");
+      }
+
+      // Delete the asset
+      await vitSyncService.deleteVITAsset(id);
+
+      // Log the action
+      if (user?.uid && user?.name && user?.role) {
+        console.log("[Delete] LoggingService.logAction will be called with:", {
+          userId: user.uid,
+          userName: user.name,
+          userRole: user.role,
+          id,
+          serialNumber: asset.serialNumber,
+          region: asset.region,
+          district: asset.district
+        });
+        const loggingService = LoggingService.getInstance();
+        await loggingService.logAction(
+          user.uid,
+          user.name,
+          user.role,
+          "Delete",
+          "VITAsset",
+          id,
+          `Deleted VIT asset ${asset.serialNumber} in ${asset.region}${asset.district ? `, ${asset.district}` : ''}`,
+          asset.region,
+          asset.district
+        );
+      }
     } catch (error) {
       console.error("Error deleting VIT asset:", error);
-      toast.error("Failed to delete asset");
       throw error;
     }
   },
@@ -649,8 +680,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const loadInitialData = async () => {
       try {
         const inspectionService = SubstationInspectionService.getInstance();
+        const feederService = FeederService.getInstance();
         const offlineRecords = await inspectionService.getOfflineSubstationInspections();
         console.log('Initial offline records loaded:', offlineRecords.length);
+        
+        // Preload feeders for offline use
+        try {
+          await feederService.preloadFeeders();
+          console.log('Feeders preloaded for offline use');
+        } catch (error) {
+          console.error('Error preloading feeders:', error);
+        }
         
         if (navigator.onLine && user) {  // Check for user authentication
           // If online, get Firestore data and merge
@@ -1995,7 +2035,39 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     },
     deleteVITAsset: async (id: string) => {
       try {
+        // Get the asset data before deleting
+        const asset = vitAssets.find(a => a.id === id);
+        if (!asset) {
+          throw new Error("VIT asset not found");
+        }
+
+        // Delete the asset
         await vitSyncService.deleteVITAsset(id);
+
+        // Log the action
+        if (user?.uid && user?.name && user?.role) {
+          console.log("[Delete] LoggingService.logAction will be called with:", {
+            userId: user.uid,
+            userName: user.name,
+            userRole: user.role,
+            id,
+            serialNumber: asset.serialNumber,
+            region: asset.region,
+            district: asset.district
+          });
+          const loggingService = LoggingService.getInstance();
+          await loggingService.logAction(
+            user.uid,
+            user.name,
+            user.role,
+            "Delete",
+            "VITAsset",
+            id,
+            `Deleted VIT asset ${asset.serialNumber} in ${asset.region}${asset.district ? `, ${asset.district}` : ''}`,
+            asset.region,
+            asset.district
+          );
+        }
       } catch (error) {
         console.error("Error deleting VIT asset:", error);
         throw error;

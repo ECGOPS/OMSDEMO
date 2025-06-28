@@ -42,6 +42,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PermissionService } from "@/services/PermissionService";
 import LoggingService from "@/services/LoggingService";
 import { OfflineStorageService } from "@/services/OfflineStorageService";
+import { FeederService } from "@/services/FeederService";
 
 interface FeederInfo {
   id: string;
@@ -89,28 +90,16 @@ export function FeederManagement() {
 
   const { user } = useAuth();
   const permissionService = PermissionService.getInstance();
+  const feederService = FeederService.getInstance();
   const offlineService = OfflineStorageService.getInstance();
 
-  // Fetch feeders from IndexedDB first, then Firebase if online
+  // Fetch feeders using FeederService
   useEffect(() => {
     const fetchFeeders = async () => {
       setIsLoading(true);
       try {
-        let offlineFeeders = await offlineService.getOfflineFeeders();
-        setFeeders(offlineFeeders);
-        if (navigator.onLine) {
-          const feedersRef = collection(db, "feeders");
-          const querySnapshot = await getDocs(feedersRef);
-          const feedersData = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as FeederInfo[];
-          setFeeders(feedersData);
-          // Update offline cache
-          for (const feeder of feedersData) {
-            await offlineService.saveFeederOffline(feeder);
-          }
-        }
+        const feedersData = await feederService.getAllFeeders();
+        setFeeders(feedersData);
       } catch (error) {
         console.error("Error fetching feeders:", error);
         toast.error("Failed to load feeders");
@@ -119,7 +108,7 @@ export function FeederManagement() {
       }
     };
     fetchFeeders();
-  }, [regions, districts]);
+  }, [feederService]);
 
   // Function to download CSV template
   const downloadCSVTemplate = () => {
@@ -298,8 +287,11 @@ export function FeederManagement() {
         updatedAt: new Date().toISOString()
       };
 
-      const docRef = await addDoc(collection(db, "feeders"), feederData);
-      setFeeders([...feeders, { id: docRef.id, ...feederData } as FeederInfo]);
+      // Use FeederService for offline support
+      const newId = await feederService.addFeeder(feederData);
+      const newFeederWithId = { id: newId, ...feederData } as FeederInfo;
+      
+      setFeeders([...feeders, newFeederWithId]);
       setIsAddDialogOpen(false);
       setNewFeeder({
         name: "",
@@ -316,7 +308,7 @@ export function FeederManagement() {
           userId: user.uid,
           userName: user.name,
           userRole: user.role,
-          id: docRef.id,
+          id: newId,
           feederName: newFeeder.name,
           bspPss: newFeeder.bspPss,
           region: newFeeder.region,
@@ -329,7 +321,7 @@ export function FeederManagement() {
           user.role,
           "Create",
           "Feeder",
-          docRef.id,
+          newId,
           `Created new feeder ${newFeeder.name} in ${newFeeder.region}${newFeeder.district ? `, ${newFeeder.district}` : ''}`,
           newFeeder.region,
           newFeeder.district
@@ -337,17 +329,6 @@ export function FeederManagement() {
       }
 
       toast.success("Feeder added successfully");
-
-      if (navigator.onLine) {
-        await offlineService.saveFeederOffline(feederData as FeederInfo);
-      } else {
-        // Offline: save locally only
-        const offlineId = `offline_${Date.now()}`;
-        const offlineFeeder = { ...feederData, id: offlineId } as FeederInfo;
-        await offlineService.saveFeederOffline(offlineFeeder);
-        setFeeders(prev => [...prev, offlineFeeder]);
-        toast.success("Feeder saved offline. Will sync when online.");
-      }
     } catch (error) {
       console.error("Error adding feeder:", error);
       toast.error("Failed to add feeder");
@@ -370,13 +351,13 @@ export function FeederManagement() {
     }
 
     try {
-      const feederRef = doc(db, "feeders", selectedFeeder.id);
       const updateData = {
         ...selectedFeeder,
         updatedAt: new Date().toISOString()
       };
       
-      await updateDoc(feederRef, updateData);
+      // Use FeederService for offline support
+      await feederService.updateFeeder(selectedFeeder.id, updateData);
 
       // Log the action
       if (user?.uid && user?.name && user?.role) {
@@ -408,17 +389,6 @@ export function FeederManagement() {
       setIsEditDialogOpen(false);
       setSelectedFeeder(null);
       toast.success("Feeder updated successfully");
-
-      if (navigator.onLine) {
-        await offlineService.saveFeederOffline(selectedFeeder as FeederInfo);
-      } else {
-        // Offline: save locally only
-        const offlineId = `offline_${Date.now()}`;
-        const offlineFeeder = { ...selectedFeeder, id: offlineId } as FeederInfo;
-        await offlineService.saveFeederOffline(offlineFeeder);
-        setFeeders(prev => [...prev, offlineFeeder]);
-        toast.success("Feeder saved offline. Will sync when online.");
-      }
     } catch (error) {
       console.error("Error updating feeder:", error);
       toast.error("Failed to update feeder");
@@ -430,14 +400,13 @@ export function FeederManagement() {
 
     try {
       // Get the feeder data before deleting
-      const feederRef = doc(db, "feeders", id);
-      const feederDoc = await getDoc(feederRef);
-      if (!feederDoc.exists()) {
+      const feederToDelete = feeders.find(f => f.id === id);
+      if (!feederToDelete) {
         throw new Error("Feeder not found");
       }
-      const feederData = feederDoc.data();
 
-      await deleteDoc(feederRef);
+      // Use FeederService for offline support
+      await feederService.deleteFeeder(id);
       setFeeders(feeders.filter(f => f.id !== id));
 
       // Log the action
@@ -447,10 +416,10 @@ export function FeederManagement() {
           userName: user.name,
           userRole: user.role,
           id,
-          feederName: feederData.name,
-          bspPss: feederData.bspPss,
-          region: feederData.region,
-          district: feederData.district
+          feederName: feederToDelete.name,
+          bspPss: feederToDelete.bspPss,
+          region: feederToDelete.region,
+          district: feederToDelete.district
         });
         const loggingService = LoggingService.getInstance();
         await loggingService.logAction(
@@ -460,22 +429,13 @@ export function FeederManagement() {
           "Delete",
           "Feeder",
           id,
-          `Deleted feeder ${feederData.name} from ${feederData.region}${feederData.district ? `, ${feederData.district}` : ''}`,
-          feederData.region,
-          feederData.district
+          `Deleted feeder ${feederToDelete.name} from ${feederToDelete.region}${feederToDelete.district ? `, ${feederToDelete.district}` : ''}`,
+          feederToDelete.region,
+          feederToDelete.district
         );
       }
 
       toast.success("Feeder deleted successfully");
-
-      if (navigator.onLine) {
-        await offlineService.removeOfflineFeeder(id);
-      } else {
-        // Offline: remove locally only
-        await offlineService.removeOfflineFeeder(id);
-        setFeeders(prev => prev.filter(f => f.id !== id));
-        toast.success("Feeder removed from offline cache");
-      }
     } catch (error) {
       console.error("Error deleting feeder:", error);
       toast.error("Failed to delete feeder");

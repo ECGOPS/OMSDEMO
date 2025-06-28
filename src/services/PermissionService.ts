@@ -112,6 +112,7 @@ export class PermissionService {
     'permission_management': ['system_admin'],
     'security_monitoring': ['system_admin'],
     'security_testing': ['system_admin'],
+    'feeder_offline_testing': ['system_admin'],
     
     // Music Management Features
     'music_management': ['system_admin'],
