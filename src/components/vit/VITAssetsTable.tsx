@@ -92,11 +92,23 @@ export function VITAssetsTable({
         districtCounts.set(asset.district, (districtCounts.get(asset.district) || 0) + 1);
       }
     });
-    return districts?.map(district => ({
+    
+    // Filter districts based on selected region
+    let filteredDistricts = districts || [];
+    if (selectedRegion && selectedRegion !== "all") {
+      // Find the selected region by name to get its ID
+      const selectedRegionObj = regions?.find(region => region.name === selectedRegion);
+      if (selectedRegionObj) {
+        // Filter districts that belong to the selected region using regionId
+        filteredDistricts = districts?.filter(district => district.regionId === selectedRegionObj.id) || [];
+      }
+    }
+    
+    return filteredDistricts.map(district => ({
       ...district,
       count: districtCounts.get(district.name) || 0
-    })) || [];
-  }, [districts, propAssets, vitAssets]);
+    }));
+  }, [districts, regions, selectedRegion, propAssets, vitAssets]);
 
   // Update internal state when props change
   useEffect(() => {
