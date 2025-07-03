@@ -77,6 +77,8 @@ export default function EditControlOutagePage() {
           ...fetchedOutage,
           occurrenceDate: formatDateForInput(fetchedOutage.occurrenceDate),
           restorationDate: formatDateForInput(fetchedOutage.restorationDate),
+          repairStartDate: formatDateForInput(fetchedOutage.repairStartDate),
+          repairEndDate: formatDateForInput(fetchedOutage.repairEndDate),
           customersAffected: fetchedOutage.customersAffected || { rural: 0, urban: 0, metro: 0 }
         });
       } else {

@@ -95,15 +95,6 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
     urban: 0,
     rural: 0
   });
-  const [feederCustomers, setFeederCustomers] = useState<{
-    metro: number | null;
-    urban: number | null;
-    rural: number | null;
-  }>({
-    metro: null,
-    urban: null,
-    rural: null
-  });
   
   // Customer interruption counts
   const [metroInterruptions, setMetroInterruptions] = useState<number | null>(null);
@@ -309,7 +300,6 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
     setRepairStartDate("");
     setRepairEndDate("");
     setFeederType("");
-    setFeederCustomers({ metro: null, urban: null, rural: null });
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -355,6 +345,13 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
     setIsSubmitting(true);
     
     try {
+      // Validation: Ensure specificFaultType is set when required
+      if ((faultType === "Unplanned" || faultType === "Emergency") && !specificFaultType) {
+        toast.error("Please select a Specific Fault Type before submitting.");
+        setIsSubmitting(false);
+        return;
+      }
+
       // Format dates
       const formattedOccurrenceDate = new Date(occurrenceDate).toISOString();
       const formattedRestorationDate = restorationDate ? new Date(restorationDate).toISOString() : null;
@@ -396,9 +393,9 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
         feederName: feederName || "",
         bspPss: bspPss || "",
         feederCustomers: {
-          metro: feederCustomers.metro ?? 0,
-          urban: feederCustomers.urban ?? 0,
-          rural: feederCustomers.rural ?? 0
+          metro: metroFeederCustomers ?? 0,
+          urban: urbanFeederCustomers ?? 0,
+          rural: ruralFeederCustomers ?? 0
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
