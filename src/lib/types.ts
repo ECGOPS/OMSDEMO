@@ -236,6 +236,7 @@ export interface ControlSystemOutage {
     urban: number;
     rural: number;
   };
+  groundCondition: string;
 }
 
 // VIT Asset Types
@@ -437,7 +438,7 @@ export interface OverheadLineInspection {
   poleId: string;
   poleHeight: "8m" | "9m" | "10m" | "11m" | "14m" | "others";
   poleType: "CP" | "WP" | "SP" | "ST";
-  poleLocation: string;
+  groundCondition: string;
   items: InspectionItem[];
   
   // Head Gears Information
@@ -468,6 +469,7 @@ export interface OverheadLineInspection {
   };
   
   insulatorCondition: {
+    insulatorType?: string;
     brokenOrCracked: boolean;
     burntOrFlashOver: boolean;
     shattered: boolean;

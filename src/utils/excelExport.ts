@@ -158,6 +158,7 @@ export const exportOverheadLineInspectionsToExcel = async (
       'Cross Arm Others',
       'Cross Arm Notes',
       // Insulator Condition
+      'Insulator Type',
       'Insulator Broken/Cracked',
       'Insulator Burnt/Flash Over',
       'Insulator Shattered',
@@ -209,7 +210,7 @@ export const exportOverheadLineInspectionsToExcel = async (
         console.log(`Processing inspection ${index + 1}/${inspections.length}:`, inspection.id);
         
         // Process images
-        const images = inspection.images || [];
+        const images = Array.isArray(inspection.images) ? inspection.images : [];
         const imageBuffers = await Promise.all(
           images.slice(0, 5).map(async (image, imgIndex) => {
             try {
@@ -249,7 +250,7 @@ export const exportOverheadLineInspectionsToExcel = async (
           inspection.poleId || '',
           inspection.poleHeight || '',
           inspection.poleType || '',
-          inspection.poleLocation || '',
+          inspection.groundCondition || '',
           `${inspection.latitude || 0}, ${inspection.longitude || 0}`,
           inspection.inspector?.name || '',
           inspection.inspector?.email || '',
@@ -274,6 +275,7 @@ export const exportOverheadLineInspectionsToExcel = async (
           inspection.crossArmCondition?.others ? 'Yes' : 'No',
           inspection.crossArmCondition?.notes || 'N/A',
           // Insulator Condition
+          inspection.insulatorCondition?.insulatorType || 'N/A',
           inspection.insulatorCondition?.brokenOrCracked ? 'Yes' : 'No',
           inspection.insulatorCondition?.burntOrFlashOver ? 'Yes' : 'No',
           inspection.insulatorCondition?.shattered ? 'Yes' : 'No',
@@ -321,8 +323,8 @@ export const exportOverheadLineInspectionsToExcel = async (
                 extension: 'jpeg',
               });
 
-              // Calculate proper image position - images are in columns 49-53 (0-indexed) = AX-BB
-              const imageCol = 49 + imgIndex; // Image columns start at column 49 (AX)
+              // Calculate proper image position - images are in columns 50-54 (0-indexed) = AY-BB
+              const imageCol = 50 + imgIndex; // Image columns start at column 50 (AY)
               const imageRow = rowNumber - 1; // Excel rows are 0-indexed
               
               console.log(`Positioning image ${imgIndex + 1} at column ${imageCol}, row ${imageRow}`);
@@ -354,11 +356,11 @@ export const exportOverheadLineInspectionsToExcel = async (
         }
 
         // Add clickable links row below the data row
-        const linkRow = new Array(49).fill(''); // Fill with empty cells up to image columns
+        const linkRow = new Array(50).fill(''); // Fill with empty cells up to image columns
         for (let imgIndex = 0; imgIndex < Math.min(images.length, 5); imgIndex++) {
           const image = images[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            linkRow[49 + imgIndex] = `Click to open Image ${imgIndex + 1}`;
+            linkRow[50 + imgIndex] = `Click to open Image ${imgIndex + 1}`;
           }
         }
         
@@ -369,7 +371,7 @@ export const exportOverheadLineInspectionsToExcel = async (
         for (let imgIndex = 0; imgIndex < Math.min(images.length, 5); imgIndex++) {
           const image = images[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            const imageCol = 49 + imgIndex; // Image columns start at column 49 (AX)
+            const imageCol = 50 + imgIndex; // Image columns start at column 50 (AY)
             const cell = worksheet.getCell(linksRowNumber, imageCol + 1); // Excel is 1-indexed for cells
             
             // Add hyperlink to the cell

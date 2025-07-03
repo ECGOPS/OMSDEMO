@@ -128,7 +128,7 @@ export function OverheadLineInspectionsTable({
       ['Pole ID:', inspection.poleId],
       ['Pole Height:', inspection.poleHeight],
       ['Pole Type:', inspection.poleType],
-      ['Pole Location:', inspection.poleLocation],
+      ['Ground Condition:', inspection.groundCondition],
     ];
     
     autoTable(doc, {
@@ -366,7 +366,7 @@ export function OverheadLineInspectionsTable({
   const exportToCSV = (inspection: OverheadLineInspection) => {
     const headers = [
       'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole',
-      'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Pole Location',
+      'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Ground Condition',
       'GPS Location',
       // Pole Condition
       'Pole Tilted', 'Pole Rotten', 'Pole Burnt', 'Pole Substandard', 'Pole Conflict with LV', 'Pole Condition Notes',
@@ -394,7 +394,7 @@ export function OverheadLineInspectionsTable({
       inspection.poleId,
       inspection.poleHeight,
       inspection.poleType,
-      inspection.poleLocation,
+      inspection.groundCondition,
       `${inspection.latitude}, ${inspection.longitude}`,
       // Pole Condition
       inspection.poleCondition?.tilted ? 'Yes' : 'No',
@@ -462,7 +462,7 @@ export function OverheadLineInspectionsTable({
     const dataToExport = allInspections || inspections;
     const headers = [
       'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole',
-      'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Pole Location',
+      'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Ground Condition',
       'GPS Location',
       // Pole Condition
       'Pole Tilted', 'Pole Rotten', 'Pole Burnt', 'Pole Substandard', 'Pole Conflict with LV', 'Pole Condition Notes',
@@ -490,7 +490,7 @@ export function OverheadLineInspectionsTable({
       inspection.poleId,
       inspection.poleHeight,
       inspection.poleType,
-      inspection.poleLocation,
+      inspection.groundCondition,
       `${inspection.latitude}, ${inspection.longitude}`,
       // Pole Condition
       inspection.poleCondition?.tilted ? 'Yes' : 'No',

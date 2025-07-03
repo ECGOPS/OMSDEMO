@@ -212,8 +212,8 @@ export function OverheadLineInspectionDetailsView({
                   <p>{inspection.poleType}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pole Location</p>
-                  <p>{inspection.poleLocation}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Ground Condition</p>
+                  <p>{inspection.groundCondition}</p>
                 </div>
               </div>
             </CardContent>
@@ -353,6 +353,10 @@ export function OverheadLineInspectionDetailsView({
                   <p className="text-sm font-medium text-muted-foreground">Defective Binding</p>
                   <p>{inspection.insulatorCondition?.defectiveBinding ? "Yes" : "No"}</p>
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Insulator Type</span>
+                <span className="text-sm">{inspection.insulatorCondition?.insulatorType || 'N/A'}</span>
               </div>
               {inspection.insulatorCondition?.notes && (
                 <div className="mt-4">

@@ -69,6 +69,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const feederService = FeederService.getInstance();
 
   const defaultInsulatorCondition = {
+    insulatorType: "",
     brokenOrCracked: false,
     burntOrFlashOver: false,
     shattered: false,
@@ -98,13 +99,12 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       poleId: "",
       poleHeight: "8m",
       poleType: "CP",
-      poleLocation: "",
+      groundCondition: "",
       poleCondition: {
         tilted: false,
         rotten: false,
         burnt: false,
         substandard: false,
-        conflictWithLV: false,
         notes: ""
       },
       stayCondition: {
@@ -381,7 +381,6 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           rotten: formData.poleCondition?.rotten || false,
           burnt: formData.poleCondition?.burnt || false,
           substandard: formData.poleCondition?.substandard || false,
-          conflictWithLV: formData.poleCondition?.conflictWithLV || false,
           notes: formData.poleCondition?.notes || ''
         },
         stayCondition: {
@@ -400,11 +399,12 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           notes: formData.crossArmCondition?.notes || ''
         },
         insulatorCondition: {
-          brokenOrCracked: formData.insulatorCondition?.brokenOrCracked || false,
-          burntOrFlashOver: formData.insulatorCondition?.burntOrFlashOver || false,
-          shattered: formData.insulatorCondition?.shattered || false,
-          defectiveBinding: formData.insulatorCondition?.defectiveBinding || false,
-          notes: formData.insulatorCondition?.notes || ''
+          insulatorType: formData.insulatorCondition.insulatorType || '',
+          brokenOrCracked: formData.insulatorCondition.brokenOrCracked || false,
+          burntOrFlashOver: formData.insulatorCondition.burntOrFlashOver || false,
+          shattered: formData.insulatorCondition.shattered || false,
+          defectiveBinding: formData.insulatorCondition.defectiveBinding || false,
+          notes: formData.insulatorCondition.notes || ''
         },
         conductorCondition: {
           looseConnectors: formData.conductorCondition?.looseConnectors || false,
@@ -851,13 +851,20 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="poleLocation">Pole Location</Label>
-            <Input
-              id="poleLocation"
-              value={formData.poleLocation}
-              onChange={(e) => setFormData({ ...formData, poleLocation: e.target.value })}
-              placeholder="Enter pole location"
-            />
+            <Label htmlFor="groundCondition">Ground Condition</Label>
+            <Select
+              value={formData.groundCondition}
+              onValueChange={value => setFormData({ ...formData, groundCondition: value })}
+            >
+              <SelectTrigger id="groundCondition">
+                <SelectValue placeholder="Select Ground Condition" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Waterlog">Waterlog</SelectItem>
+                <SelectItem value="Rocky">Rocky</SelectItem>
+                <SelectItem value="Normal">Normal</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </CardContent>
@@ -921,19 +928,6 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
               }
             />
             <Label htmlFor="poleSubstandard">Substandard</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="poleConflictWithLV"
-              checked={formData.poleCondition.conflictWithLV}
-              onCheckedChange={(checked) => 
-                setFormData({
-                  ...formData,
-                  poleCondition: { ...formData.poleCondition, conflictWithLV: checked as boolean },
-                })
-              }
-            />
-            <Label htmlFor="poleConflictWithLV">Conflict with LV</Label>
           </div>
           <div className="space-y-2">
             <Label htmlFor="poleNotes">Notes</Label>
@@ -1105,15 +1099,43 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
 
   // Add insulator condition section
   const renderInsulatorCondition = useMemo(() => {
+    const insulatorTypes = [
+      { value: 'pin', label: 'Pin Insulator' },
+      { value: 'post', label: 'Post Insulator' },
+      { value: 'strain', label: 'Strain Insulator' },
+    ];
+    const typeSelected = !!formData.insulatorCondition.insulatorType;
     return (
       <Card>
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold mb-4">Insulator Condition</h3>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="insulatorType">Insulator Type</Label>
+              <Select
+                value={formData.insulatorCondition.insulatorType || ''}
+                onValueChange={value => setFormData({
+                  ...formData,
+                  insulatorCondition: { ...formData.insulatorCondition, insulatorType: value }
+                })}
+              >
+                <SelectTrigger id="insulatorType">
+                  <SelectValue placeholder="Select Insulator Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {insulatorTypes.map(type => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center gap-2">
               <Checkbox
                 id="insulatorBrokenOrCracked"
                 checked={formData.insulatorCondition.brokenOrCracked}
+                disabled={!typeSelected}
                 onCheckedChange={(checked) => 
                   setFormData({
                     ...formData,
@@ -1127,6 +1149,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
               <Checkbox
                 id="insulatorBurntOrFlashOver"
                 checked={formData.insulatorCondition.burntOrFlashOver}
+                disabled={!typeSelected}
                 onCheckedChange={(checked) => 
                   setFormData({
                     ...formData,
@@ -1140,6 +1163,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
               <Checkbox
                 id="insulatorShattered"
                 checked={formData.insulatorCondition.shattered}
+                disabled={!typeSelected}
                 onCheckedChange={(checked) => 
                   setFormData({
                     ...formData,
@@ -1153,6 +1177,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
               <Checkbox
                 id="insulatorDefectiveBinding"
                 checked={formData.insulatorCondition.defectiveBinding}
+                disabled={!typeSelected}
                 onCheckedChange={(checked) => 
                   setFormData({
                     ...formData,
@@ -1835,6 +1860,21 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     console.log('Camera stopped');
   };
 
+  // Helper to add timestamp to an image on a canvas and return a data URL
+  const addTimestampToImage = (canvas, ctx) => {
+    const timestamp = new Date().toLocaleString();
+    ctx.font = '24px Arial';
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    const padding = 10;
+    const textWidth = ctx.measureText(timestamp).width;
+    const x = canvas.width - textWidth - padding;
+    const y = canvas.height - padding;
+    ctx.fillRect(x - 5, y - 28, textWidth + 10, 32);
+    ctx.fillStyle = 'white';
+    ctx.fillText(timestamp, x, y);
+    return canvas.toDataURL('image/jpeg');
+  };
+
   const captureImage = () => {
     if (videoRef.current) {
       const canvas = document.createElement('canvas');
@@ -1843,7 +1883,8 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0);
-        const imageUrl = canvas.toDataURL('image/jpeg');
+        // Add timestamp overlay
+        const imageUrl = addTimestampToImage(canvas, ctx);
         setFormData(prev => ({
           ...prev,
           images: [...(Array.isArray(prev.images) ? prev.images : []), imageUrl]
@@ -1859,10 +1900,23 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       Array.from(files).forEach(file => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setFormData(prev => ({
-            ...prev,
-            images: [...(Array.isArray(prev.images) ? prev.images : []), reader.result as string]
-          }));
+          // Draw uploaded image to canvas, add timestamp, then save
+          const img = new window.Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              const imageUrl = addTimestampToImage(canvas, ctx);
+              setFormData(prev => ({
+                ...prev,
+                images: [...(Array.isArray(prev.images) ? prev.images : []), imageUrl]
+              }));
+            }
+          };
+          img.src = reader.result as string;
         };
         reader.readAsDataURL(file);
       });

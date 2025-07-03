@@ -133,16 +133,16 @@ export function InspectionDetailsView({
                     <p className="text-lg font-semibold">{inspection.createdBy || "N/A"}</p>
                   </div>
                   <div className="bg-muted/50 p-4 rounded-lg border-l-4 border-blue-500">
-                    <p className="text-sm font-medium text-muted-foreground mb-1">GPS Location</p>
-                    {inspection.gpsLocation ? (
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Ground Condition</p>
+                    {inspection.groundCondition ? (
                       <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inspection.gpsLocation)}`}
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inspection.groundCondition)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 underline hover:text-blue-800"
                         title="Open in Google Maps"
                       >
-                        {inspection.gpsLocation}
+                        {inspection.groundCondition}
                       </a>
                     ) : (
                       <p className="text-lg font-semibold text-muted-foreground">N/A</p>
@@ -446,8 +446,8 @@ export function InspectionDetailsView({
                     <p>{inspection.poleType}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Pole Location</p>
-                    <p>{inspection.poleLocation}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Ground Condition</p>
+                    <p>{inspection.groundCondition}</p>
                   </div>
                 </div>
               </CardContent>
