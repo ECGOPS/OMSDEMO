@@ -469,20 +469,24 @@ export function OverheadLineInspectionDetails({
             </div>
           </div>
           {inspection.images && inspection.images.length > 0 && (
-            <div className="mt-4">
-              <p className="text-sm font-medium text-muted-foreground">Images</p>
-              <div className="grid grid-cols-2 gap-4 mt-2">
+            <>
+              <p className="text-sm font-medium text-muted-foreground">Images (Before Correction)</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
                 {inspection.images.map((image, index) => (
-                  <div key={index} className="relative aspect-video">
-                    <img
-                      src={image}
-                      alt={`Inspection image ${index + 1}`}
-                      className="object-cover rounded-lg"
-                    />
-                  </div>
+                  <img key={index} src={image} alt={`Inspection image ${index + 1}`} className="w-full h-32 object-cover rounded-lg" />
                 ))}
               </div>
+            </>
+          )}
+          <p className="text-sm font-medium text-muted-foreground mt-4">After Inspection Correction Photos</p>
+          {inspection.afterImages && inspection.afterImages.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+              {inspection.afterImages.map((image, index) => (
+                <img key={index} src={image} alt={`After Correction image ${index + 1}`} className="w-full h-32 object-cover rounded-lg" />
+              ))}
             </div>
+          ) : (
+            <p className="text-muted-foreground">No after-correction images available</p>
           )}
         </CardContent>
       </Card>

@@ -90,7 +90,7 @@ export function OverheadLineInspectionsTable({
     }
   };
 
-  const exportToPDF = (inspection: OverheadLineInspection) => {
+  const exportToPDF = async (inspection: OverheadLineInspection) => {
     const doc = new jsPDF();
     
     // Add title
@@ -328,33 +328,61 @@ export function OverheadLineInspectionsTable({
       headStyles: { fillColor: [41, 128, 185] },
     });
     
-    // Images Section
+    // Add before images
     if (inspection.images && inspection.images.length > 0) {
-      doc.addPage();
-      doc.text('Inspection Images', 14, 20);
-      
-      const imageWidth = 180; // Maximum width for images
-      const imageHeight = 100; // Maximum height for images
-      let currentY = 30;
-      
-      for (let i = 0; i < inspection.images.length; i++) {
-        const image = inspection.images[i];
-        
-        // Check if we need a new page
-        if (currentY + imageHeight > 280) {
-          doc.addPage();
-          currentY = 20;
-        }
-        
+      doc.text('Inspection Photos (Before Correction):', 14, doc.lastAutoTable.finalY + 15);
+      let y = doc.lastAutoTable.finalY + 25;
+      for (const imageUrl of inspection.images.slice(0, 5)) {
         try {
-          // Add image with caption
-          doc.text(`Image ${i + 1}`, 14, currentY);
-          doc.addImage(image, 'JPEG', 14, currentY + 5, imageWidth, imageHeight);
-          currentY += imageHeight + 20; // Add some spacing between images
+          const img = new window.Image();
+          img.src = imageUrl;
+          await new Promise(resolve => { img.onload = resolve; });
+          const aspect = img.width / img.height;
+          const maxWidth = 180;
+          const maxHeight = 80;
+          let width = maxWidth;
+          let height = width / aspect;
+          if (height > maxHeight) {
+            height = maxHeight;
+            width = height * aspect;
+          }
+          if (y + height > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.addImage(img, 'JPEG', 14, y, width, height);
+          y += height + 10;
         } catch (error) {
           console.error('Error adding image to PDF:', error);
-          doc.text(`Error loading image ${i + 1}`, 14, currentY);
-          currentY += 20;
+        }
+      }
+    }
+    // Add after correction images
+    if (inspection.afterImages && inspection.afterImages.length > 0) {
+      doc.text('After Inspection Correction Photos:', 14, doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 120 : 120);
+      let y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 130 : 130;
+      for (const imageUrl of inspection.afterImages.slice(0, 5)) {
+        try {
+          const img = new window.Image();
+          img.src = imageUrl;
+          await new Promise(resolve => { img.onload = resolve; });
+          const aspect = img.width / img.height;
+          const maxWidth = 180;
+          const maxHeight = 80;
+          let width = maxWidth;
+          let height = width / aspect;
+          if (height > maxHeight) {
+            height = maxHeight;
+            width = height * aspect;
+          }
+          if (y + height > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.addImage(img, 'JPEG', 14, y, width, height);
+          y += height + 10;
+        } catch (error) {
+          console.error('Error adding after correction image to PDF:', error);
         }
       }
     }

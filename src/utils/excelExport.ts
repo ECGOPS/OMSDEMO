@@ -178,12 +178,18 @@ export const exportOverheadLineInspectionsToExcel = async (
       'Arrester Bypassed',
       'Arrester No Arrester',
       'Arrester Notes',
-      // Images
-      'Image 1',
-      'Image 2',
-      'Image 3',
-      'Image 4',
-      'Image 5'
+      // Images (Before Correction)
+      'Before Image 1',
+      'Before Image 2',
+      'Before Image 3',
+      'Before Image 4',
+      'Before Image 5',
+      // Images (After Correction)
+      'After Image 1',
+      'After Image 2',
+      'After Image 3',
+      'After Image 4',
+      'After Image 5'
     ];
 
     // Add headers
@@ -211,6 +217,7 @@ export const exportOverheadLineInspectionsToExcel = async (
         
         // Process images
         const images = Array.isArray(inspection.images) ? inspection.images : [];
+        const afterImages = Array.isArray(inspection.afterImages) ? inspection.afterImages : [];
         const imageBuffers = await Promise.all(
           images.slice(0, 5).map(async (image, imgIndex) => {
             try {
@@ -235,6 +242,28 @@ export const exportOverheadLineInspectionsToExcel = async (
         // Pad with null if less than 5 images
         while (imageBuffers.length < 5) {
           imageBuffers.push(null);
+        }
+
+        // Process afterImages
+        const afterImageBuffers = await Promise.all(
+          afterImages.slice(0, 5).map(async (image, imgIndex) => {
+            try {
+              if (typeof image === 'string') {
+                if (image.startsWith('data:')) {
+                  return base64ToBuffer(image);
+                } else if (image.startsWith('http')) {
+                  const base64 = await imageUrlToBase64(image);
+                  return base64ToBuffer(base64);
+                }
+              }
+              return null;
+            } catch (error) {
+              return null;
+            }
+          })
+        );
+        while (afterImageBuffers.length < 5) {
+          afterImageBuffers.push(null);
         }
 
         // Create data row
@@ -300,7 +329,12 @@ export const exportOverheadLineInspectionsToExcel = async (
           imageBuffers[1] ? 'Click to view Image 2' : '',
           imageBuffers[2] ? 'Click to view Image 3' : '',
           imageBuffers[3] ? 'Click to view Image 4' : '',
-          imageBuffers[4] ? 'Click to view Image 5' : ''
+          imageBuffers[4] ? 'Click to view Image 5' : '',
+          afterImageBuffers[0] ? 'Click to view After Image 1' : '',
+          afterImageBuffers[1] ? 'Click to view After Image 2' : '',
+          afterImageBuffers[2] ? 'Click to view After Image 3' : '',
+          afterImageBuffers[3] ? 'Click to view After Image 4' : '',
+          afterImageBuffers[4] ? 'Click to view After Image 5' : ''
         ];
 
         // Add the row
@@ -355,12 +389,39 @@ export const exportOverheadLineInspectionsToExcel = async (
           }
         }
 
+        // Add embedded afterImages to the row
+        for (let imgIndex = 0; imgIndex < afterImageBuffers.length; imgIndex++) {
+          const imageBuffer = afterImageBuffers[imgIndex];
+          if (imageBuffer && imageBuffer.byteLength > 0) {
+            try {
+              const imageId = workbook.addImage({
+                buffer: imageBuffer,
+                extension: 'jpeg',
+              });
+              // After images start at column 55 (AZ)
+              const imageCol = 55 + imgIndex;
+              const imageRow = rowNumber - 1;
+              worksheet.addImage(imageId, {
+                tl: { nativeCol: imageCol, nativeRow: imageRow, nativeColOff: 0, nativeRowOff: 0 },
+                br: { nativeCol: imageCol + 1, nativeRow: imageRow + 1, nativeColOff: 0, nativeRowOff: 0 },
+                editAs: 'oneCell'
+              } as any);
+            } catch (imageError) {}
+          }
+        }
+
         // Add clickable links row below the data row
         const linkRow = new Array(50).fill(''); // Fill with empty cells up to image columns
         for (let imgIndex = 0; imgIndex < Math.min(images.length, 5); imgIndex++) {
           const image = images[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
             linkRow[50 + imgIndex] = `Click to open Image ${imgIndex + 1}`;
+          }
+        }
+        for (let imgIndex = 0; imgIndex < Math.min(afterImages.length, 5); imgIndex++) {
+          const image = afterImages[imgIndex];
+          if (typeof image === 'string' && image.startsWith('http')) {
+            linkRow[55 + imgIndex] = `Click to open After Image ${imgIndex + 1}`;
           }
         }
         
@@ -389,6 +450,23 @@ export const exportOverheadLineInspectionsToExcel = async (
             };
             
             console.log(`Added clickable link for image ${imgIndex + 1} to: ${image}`);
+          }
+        }
+        for (let imgIndex = 0; imgIndex < Math.min(afterImages.length, 5); imgIndex++) {
+          const image = afterImages[imgIndex];
+          if (typeof image === 'string' && image.startsWith('http')) {
+            const imageCol = 55 + imgIndex;
+            const cell = worksheet.getCell(linksRowNumber, imageCol + 1);
+            cell.value = {
+              text: `Click to open After Image ${imgIndex + 1}`,
+              hyperlink: image,
+              tooltip: `Click to open After Image ${imgIndex + 1} in browser`
+            };
+            cell.font = {
+              color: { argb: 'FF0000FF' },
+              underline: true,
+              bold: true
+            };
           }
         }
 

@@ -1455,6 +1455,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteFault = useCallback(async (id: string, isOP5: boolean) => {
+    if (!user) {
+      toast.error("User authentication required to delete faults.");
+      console.error("[Delete] User authentication required:", { user });
+      return;
+    }
     try {
       if (isOP5) {
         await deleteOP5Fault(id);
@@ -1465,7 +1470,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       console.error("Error deleting fault:", error);
       toast.error("Failed to delete fault");
     }
-  }, []);
+  }, [user]);
 
   // Add load monitoring functions
   const saveLoadMonitoringRecord = async (record: Omit<LoadMonitoringData, "id">) => {

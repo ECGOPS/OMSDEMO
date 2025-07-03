@@ -65,6 +65,11 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const [locationError, setLocationError] = useState<string | null>(null);
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [isMobile, setIsMobile] = useState(false);
+  // Add state for after-correction camera
+  const [isCapturingAfter, setIsCapturingAfter] = useState(false);
+  const videoRefAfter = useRef<HTMLVideoElement>(null);
+  const [isVideoReadyAfter, setIsVideoReadyAfter] = useState(false);
+  let cameraStreamAfter: MediaStream | null = null;
   
   const feederService = FeederService.getInstance();
 
@@ -201,6 +206,8 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         status: inspection.status || "pending"
       };
     }
+
+    if (!defaultFormData.afterImages) defaultFormData.afterImages = [];
 
     return defaultFormData;
   });
@@ -1910,10 +1917,10 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
             if (ctx) {
               ctx.drawImage(img, 0, 0);
               const imageUrl = addTimestampToImage(canvas, ctx);
-              setFormData(prev => ({
-                ...prev,
+          setFormData(prev => ({
+            ...prev,
                 images: [...(Array.isArray(prev.images) ? prev.images : []), imageUrl]
-              }));
+          }));
             }
           };
           img.src = reader.result as string;
@@ -2037,6 +2044,185 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     </Card>
   ), [formData.images, isCapturing, isVideoReady]);
 
+  const handleAfterImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const img = new window.Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              const imageUrl = addTimestampToImage(canvas, ctx);
+              setFormData(prev => ({
+                ...prev,
+                afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), imageUrl]
+              }));
+            }
+          };
+          img.src = reader.result as string;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeAfterImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      afterImages: (Array.isArray(prev.afterImages) ? prev.afterImages : []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const startCameraAfter = async () => {
+    setIsCapturingAfter(true);
+    setIsVideoReadyAfter(false);
+    try {
+      cameraStreamAfter = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRefAfter.current) {
+        videoRefAfter.current.srcObject = cameraStreamAfter;
+        videoRefAfter.current.onloadedmetadata = () => setIsVideoReadyAfter(true);
+      }
+    } catch (err) {
+      setIsCapturingAfter(false);
+      toast.error("Failed to access camera for after-correction photo.");
+    }
+  };
+  const stopCameraAfter = () => {
+    setIsCapturingAfter(false);
+    setIsVideoReadyAfter(false);
+    if (videoRefAfter.current) {
+      videoRefAfter.current.srcObject = null;
+    }
+    if (cameraStreamAfter) {
+      cameraStreamAfter.getTracks().forEach(track => track.stop());
+      cameraStreamAfter = null;
+    }
+  };
+  const captureAfterImage = () => {
+    if (videoRefAfter.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRefAfter.current.videoWidth;
+      canvas.height = videoRefAfter.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRefAfter.current, 0, 0);
+        const imageUrl = addTimestampToImage(canvas, ctx);
+        setFormData(prev => ({
+          ...prev,
+          afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), imageUrl]
+        }));
+        stopCameraAfter();
+      }
+    }
+  };
+  const renderCameraViewAfter = useMemo(() => {
+    if (!isCapturingAfter) return null;
+    return (
+      <div className="relative border-2 border-gray-300 rounded-lg p-2">
+        <video
+          ref={videoRefAfter}
+          autoPlay
+          playsInline
+          muted
+          className="w-full max-w-md rounded-lg bg-black"
+          style={{
+            transform: 'scaleX(-1)',
+            minHeight: '300px',
+            objectFit: 'cover'
+          }}
+        />
+        {isVideoReadyAfter && (
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+            <Button
+              type="button"
+              onClick={captureAfterImage}
+              className="bg-white text-black hover:bg-gray-100"
+            >
+              Capture
+            </Button>
+            <Button
+              type="button"
+              onClick={stopCameraAfter}
+              variant="destructive"
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }, [isCapturingAfter, isVideoReadyAfter]);
+
+  const renderAfterImages = useMemo(() => (
+    <Card>
+      <CardContent className="p-6">
+        <h3 className="text-lg font-semibold mb-4">After Inspection Correction Photos</h3>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={startCameraAfter}
+              disabled={isCapturingAfter}
+              className="w-full sm:w-auto"
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Take Photo
+            </Button>
+            <div className="relative w-full sm:w-auto">
+              <Input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleAfterImageUpload}
+                className="hidden"
+                id="after-image-upload"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('after-image-upload')?.click()}
+                className="w-full sm:w-auto"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Images
+              </Button>
+            </div>
+          </div>
+          {renderCameraViewAfter}
+          {formData.afterImages && formData.afterImages.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {formData.afterImages.map((image, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={image}
+                    alt={`After Correction image ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removeAfterImage(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  ), [formData.afterImages, isCapturingAfter, isVideoReadyAfter]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -2077,6 +2263,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         {renderRecloserCondition}
         {renderAdditionalNotes}
         {renderImageUpload}
+        {renderAfterImages}
 
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={onCancel}>

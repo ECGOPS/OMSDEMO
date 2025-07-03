@@ -529,6 +529,7 @@ export interface OverheadLineInspection {
   
   additionalNotes: string;
   images: string[];
+  afterImages: string[];
 }
 
 export interface SecurityEvent {

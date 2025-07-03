@@ -584,27 +584,45 @@ export function OverheadLineInspectionDetailsView({
           <>
             <Card className="mb-8">
               <CardHeader className="border-b">
-                <CardTitle>Images</CardTitle>
+                <CardTitle>Images (Before Correction)</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
                 {inspection.images && inspection.images.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
                     {inspection.images.map((image, index) => (
-                      <div 
-                        key={index} 
-                        className="relative aspect-video cursor-pointer hover:opacity-90 transition-opacity"
+                      <img
+                        key={index}
+                        src={image}
+                        alt={`Inspection image ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => setEnlargedImage(image)}
-                      >
-                        <img
-                          src={image}
-                          alt={`Inspection image ${index + 1}`}
-                          className="w-full h-full object-cover rounded-lg"
-                        />
-                      </div>
+                      />
                     ))}
                   </div>
                 ) : (
                   <p className="text-muted-foreground">No images available</p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="mb-8">
+              <CardHeader className="border-b">
+                <CardTitle className="mt-4">After Inspection Correction Photos</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {inspection.afterImages && inspection.afterImages.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+                    {inspection.afterImages.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image}
+                        alt={`After Correction image ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setEnlargedImage(image)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No after-correction images available</p>
                 )}
               </CardContent>
             </Card>
