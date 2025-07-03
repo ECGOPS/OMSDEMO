@@ -815,18 +815,9 @@ export default function LoadMonitoringPage() {
                       >
                         Previous
                       </Button>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => (
-                          <Button
-                            key={`page-${i + 1}`}
-                            variant={currentPage === i + 1 ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setCurrentPage(i + 1)}
-                          >
-                            {i + 1}
-                          </Button>
-                        ))}
-                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        Page {currentPage} of {totalPages}
+                      </span>
                       <Button
                         variant="outline"
                         size="sm"
