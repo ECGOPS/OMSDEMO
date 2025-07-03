@@ -2159,69 +2159,76 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     );
   }, [isCapturingAfter, isVideoReadyAfter]);
 
-  const renderAfterImages = useMemo(() => (
-    <Card>
-      <CardContent className="p-6">
-        <h3 className="text-lg font-semibold mb-4">After Inspection Correction Photos</h3>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={startCameraAfter}
-              disabled={isCapturingAfter}
-              className="w-full sm:w-auto"
-            >
-              <Camera className="mr-2 h-4 w-4" />
-              Take Photo
-            </Button>
-            <div className="relative w-full sm:w-auto">
-              <Input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleAfterImageUpload}
-                className="hidden"
-                id="after-image-upload"
-              />
+  const renderAfterImages = useMemo(() => {
+    // Only show after images section if there are before images
+    if (!formData.images || formData.images.length === 0) {
+      return null;
+    }
+
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="text-lg font-semibold mb-4">After Inspection Correction Photos</h3>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => document.getElementById('after-image-upload')?.click()}
+                onClick={startCameraAfter}
+                disabled={isCapturingAfter}
                 className="w-full sm:w-auto"
               >
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Images
+                <Camera className="mr-2 h-4 w-4" />
+                Take Photo
               </Button>
+              <div className="relative w-full sm:w-auto">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleAfterImageUpload}
+                  className="hidden"
+                  id="after-image-upload"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('after-image-upload')?.click()}
+                  className="w-full sm:w-auto"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Images
+                </Button>
+              </div>
             </div>
+            {renderCameraViewAfter}
+            {formData.afterImages && formData.afterImages.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {formData.afterImages.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={image}
+                      alt={`After Correction image ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeAfterImage(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {renderCameraViewAfter}
-          {formData.afterImages && formData.afterImages.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {formData.afterImages.map((image, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={image}
-                    alt={`After Correction image ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => removeAfterImage(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  ), [formData.afterImages, isCapturingAfter, isVideoReadyAfter]);
+        </CardContent>
+      </Card>
+    );
+  }, [formData.images, formData.afterImages, isCapturingAfter, isVideoReadyAfter]);
 
   return (
     <div className="space-y-6">

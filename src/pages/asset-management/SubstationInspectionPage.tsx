@@ -1474,6 +1474,8 @@ export default function SubstationInspectionPage() {
                 onClick={(e) => {
                   e.preventDefault();
                   setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                  // Scroll to top when navigating to next page
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="w-full sm:w-auto"
               >
