@@ -64,7 +64,6 @@ export { AuthContext };
 
 // Add this function before the AuthProvider component
 const handleFirestoreError = (error: any) => {
-  console.error('Firestore error:', error);
   if (error.code === 'permission-denied') {
     throw new Error('You do not have permission to perform this action');
   } else if (error.code === 'unavailable') {
@@ -82,7 +81,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     setLoading(true);
-    console.log('[AuthContext] Initializing auth state');
 
     // Load staff IDs immediately for signup verification
     const loadStaffIds = async () => {
@@ -92,10 +90,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         staffIdsSnapshot.forEach((doc) => {
           staffIdsList.push({ id: doc.id, ...doc.data() } as StaffIdEntry);
         });
-        console.log(`[AuthContext] Loaded ${staffIdsList.length} staff IDs`);
         setStaffIds(staffIdsList);
       } catch (error) {
-        console.error("[AuthContext] Error loading staff IDs:", error);
         toast.error("Error loading staff IDs");
       }
     };
@@ -105,49 +101,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Subscribe to auth state changes
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('[AuthContext] Auth state changed:', { 
-        hasUser: !!firebaseUser,
-        uid: firebaseUser?.uid,
-        email: firebaseUser?.email,
-        emailVerified: firebaseUser?.emailVerified
-      });
-      
       if (firebaseUser) {
         try {
-          console.log('[AuthContext] Fetching user document for:', firebaseUser.uid);
-          // Get user document from Firestore
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          console.log('[AuthContext] User document exists:', userDoc.exists());
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            console.log('[AuthContext] User data loaded:', { 
-              role: userData.role,
-              region: userData.region,
-              district: userData.district,
-              disabled: userData.disabled,
-              name: userData.name,
-              staffId: userData.staffId
-            });
-
-            // Check if user is disabled
+            
             if (userData.disabled) {
-              console.log('[AuthContext] User is disabled, signing out');
               await signOut(auth);
               toast.error("This account has been disabled");
               return;
             }
-            
-            // Get IP address
-            const ipAddress = await fetchIpAddress();
-            console.log('[AuthContext] IP address:', ipAddress);
-            
-            // Update last active and IP
-            await updateDoc(doc(db, "users", firebaseUser.uid), {
-              lastActive: serverTimestamp(),
-              lastIpAddress: ipAddress
-            });
-            console.log('[AuthContext] Updated user last active and IP');
             
             // Initialize user state with basic data
             const userState: User = {
@@ -167,15 +132,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               photoURL: userData.photoURL
             };
 
-            console.log('[AuthContext] Initial user state:', userState);
             setUser(userState);
           } else {
-            console.log('[AuthContext] User document not found, signing out');
             await signOut(auth);
             toast.error("User account not found");
           }
         } catch (error) {
-          console.error('[AuthContext] Error in auth state change:', error);
           await signOut(auth);
           toast.error("Error loading user data");
         }
@@ -196,12 +158,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           setUsers(usersList);
         } catch (error) {
-          console.error("Error processing users snapshot:", error);
           toast.error("Error loading users data");
         }
       },
       (error) => {
-        console.error("Users listener error:", error);
         toast.error("Error in users connection");
       }
     );
@@ -217,12 +177,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           setStaffIds(staffIdsList);
         } catch (error) {
-          console.error("Error processing staffIds snapshot:", error);
           toast.error("Error loading staff IDs data");
         }
       },
       (error) => {
-        console.error("StaffIds listener error:", error);
         toast.error("Error in staff IDs connection");
       }
     );
@@ -237,12 +195,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Add a separate effect to handle auth state changes
   useEffect(() => {
     if (user) {
-      console.log('[AuthContext] User state updated:', {
-        id: user.id,
-        role: user.role,
-        region: user.region,
-        district: user.district
-      });
     }
   }, [user]);
 
@@ -259,7 +211,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         // Check connection state
         if (!navigator.onLine) {
-          console.log('Device is offline, skipping activity update');
           return;
         }
 
@@ -269,7 +220,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         retryCount = 0;
       } catch (error) {
-        console.error('Error updating activity:', error);
         retryCount++;
         if (retryCount < MAX_RETRIES) {
           setTimeout(updateActivity, RETRY_DELAY);
@@ -307,7 +257,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
       return data.ip;
     } catch (error) {
-      console.error('Error fetching IP:', error);
       return 'unknown';
     }
   };
@@ -349,8 +298,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       toast.success("Login successful");
     } catch (error: any) {
-      console.error("Login error:", error);
-      
       // Log failed login attempt
       securityMonitoringService.logEvent({
         eventType: EVENT_TYPES.LOGIN_FAILURE,
@@ -477,13 +424,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       toast.success("Account created successfully");
     } catch (error: any) {
-      console.error("Error signing up:", error);
       // If there's an error, attempt to clean up the auth user
       if (auth.currentUser) {
         try {
           await auth.currentUser.delete();
         } catch (deleteError) {
-          console.error("Error cleaning up auth user:", deleteError);
         }
       }
       toast.error(error.message || "Failed to create account");
@@ -497,7 +442,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       toast.success("Logged out successfully");
     } catch (error) {
-      console.error("Error logging out:", error);
       toast.error("Failed to logout");
     }
   };
@@ -507,7 +451,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await sendPasswordResetEmail(auth, email);
       toast.success("Password reset instructions have been sent to your email");
     } catch (error: any) {
-      console.error("Error resetting password:", error);
       if (error.code === 'auth/user-not-found') {
         toast.error("No account found with this email");
       } else {
@@ -557,11 +500,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast.success("Password reset email sent to user");
         return { tempPassword, email: userEmail };
       } catch (error) {
-        console.error("Error sending reset email:", error);
         throw error;
       }
     } catch (error: any) {
-      console.error("Error resetting user password:", error);
       toast.error("Failed to reset user password");
       throw error;
     }
@@ -606,8 +547,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         district: entry.district || ""
       };
       
-      console.log("Adding staff ID with data:", cleanedEntry);
-      
       // Set the document with merge option to be safer
       await setDoc(doc(db, "staffIds", id), cleanedEntry, { merge: true });
       
@@ -615,7 +554,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.success("Staff ID added successfully");
       return id; // Return the ID for duplicate checking
     } catch (error) {
-      console.error("Error adding staff ID:", error);
       let errorMessage = "Failed to add staff ID";
       
       // More specific error message
@@ -644,7 +582,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setStaffIds(prev => prev.map(s => s.id === id ? { id, ...cleanedEntry } : s));
       toast.success("Staff ID updated successfully");
     } catch (error) {
-      console.error("Error updating staff ID:", error);
       toast.error("Failed to update staff ID");
     }
   };
@@ -655,7 +592,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setStaffIds(prev => prev.filter(s => s.id !== id));
       toast.success("Staff ID deleted successfully");
     } catch (error) {
-      console.error("Error deleting staff ID:", error);
       toast.error("Failed to delete staff ID");
     }
   };
@@ -698,37 +634,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       await setDoc(userRef, cleanedData);
 
-      // Log the action
-      if (user?.uid && user?.name && user?.role) {
-        console.log("[Add] LoggingService.logAction will be called with:", {
-          userId: user.uid,
-          userName: user.name,
-          userRole: user.role,
-          id: userRef.id,
-          targetUserName: userData.name,
-          targetUserEmail: userData.email,
-          targetUserRole: userData.role,
-          region: userData.region,
-          district: userData.district
-        });
-        const loggingService = LoggingService.getInstance();
-        await loggingService.logAction(
-          user.uid,
-          user.name,
-          user.role,
-          "Create",
-          "User",
-          userRef.id,
-          `Created new user ${userData.name} with role ${userData.role}`,
-          userData.region,
-          userData.district
-        );
-      }
-
       toast.success("User added successfully");
       return userRef.id;
     } catch (error) {
-      console.error("Error adding user:", error);
       toast.error("Failed to add user");
       throw error;
     }
@@ -774,33 +682,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       await updateDoc(userRef, updateData);
 
-      // Log the action
-      if (user?.uid && user?.name && user?.role) {
-        console.log("[Update] LoggingService.logAction will be called with:", {
-          userId: user.uid,
-          userName: user.name,
-          userRole: user.role,
-          id,
-          oldData: oldUserData,
-          newData: updateData
-        });
-        const loggingService = LoggingService.getInstance();
-        await loggingService.logAction(
-          user.uid,
-          user.name,
-          user.role,
-          "Update",
-          "User",
-          id,
-          `Updated user ${oldUserData.name} (${oldUserData.email})`,
-          oldUserData.region,
-          oldUserData.district
-        );
-      }
-
       toast.success("User updated successfully");
     } catch (error) {
-      console.error("Error updating user:", error);
       toast.error("Failed to update user");
       throw error;
     }
@@ -819,34 +702,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Delete the user
       await deleteDoc(userRef);
 
-      // Log the action
-      if (user?.uid && user?.name && user?.role) {
-        console.log("[Delete] LoggingService.logAction will be called with:", {
-          userId: user.uid,
-          userName: user.name,
-          userRole: user.role,
-          id,
-          deletedUserName: userData.name,
-          deletedUserEmail: userData.email,
-          deletedUserRole: userData.role
-        });
-        const loggingService = LoggingService.getInstance();
-        await loggingService.logAction(
-          user.uid,
-          user.name,
-          user.role,
-          "Delete",
-          "User",
-          id,
-          `Deleted user ${userData.name} (${userData.email}) with role ${userData.role}`,
-          userData.region,
-          userData.district
-        );
-      }
-
       toast.success("User deleted successfully");
     } catch (error) {
-      console.error("Error deleting user:", error);
       toast.error("Failed to delete user");
       throw error;
     }
@@ -868,34 +725,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: serverTimestamp()
       });
 
-      // Log the action
-      if (user?.uid && user?.name && user?.role) {
-        console.log("[Status] LoggingService.logAction will be called with:", {
-          userId: user.uid,
-          userName: user.name,
-          userRole: user.role,
-          id,
-          targetUserName: userData.name,
-          targetUserEmail: userData.email,
-          newStatus: disabled ? 'disabled' : 'enabled'
-        });
-        const loggingService = LoggingService.getInstance();
-        await loggingService.logAction(
-          user.uid,
-          user.name,
-          user.role,
-          "Update",
-          "UserStatus",
-          id,
-          `${disabled ? 'Disabled' : 'Enabled'} user ${userData.name} (${userData.email})`,
-          userData.region,
-          userData.district
-        );
-      }
-
       toast.success(`User ${disabled ? 'disabled' : 'enabled'} successfully`);
     } catch (error) {
-      console.error("Error toggling user status:", error);
       toast.error(`Failed to ${disabled ? 'disable' : 'enable'} user`);
       throw error;
     }

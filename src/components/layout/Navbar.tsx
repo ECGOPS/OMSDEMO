@@ -43,11 +43,21 @@ export function Navbar() {
     if (user.role === "technician") {
       return requiredRole === "district_engineer" && !location.pathname.startsWith("/analytics");
     }
-    if (user.role === "district_engineer") {
-      return requiredRole === "district_engineer" || requiredRole === "global_engineer";
+    if (user.role === "district_engineer" || user.role === "district_manager") {
+      return (
+        requiredRole === "district_engineer" ||
+        requiredRole === "district_manager" ||
+        requiredRole === "global_engineer"
+      );
     }
-    if (user.role === "regional_engineer") {
-      return requiredRole === "district_engineer" || requiredRole === "regional_engineer" || requiredRole === "global_engineer";
+    if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+      return (
+        requiredRole === "district_engineer" ||
+        requiredRole === "district_manager" ||
+        requiredRole === "regional_engineer" ||
+        requiredRole === "regional_general_manager" ||
+        requiredRole === "global_engineer"
+      );
     }
     if (user.role === "global_engineer") {
       return true;
@@ -141,7 +151,7 @@ export function Navbar() {
                     </NavLink>
                     
                     {/* Analytics Links */}
-                    {showMenuItem("district_engineer") && (
+                    {(showMenuItem("district_engineer") || showMenuItem("district_manager") || showMenuItem("regional_engineer") || showMenuItem("regional_general_manager")) && (
                       <>
                         <NavLink 
                           to="/analytics" 

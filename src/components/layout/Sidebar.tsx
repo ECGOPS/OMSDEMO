@@ -67,11 +67,21 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
     if (user.role === "technician") {
       return requiredRole === "district_engineer" && !location.pathname.startsWith("/analytics");
     }
-    if (user.role === "district_engineer") {
-      return requiredRole === "district_engineer" || requiredRole === "global_engineer";
+    if (user.role === "district_engineer" || user.role === "district_manager") {
+      return (
+        requiredRole === "district_engineer" ||
+        requiredRole === "district_manager" ||
+        requiredRole === "global_engineer"
+      );
     }
-    if (user.role === "regional_engineer") {
-      return requiredRole === "district_engineer" || requiredRole === "regional_engineer" || requiredRole === "global_engineer";
+    if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+      return (
+        requiredRole === "district_engineer" ||
+        requiredRole === "district_manager" ||
+        requiredRole === "regional_engineer" ||
+        requiredRole === "regional_general_manager" ||
+        requiredRole === "global_engineer"
+      );
     }
     if (user.role === "global_engineer") {
       return true;
@@ -110,13 +120,23 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           title: "Fault Analytics",
           icon: BarChart3,
           href: "/analytics",
-          show: showMenuItem("district_engineer"),
+          show: (
+            showMenuItem("district_engineer") ||
+            showMenuItem("district_manager") ||
+            showMenuItem("regional_engineer") ||
+            showMenuItem("regional_general_manager")
+          ),
         },
         {
           title: "Control System Analytics",
           icon: BarChart3,
           href: "/control-system-analytics",
-          show: showMenuItem("district_engineer"),
+          show: (
+            showMenuItem("district_engineer") ||
+            showMenuItem("district_manager") ||
+            showMenuItem("regional_engineer") ||
+            showMenuItem("regional_general_manager")
+          ),
         },
       ]
     },

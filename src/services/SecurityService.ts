@@ -10,10 +10,15 @@ class SecurityService {
     // Initialize auth state listener
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        console.log('User authenticated:', user.uid);
+        // Only log minimal info in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('User authenticated');
+        }
         this.resetLoginAttempts(user.email || '');
       } else {
-        console.log('User signed out');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('User signed out');
+        }
       }
     });
   }

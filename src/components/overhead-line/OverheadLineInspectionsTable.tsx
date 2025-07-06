@@ -347,9 +347,9 @@ export function OverheadLineInspectionsTable({
             width = height * aspect;
           }
           if (y + height > 280) {
-            doc.addPage();
+          doc.addPage();
             y = 20;
-          }
+        }
           doc.addImage(img, 'JPEG', 14, y, width, height);
           y += height + 10;
         } catch (error) {

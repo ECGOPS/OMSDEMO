@@ -76,12 +76,8 @@ if (typeof window !== 'undefined') {
 // Add auth state listener for debugging
 auth.onAuthStateChanged((user) => {
   if (process.env.NODE_ENV === 'development') {
-    console.log('[Firebase] Auth state changed:', { 
-      hasUser: !!user, 
-      uid: user?.uid,
-      email: user?.email,
-      emailVerified: user?.emailVerified
-    });
+    // Only log minimal, non-sensitive info
+    console.log('[Firebase] Auth state changed:', { hasUser: !!user });
   }
 });
 
