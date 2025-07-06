@@ -193,6 +193,55 @@ export function OverheadLineInspectionDetailsView({
         );
       case 2:
         return (
+          <>
+            <Card className="mb-8">
+              <CardHeader className="border-b">
+                <CardTitle>Images (Before Correction)</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {inspection.images && inspection.images.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+                    {inspection.images.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image}
+                        alt={`Inspection image ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setEnlargedImage(image)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No images available</p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="mb-8">
+              <CardHeader className="border-b">
+                <CardTitle className="mt-4">After Inspection Correction Photos</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {inspection.afterImages && inspection.afterImages.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+                    {inspection.afterImages.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image}
+                        alt={`After Correction image ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setEnlargedImage(image)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No after-correction images available</p>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        );
+      case 3:
+        return (
           <Card className="mb-8">
             <CardHeader className="border-b">
               <CardTitle>Pole Information</CardTitle>
@@ -219,7 +268,7 @@ export function OverheadLineInspectionDetailsView({
             </CardContent>
           </Card>
         );
-      case 3:
+      case 4:
         return (
           <Card className="mb-8">
             <CardHeader className="border-b">
@@ -257,7 +306,7 @@ export function OverheadLineInspectionDetailsView({
             </CardContent>
           </Card>
         );
-      case 4:
+      case 5:
         return (
           <Card className="mb-8">
             <CardHeader className="border-b">
@@ -291,7 +340,7 @@ export function OverheadLineInspectionDetailsView({
             </CardContent>
           </Card>
         );
-      case 5:
+      case 6:
         return (
           <Card className="mb-8">
             <CardHeader className="border-b">
@@ -329,7 +378,7 @@ export function OverheadLineInspectionDetailsView({
             </CardContent>
           </Card>
         );
-      case 6:
+      case 7:
         return (
           <Card className="mb-8">
             <CardHeader className="border-b">
@@ -367,7 +416,7 @@ export function OverheadLineInspectionDetailsView({
             </CardContent>
           </Card>
         );
-      case 7:
+      case 8:
         return (
           <Card className="mb-8">
             <CardHeader className="border-b">
@@ -395,10 +444,6 @@ export function OverheadLineInspectionDetailsView({
                   <p className="text-sm font-medium text-muted-foreground">Undersized</p>
                   <p>{inspection.conductorCondition?.undersized ? "Yes" : "No"}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Linked</p>
-                  <p>{inspection.conductorCondition?.linked ? "Yes" : "No"}</p>
-                </div>
               </div>
               {inspection.conductorCondition?.notes && (
                 <div className="mt-4">
@@ -409,7 +454,7 @@ export function OverheadLineInspectionDetailsView({
             </CardContent>
           </Card>
         );
-      case 8:
+      case 9:
         return (
           <Card className="mb-8">
             <CardHeader className="border-b">
@@ -427,14 +472,6 @@ export function OverheadLineInspectionDetailsView({
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Flash over</p>
                       <p>{inspection.lightningArresterCondition?.flashOver ? "Yes" : "No"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Missing</p>
-                      <p>{inspection.lightningArresterCondition?.missing ? "Yes" : "No"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">No Earthing</p>
-                      <p>{inspection.lightningArresterCondition?.noEarthing ? "Yes" : "No"}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">By-passed</p>
@@ -496,7 +533,7 @@ export function OverheadLineInspectionDetailsView({
             </CardContent>
           </Card>
         );
-      case 9:
+      case 10:
         return (
           <Card className="mb-8">
             <CardHeader className="border-b">
@@ -578,55 +615,6 @@ export function OverheadLineInspectionDetailsView({
               </div>
             </CardContent>
           </Card>
-        );
-      case 10:
-        return (
-          <>
-            <Card className="mb-8">
-              <CardHeader className="border-b">
-                <CardTitle>Images (Before Correction)</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {inspection.images && inspection.images.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
-                    {inspection.images.map((image, index) => (
-                      <img
-                        key={index}
-                        src={image}
-                        alt={`Inspection image ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setEnlargedImage(image)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No images available</p>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="mb-8">
-              <CardHeader className="border-b">
-                <CardTitle className="mt-4">After Inspection Correction Photos</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {inspection.afterImages && inspection.afterImages.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
-                    {inspection.afterImages.map((image, index) => (
-                      <img
-                        key={index}
-                        src={image}
-                        alt={`After Correction image ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setEnlargedImage(image)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No after-correction images available</p>
-                )}
-              </CardContent>
-            </Card>
-          </>
         );
     }
   };
