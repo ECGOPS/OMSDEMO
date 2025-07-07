@@ -47,17 +47,85 @@ export function OverheadLineInspectionsTable({
 
   // Update sorted inspections whenever the inspections prop changes
   useEffect(() => {
+    console.log('[OverheadLineInspectionsTable] Received inspections:', inspections.length);
+    
     // Sort by date and time (if available), or createdAt, descending
     const sorted = [...inspections].sort((a, b) => {
-      // Prefer date+time, fallback to createdAt
-      const dateA = new Date((a.date ? `${a.date}T${a.time || '00:00'}` : a.createdAt));
-      const dateB = new Date((b.date ? `${b.date}T${b.time || '00:00'}` : b.createdAt));
+      // Create date objects for comparison
+      let dateA: Date;
+      let dateB: Date;
+      
+      // For inspection A
+      if (a.date && a.time) {
+        // Use inspection date and time
+        dateA = new Date(`${a.date}T${a.time}`);
+      } else if (a.date) {
+        // Use inspection date with default time
+        dateA = new Date(`${a.date}T00:00`);
+      } else {
+        // Fallback to createdAt
+        dateA = new Date(a.createdAt);
+      }
+      
+      // For inspection B
+      if (b.date && b.time) {
+        // Use inspection date and time
+        dateB = new Date(`${b.date}T${b.time}`);
+      } else if (b.date) {
+        // Use inspection date with default time
+        dateB = new Date(`${b.date}T00:00`);
+      } else {
+        // Fallback to createdAt
+        dateB = new Date(b.createdAt);
+      }
+      
+      // Sort descending (latest first)
       return dateB.getTime() - dateA.getTime();
     });
+    
     setSortedInspections(sorted);
     // Reset to first page when inspections change
     setCurrentPage(1);
+    
+    // Log sorting for debugging
+    console.log('[OverheadLineInspectionsTable] Sorted inspections:', {
+      total: sorted.length,
+      latest: sorted[0] ? {
+        id: sorted[0].id,
+        date: sorted[0].date,
+        time: sorted[0].time,
+        createdAt: sorted[0].createdAt,
+        displayDate: getDisplayDate(sorted[0])
+      } : null,
+      oldest: sorted[sorted.length - 1] ? {
+        id: sorted[sorted.length - 1].id,
+        date: sorted[sorted.length - 1].date,
+        time: sorted[sorted.length - 1].time,
+        createdAt: sorted[sorted.length - 1].createdAt,
+        displayDate: getDisplayDate(sorted[sorted.length - 1])
+      } : null
+    });
+    
+    // Log first few items to see the actual order
+    console.log('[OverheadLineInspectionsTable] First 3 items:', sorted.slice(0, 3).map(item => ({
+      id: item.id,
+      date: item.date,
+      time: item.time,
+      createdAt: item.createdAt,
+      displayDate: getDisplayDate(item)
+    })));
   }, [inspections]);
+
+  // Helper function to get display date
+  const getDisplayDate = (inspection: OverheadLineInspection): string => {
+    if (inspection.date && inspection.time) {
+      return `${inspection.date} ${inspection.time}`;
+    } else if (inspection.date) {
+      return inspection.date;
+    } else {
+      return format(new Date(inspection.createdAt), "dd/MM/yyyy HH:mm");
+    }
+  };
 
   // Calculate pagination values
   const totalPages = Math.ceil(sortedInspections.length / itemsPerPage);
@@ -620,7 +688,10 @@ export function OverheadLineInspectionsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date & Time</TableHead>
+              <TableHead className="flex items-center gap-1">
+                Date & Time
+                <span className="text-xs text-muted-foreground">(Latest First)</span>
+              </TableHead>
               <TableHead>Region</TableHead>
               <TableHead>District</TableHead>
               <TableHead>Feeder Name</TableHead>
@@ -641,11 +712,7 @@ export function OverheadLineInspectionsTable({
                 className="cursor-pointer hover:bg-muted transition-colors"
               >
                 <TableCell>
-                  {inspection.date 
-                    ? `${inspection.date}${inspection.time ? ` ${inspection.time}` : ''}`
-                    : inspection.createdAt && inspection.createdAt !== "" && !isNaN(new Date(inspection.createdAt).getTime())
-                    ? format(new Date(inspection.createdAt), "dd/MM/yyyy HH:mm")
-                    : new Date().toLocaleDateString()}
+                  {getDisplayDate(inspection)}
                   {inspection.id.startsWith('inspection_') && (
                     <span className="ml-2 text-xs text-yellow-600">(Offline)</span>
                   )}

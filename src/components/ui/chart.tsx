@@ -74,28 +74,47 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
+  // Create CSS rules safely without dangerouslySetInnerHTML
+  const createStyleElement = () => {
+    const styleElement = document.createElement('style');
+    const cssRules: string[] = [];
+    
+    Object.entries(THEMES).forEach(([theme, prefix]) => {
+      const themeRules: string[] = [];
+      
+      colorConfig.forEach(([key, itemConfig]) => {
+        const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
+        if (color) {
+          themeRules.push(`  --color-${key}: ${color};`);
+        }
+      });
+      
+      if (themeRules.length > 0) {
+        cssRules.push(`
 ${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
+${themeRules.join('\n')}
 }
-`
-          )
-          .join("\n"),
-      }}
-    />
-  )
+        `);
+      }
+    });
+    
+    styleElement.textContent = cssRules.join('\n');
+    return styleElement;
+  };
+
+  // Use useEffect to safely inject styles
+  React.useEffect(() => {
+    const styleElement = createStyleElement();
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      if (styleElement.parentNode) {
+        styleElement.parentNode.removeChild(styleElement);
+      }
+    };
+  }, [id, config]);
+
+  return null;
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip

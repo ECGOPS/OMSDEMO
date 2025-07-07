@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, Navigation, Info, Filter, Search, X } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
+import DOMPurify from 'dompurify';
 
 interface VITMapViewProps {
   assets: VITAsset[];
@@ -220,9 +221,9 @@ export function VITMapView({ assets, onAssetClick, selectedRegion, selectedDistr
           if (!isNaN(lat) && !isNaN(lng)) {
             const position = { lat, lng };
             
-            // Create marker element with different colors based on type
+            // Create pin element with safe innerHTML
             const pinElement = document.createElement('div');
-            pinElement.className = 'custom-marker';
+            pinElement.style.cssText = 'width: 24px; height: 24px; cursor: pointer;';
             
             // Determine marker color based on asset type
             let markerColor = '#000000'; // Default black for other types
@@ -232,12 +233,14 @@ export function VITMapView({ assets, onAssetClick, selectedRegion, selectedDistr
               markerColor = '#3B82F6'; // Blue for LBS
             }
             
-            pinElement.innerHTML = `
+            // Sanitize the SVG content before setting innerHTML
+            const svgContent = `
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="${markerColor}"/>
                 <circle cx="12" cy="9" r="2.5" fill="white"/>
               </svg>
             `;
+            pinElement.innerHTML = DOMPurify.sanitize(svgContent);
 
             // Create marker
             const marker = new google.maps.marker.AdvancedMarkerElement({
@@ -247,24 +250,85 @@ export function VITMapView({ assets, onAssetClick, selectedRegion, selectedDistr
               content: pinElement
             });
 
-            // Create info window content using DOM element
+            // Create info window content using safe DOM manipulation
             const infoContent = document.createElement('div');
             infoContent.style.cssText = 'padding: 12px; max-width: 300px; font-family: system-ui, -apple-system, sans-serif;';
             
-            infoContent.innerHTML = `
-              <h3 style="font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #1f2937;">${asset.serialNumber}</h3>
-              <p style="font-size: 12px; color: #6b7280; margin-bottom: 4px;"><strong>Type:</strong> ${asset.typeOfUnit || 'Not specified'}</p>
-              <p style="font-size: 12px; color: #6b7280; margin-bottom: 4px;"><strong>Region:</strong> ${asset.region || 'Not specified'}</p>
-              <p style="font-size: 12px; color: #6b7280; margin-bottom: 4px;"><strong>District:</strong> ${asset.district || 'Not specified'}</p>
-              <p style="font-size: 12px; color: #6b7280; margin-bottom: 4px;"><strong>Feeder:</strong> ${asset.feederName || 'Not specified'}</p>
-              <p style="font-size: 12px; color: #6b7280; margin-bottom: 4px;"><strong>GPS:</strong> ${asset.gpsCoordinates || 'Not available'}</p>
-              <p style="font-size: 12px; color: #6b7280; margin-bottom: 4px;"><strong>Location:</strong> ${asset.location || 'Not specified'}</p>
-              <p style="font-size: 12px; color: #6b7280; margin-bottom: 8px;"><strong>Status:</strong> ${asset.status || 'Not specified'}</p>
-              <div style="display: flex; gap: 8px;">
-                <button id="navigate-${asset.id}" style="font-size: 12px; background-color: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer;">Navigate</button>
-                <button id="details-${asset.id}" style="font-size: 12px; background-color: #10b981; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer;">View Details</button>
-              </div>
-            `;
+            // Create content safely using DOM methods instead of innerHTML
+            const createSafeInfoContent = (asset: VITAsset) => {
+              const container = document.createElement('div');
+              
+              // Title
+              const title = document.createElement('h3');
+              title.style.cssText = 'font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #1f2937;';
+              title.textContent = asset.serialNumber || 'Unknown';
+              container.appendChild(title);
+              
+              // Type
+              const typeP = document.createElement('p');
+              typeP.style.cssText = 'font-size: 12px; color: #6b7280; margin-bottom: 4px;';
+              typeP.innerHTML = DOMPurify.sanitize(`<strong>Type:</strong> ${asset.typeOfUnit || 'Not specified'}`);
+              container.appendChild(typeP);
+              
+              // Region
+              const regionP = document.createElement('p');
+              regionP.style.cssText = 'font-size: 12px; color: #6b7280; margin-bottom: 4px;';
+              regionP.innerHTML = DOMPurify.sanitize(`<strong>Region:</strong> ${asset.region || 'Not specified'}`);
+              container.appendChild(regionP);
+              
+              // District
+              const districtP = document.createElement('p');
+              districtP.style.cssText = 'font-size: 12px; color: #6b7280; margin-bottom: 4px;';
+              districtP.innerHTML = DOMPurify.sanitize(`<strong>District:</strong> ${asset.district || 'Not specified'}`);
+              container.appendChild(districtP);
+              
+              // Feeder
+              const feederP = document.createElement('p');
+              feederP.style.cssText = 'font-size: 12px; color: #6b7280; margin-bottom: 4px;';
+              feederP.innerHTML = DOMPurify.sanitize(`<strong>Feeder:</strong> ${asset.feederName || 'Not specified'}`);
+              container.appendChild(feederP);
+              
+              // GPS
+              const gpsP = document.createElement('p');
+              gpsP.style.cssText = 'font-size: 12px; color: #6b7280; margin-bottom: 4px;';
+              gpsP.innerHTML = DOMPurify.sanitize(`<strong>GPS:</strong> ${asset.gpsCoordinates || 'Not available'}`);
+              container.appendChild(gpsP);
+              
+              // Location
+              const locationP = document.createElement('p');
+              locationP.style.cssText = 'font-size: 12px; color: #6b7280; margin-bottom: 4px;';
+              locationP.innerHTML = DOMPurify.sanitize(`<strong>Location:</strong> ${asset.location || 'Not specified'}`);
+              container.appendChild(locationP);
+              
+              // Status
+              const statusP = document.createElement('p');
+              statusP.style.cssText = 'font-size: 12px; color: #6b7280; margin-bottom: 8px;';
+              statusP.innerHTML = DOMPurify.sanitize(`<strong>Status:</strong> ${asset.status || 'Not specified'}`);
+              container.appendChild(statusP);
+              
+              // Buttons container
+              const buttonContainer = document.createElement('div');
+              buttonContainer.style.cssText = 'display: flex; gap: 8px;';
+              
+              // Navigate button
+              const navigateBtn = document.createElement('button');
+              navigateBtn.id = `navigate-${asset.id}`;
+              navigateBtn.style.cssText = 'font-size: 12px; background-color: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer;';
+              navigateBtn.textContent = 'Navigate';
+              buttonContainer.appendChild(navigateBtn);
+              
+              // Details button
+              const detailsBtn = document.createElement('button');
+              detailsBtn.id = `details-${asset.id}`;
+              detailsBtn.style.cssText = 'font-size: 12px; background-color: #10b981; color: white; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer;';
+              detailsBtn.textContent = 'View Details';
+              buttonContainer.appendChild(detailsBtn);
+              
+              container.appendChild(buttonContainer);
+              return container;
+            };
+            
+            infoContent.appendChild(createSafeInfoContent(asset));
 
             // Create info window
             const infoWindow = new google.maps.InfoWindow({

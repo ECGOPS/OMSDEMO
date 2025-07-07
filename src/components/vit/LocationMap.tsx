@@ -1,5 +1,6 @@
 import { GoogleMap, useLoadScript, Libraries } from '@react-google-maps/api';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import DOMPurify from 'dompurify';
 
 interface LocationMapProps {
   coordinates: string;
@@ -67,15 +68,21 @@ export function LocationMap({ coordinates, assetName, onLocationChange, isEditab
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     
-    // Create a pin element for the marker
+    // Create pin element with safe innerHTML
     const pinElement = document.createElement('div');
-    pinElement.className = 'custom-marker';
-    pinElement.innerHTML = `
+    pinElement.style.cssText = 'width: 24px; height: 24px; cursor: pointer;';
+    
+    // Define marker color (default red for location markers)
+    const markerColor = '#FF0000';
+    
+    // Sanitize the SVG content before setting innerHTML
+    const svgContent = `
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#FF0000"/>
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="${markerColor}"/>
         <circle cx="12" cy="9" r="2.5" fill="white"/>
       </svg>
     `;
+    pinElement.innerHTML = DOMPurify.sanitize(svgContent);
 
     // Create the marker element
     const markerView = new google.maps.marker.AdvancedMarkerElement({

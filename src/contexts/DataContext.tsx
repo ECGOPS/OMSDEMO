@@ -922,26 +922,46 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ...doc.data()
         })) as VITAsset[];
 
-        // Get offline data
-        const pendingAssets = await vitSyncService.getPendingVITAssets();
+        // Only get offline data if we're offline or if there are no Firestore assets
+        let pendingAssets: VITAsset[] = [];
+        if (!navigator.onLine || firestoreAssets.length === 0) {
+          pendingAssets = await vitSyncService.getPendingVITAssets();
+        }
         
-        // Merge Firestore and offline data
+        // Merge Firestore and offline data with duplicate prevention
         const assetMap = new Map<string, VITAsset>();
         
-        // Add Firestore assets
+        // Add Firestore assets first (these take precedence)
         firestoreAssets.forEach(asset => {
           assetMap.set(asset.id, asset);
         });
         
-        // Add pending assets that aren't in Firestore
+        // Add pending assets only if they're not already in Firestore
+        // Use a more robust duplicate detection based on unique identifiers
+        const firestoreAssetIds = new Set(firestoreAssets.map(asset => asset.id));
+        const firestoreAssetKeys = new Set(
+          firestoreAssets.map(asset => 
+            `${asset.serialNumber}_${asset.region}_${asset.district}`
+          )
+        );
+        
         pendingAssets.forEach(asset => {
-          if (!assetMap.has(asset.id)) {
+          const assetKey = `${asset.serialNumber}_${asset.region}_${asset.district}`;
+          
+          // Only add if not already in Firestore by ID or unique key
+          if (!firestoreAssetIds.has(asset.id) && !firestoreAssetKeys.has(assetKey)) {
             assetMap.set(asset.id, asset);
           }
         });
         
         // Convert map to array and update state
         const mergedAssets = Array.from(assetMap.values());
+        console.log('[DataContext] VIT assets updated:', {
+          firestoreCount: firestoreAssets.length,
+          pendingCount: pendingAssets.length,
+          mergedCount: mergedAssets.length,
+          isOnline: navigator.onLine
+        });
         setVITAssets(mergedAssets);
       } catch (error) {
         console.error("Error updating VIT assets:", error);
@@ -1174,8 +1194,37 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    const unsubscribe = onSnapshot(
+    // Create query with proper sorting by createdAt (which includes date and time)
+    let q = query(
       collection(db, "overheadLineInspections"),
+      orderBy("createdAt", "desc")
+    );
+
+    // Only apply filters if not system_admin or global_engineer
+    if (user.role !== "system_admin" && user.role !== "global_engineer") {
+      if (user.role === "district_engineer" || user.role === "technician" || user.role === "district_manager") {
+        q = query(
+          collection(db, "overheadLineInspections"),
+          where("district", "==", user.district),
+          orderBy("createdAt", "desc")
+        );
+      } else if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+        q = query(
+          collection(db, "overheadLineInspections"),
+          where("region", "==", user.region),
+          orderBy("createdAt", "desc")
+        );
+      }
+    }
+
+    console.log('[DataContext] Overhead line inspections query:', {
+      role: user.role,
+      district: user.district,
+      region: user.region
+    });
+
+    const unsubscribe = onSnapshot(
+      q,
       (snapshot) => {
         const inspections = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -1985,9 +2034,60 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    // Handle VIT asset sync events
+    const handleVITAssetSynced = (event: CustomEvent) => {
+      const { key, status, error } = event.detail;
+      console.log('[DataContext] VIT asset sync event:', { key, status, error });
+      
+      if (status === 'success') {
+        // Force refresh the VIT assets list to remove duplicates
+        setVITAssets(prevAssets => {
+          // Remove any duplicate assets that might still be in the list
+          const uniqueAssets = new Map<string, VITAsset>();
+          
+          prevAssets.forEach(asset => {
+            const assetKey = `${asset.serialNumber}_${asset.region}_${asset.district}`;
+            if (!uniqueAssets.has(assetKey)) {
+              uniqueAssets.set(assetKey, asset);
+            }
+          });
+          
+          return Array.from(uniqueAssets.values());
+        });
+      }
+    };
+
+    // Handle VIT data synced events
+    const handleVITDataSynced = (event: CustomEvent) => {
+      const { status } = event.detail;
+      console.log('[DataContext] VIT data synced event:', status);
+      
+      if (status === 'success') {
+        // Force refresh the VIT assets list
+        setVITAssets(prevAssets => {
+          // Remove any duplicate assets
+          const uniqueAssets = new Map<string, VITAsset>();
+          
+          prevAssets.forEach(asset => {
+            const assetKey = `${asset.serialNumber}_${asset.region}_${asset.district}`;
+            if (!uniqueAssets.has(assetKey)) {
+              uniqueAssets.set(assetKey, asset);
+            }
+          });
+          
+          return Array.from(uniqueAssets.values());
+        });
+      }
+    };
+
     window.addEventListener('online', handleOnline);
+    window.addEventListener('vitAssetSynced', handleVITAssetSynced as EventListener);
+    window.addEventListener('vitDataSynced', handleVITDataSynced as EventListener);
+    
     return () => {
       window.removeEventListener('online', handleOnline);
+      window.removeEventListener('vitAssetSynced', handleVITAssetSynced as EventListener);
+      window.removeEventListener('vitDataSynced', handleVITDataSynced as EventListener);
     };
   }, [isDBInitialized]);
 

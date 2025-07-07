@@ -550,6 +550,9 @@ export class VITSyncService {
 
     this.syncInProgress = true;
     this.syncQueue = this.syncQueue.then(async () => {
+      let successCount = 0;
+      let errorCount = 0;
+      
       try {
         const pendingAssets = await this.offlineStorage.getPendingAssets();
         console.log('[VITSync] Found', pendingAssets.length, 'assets to sync');
@@ -579,9 +582,11 @@ export class VITSyncService {
               detail: { key, status: 'success' } 
             }));
             
+            successCount++;
             console.log(`[VITSync] Successfully synced asset ${key}`);
           } catch (error: any) {
             console.error(`[VITSync] Failed to sync asset ${key}:`, error);
+            errorCount++;
             
             window.dispatchEvent(new CustomEvent('vitAssetSynced', { 
               detail: { 
@@ -592,9 +597,22 @@ export class VITSyncService {
             }));
           }
         }
+        
+        // Dispatch final sync completion event
+        const finalStatus = errorCount === 0 ? 'success' : 'partial';
+        window.dispatchEvent(new CustomEvent('vitDataSynced', { 
+          detail: { 
+            status: finalStatus,
+            successCount,
+            errorCount,
+            totalCount: pendingAssets.length
+          } 
+        }));
+        
+        console.log(`[VITSync] Sync completed: ${successCount} success, ${errorCount} errors`);
       } finally {
         this.syncInProgress = false;
-        console.log('[VITSync] Sync completed');
+        console.log('[VITSync] Sync process finished');
       }
     });
 
