@@ -293,4 +293,146 @@ export class RateLimiter {
     if (!attempt) return this.maxAttempts;
     return Math.max(0, this.maxAttempts - attempt.count);
   }
-} 
+}
+
+/**
+ * Sanitize Firebase authentication responses to prevent sensitive data exposure
+ */
+export const sanitizeAuthResponse = (response: any): any => {
+  if (!response) return response;
+  
+  // Create a sanitized copy
+  const sanitized = { ...response };
+  
+  // Remove sensitive fields
+  const sensitiveFields = [
+    'passwordHash',
+    'passwordUpdatedAt',
+    'validSince',
+    'lastLoginAt',
+    'lastRefreshAt',
+    'providerUserInfo',
+    'localId'
+  ];
+  
+  sensitiveFields.forEach(field => {
+    if (sanitized[field] !== undefined) {
+      delete sanitized[field];
+    }
+  });
+  
+  // If it's a users array, sanitize each user
+  if (Array.isArray(sanitized.users)) {
+    sanitized.users = sanitized.users.map((user: any) => {
+      const sanitizedUser = { ...user };
+      sensitiveFields.forEach(field => {
+        if (sanitizedUser[field] !== undefined) {
+          delete sanitizedUser[field];
+        }
+      });
+      return sanitizedUser;
+    });
+  }
+  
+  return sanitized;
+};
+
+/**
+ * Intercept and sanitize network requests to prevent sensitive data exposure
+ */
+export const setupNetworkInterception = () => {
+  if (typeof window === 'undefined') return;
+  
+  // Store original fetch
+  const originalFetch = window.fetch;
+  
+  // Override fetch to intercept responses
+  window.fetch = async function(...args) {
+    const response = await originalFetch.apply(this, args);
+    
+    // Check if this is a Firebase Identity Toolkit request
+    const url = args[0] as string;
+    if (typeof url === 'string' && url.includes('identitytoolkit.googleapis.com')) {
+      // Only intercept GET requests for account info
+      if (args[1] && typeof args[1] === 'object' && args[1].method === 'GET') {
+        // Clone the response to avoid modifying the original
+        const clonedResponse = response.clone();
+        
+        try {
+          const data = await clonedResponse.json();
+          
+          // Only sanitize if it's an account info response
+          if (data && data.kind === 'identitytoolkit#GetAccountInfoResponse') {
+            // Log sanitized version only in development
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('[Security] Firebase Identity Toolkit response intercepted and sanitized');
+              console.log('[Security] Sanitized response:', sanitizeAuthResponse(data));
+            }
+            
+            // Return a new response with sanitized data
+            return new Response(JSON.stringify(sanitizeAuthResponse(data)), {
+              status: response.status,
+              statusText: response.statusText,
+              headers: response.headers
+            });
+          }
+        } catch (error) {
+          // If we can't parse the response, return the original
+          console.warn('[Security] Error parsing response:', error);
+        }
+      }
+    }
+    
+    return response;
+  };
+};
+
+/**
+ * Setup security measures for Firebase authentication
+ */
+export const setupFirebaseSecurity = () => {
+  // Disable network interception for now - it's causing issues
+  // setupNetworkInterception();
+  
+  // Override console.log in production to prevent sensitive data logging
+  if (process.env.NODE_ENV === 'production') {
+    const originalLog = console.log;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    
+    console.log = function(...args) {
+      const sanitizedArgs = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          return sanitizeAuthResponse(arg);
+        }
+        return arg;
+      });
+      originalLog.apply(console, sanitizedArgs);
+    };
+    
+    console.warn = function(...args) {
+      const sanitizedArgs = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          return sanitizeAuthResponse(arg);
+        }
+        return arg;
+      });
+      originalWarn.apply(console, sanitizedArgs);
+    };
+    
+    console.error = function(...args) {
+      const sanitizedArgs = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          return sanitizeAuthResponse(arg);
+        }
+        return arg;
+      });
+      originalError.apply(console, sanitizedArgs);
+    };
+  }
+  
+  // Add a warning about the Firebase data exposure
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('[Security] Firebase authentication data may be visible in network console. This is normal Firebase behavior but should be monitored in production.');
+  }
+}; 

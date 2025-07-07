@@ -6,11 +6,15 @@ import { register as registerServiceWorker } from './serviceWorkerRegistration'
 import { db } from './config/firebase'
 import { ThemeProvider } from 'next-themes'
 import LoggingService from './services/LoggingService'
+import { setupFirebaseSecurity } from './utils/security'
 
 // Initialize Firebase
 if (process.env.NODE_ENV === 'development') {
   console.log('Firebase initialized:', db)
 }
+
+// Setup Firebase security measures
+setupFirebaseSecurity();
 
 // Override console methods in production
 if (process.env.NODE_ENV === 'production') {
