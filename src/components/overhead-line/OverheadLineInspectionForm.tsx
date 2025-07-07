@@ -2083,7 +2083,13 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     setIsCapturingAfter(true);
     setIsVideoReadyAfter(false);
     try {
-      cameraStreamAfter = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraStreamAfter = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
       if (videoRefAfter.current) {
         videoRefAfter.current.srcObject = cameraStreamAfter;
         videoRefAfter.current.onloadedmetadata = () => setIsVideoReadyAfter(true);
