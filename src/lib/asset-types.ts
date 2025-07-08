@@ -21,6 +21,7 @@ export interface LoadMonitoringData extends BaseRecord {
   substationName: string;
   substationNumber: string;
   location: string;
+  gpsLocation?: string;
   rating: number;
   peakLoadStatus: 'day' | 'night';
   
@@ -56,6 +57,8 @@ export interface LoadMonitoringData extends BaseRecord {
   // Sync Information
   originalOfflineId?: string;
   syncStatus?: 'pending' | 'synced' | 'failed';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type ConditionStatus = 'good' | 'bad';

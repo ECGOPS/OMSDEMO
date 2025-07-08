@@ -387,6 +387,7 @@ export default function EditLoadMonitoringPage() {
       substationName: formData.substationName,
       substationNumber: formData.substationNumber,
       location: formData.location || "",
+      gpsLocation: formData.gpsLocation || "", // Add gpsLocation to completeData
       rating: formData.rating,
       peakLoadStatus: formData.peakLoadStatus || "day",
       feederLegs: processedFeederLegs,
@@ -409,7 +410,9 @@ export default function EditLoadMonitoringPage() {
       createdBy: formData.createdBy || {
         id: user?.id || '',
         name: user?.name || 'Unknown'
-      }
+      },
+      createdAt: formData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     if (updateLoadMonitoringRecord) {
@@ -535,6 +538,42 @@ export default function EditLoadMonitoringPage() {
                       onChange={(e) => handleInputChange('location', e.target.value)}
                       required
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gpsLocation">GPS Location (Latitude, Longitude)</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="gpsLocation"
+                        type="text"
+                        placeholder="e.g., 7.123456, -1.234567"
+                        value={formData.gpsLocation || ''}
+                        onChange={(e) => handleInputChange('gpsLocation', e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                const latitude = position.coords.latitude.toFixed(6);
+                                const longitude = position.coords.longitude.toFixed(6);
+                                handleInputChange('gpsLocation', `${latitude}, ${longitude}`);
+                              },
+                              (error) => {
+                                toast.error('Unable to retrieve your location.');
+                              },
+                              { enableHighAccuracy: true }
+                            );
+                          } else {
+                            toast.error('Geolocation is not supported by your browser.');
+                          }
+                        }}
+                      >
+                        Get Location
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="rating">Rating (KVA)</Label>

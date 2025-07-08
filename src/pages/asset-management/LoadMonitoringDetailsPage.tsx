@@ -256,6 +256,7 @@ export default function LoadMonitoringDetailsPage() {
                  <DetailItem label="Substation Name" value={record.substationName} />
                  <DetailItem label="Substation Number" value={record.substationNumber} />
                  <DetailItem label="Location" value={record.location} />
+                 <DetailItem label="GPS Location" value={record.gpsLocation || 'N/A'} />
                  <DetailItem label="Rating (KVA)" value={record.rating} />
                  <DetailItem label="Peak Load Status" value={record.peakLoadStatus} />
                  <div className="flex flex-col space-y-1">

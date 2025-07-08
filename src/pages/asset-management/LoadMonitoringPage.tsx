@@ -267,6 +267,8 @@ export default function LoadMonitoringPage() {
       currentY -= 15;
       await page.drawText(`Peak Load Status: ${record.peakLoadStatus}`, { x: 50, y: currentY, size: 10 });
       await page.drawText(`Created By: ${record.createdBy?.name || 'Unknown'}`, { x: 300, y: currentY, size: 10 });
+      currentY -= 15;
+      await page.drawText(`GPS Location: ${record.gpsLocation || 'N/A'}`, { x: 50, y: currentY, size: 10 });
       currentY -= 25;
 
       // Add feeder legs information

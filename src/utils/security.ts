@@ -391,8 +391,8 @@ export const setupNetworkInterception = () => {
  * Setup security measures for Firebase authentication
  */
 export const setupFirebaseSecurity = () => {
-  // Disable network interception for now - it's causing issues
-  // setupNetworkInterception();
+  // Enable network interception to prevent sensitive data exposure
+  setupNetworkInterception();
   
   // Override console.log in production to prevent sensitive data logging
   if (process.env.NODE_ENV === 'production') {

@@ -38,6 +38,7 @@ export default function CreateLoadMonitoringPage() {
     substationName: "",
     substationNumber: "",
     location: "",
+    gpsLocation: "", // Add gpsLocation
     rating: undefined,
     peakLoadStatus: "day",
     feederLegs: [
@@ -177,14 +178,12 @@ export default function CreateLoadMonitoringPage() {
   };
 
   const updateFeederLeg = (id: string, field: keyof FeederLeg, value: string) => {
-    // Allow empty string temporarily, parse to number later or keep as 0 if empty
-    const numericValue = value === '' ? 0 : parseFloat(value);
-     // We might allow temporary NaN if user is typing, handle validation on submit
-
     setFormData(prev => ({
       ...prev,
       feederLegs: prev.feederLegs?.map(leg =>
-        leg.id === id ? { ...leg, [field]: isNaN(numericValue) ? value : numericValue } : leg // Store string if NaN for typing
+        leg.id === id
+          ? { ...leg, [field]: value === '' ? '' : (isNaN(Number(value)) ? value : Number(value)) }
+          : leg
       ) || []
     }));
   };
@@ -258,17 +257,7 @@ export default function CreateLoadMonitoringPage() {
     const rating = Number(formData.rating); // Will be NaN if formData.rating is undefined
     const feederLegs = formData.feederLegs || [];
 
-    // Ensure all feeder leg currents are valid numbers before calculating
-    const areFeederCurrentsValid = feederLegs.every(leg =>
-        typeof leg.redPhaseCurrent === 'number' && !isNaN(leg.redPhaseCurrent) &&
-        typeof leg.yellowPhaseCurrent === 'number' && !isNaN(leg.yellowPhaseCurrent) &&
-        typeof leg.bluePhaseCurrent === 'number' && !isNaN(leg.bluePhaseCurrent) &&
-        typeof leg.neutralCurrent === 'number' && !isNaN(leg.neutralCurrent)
-    );
-
-
-    if (isNaN(rating) || rating <= 0 || feederLegs.length === 0 || !areFeederCurrentsValid) {
-      // Reset calculations if rating is invalid, 0, or no feeder legs or currents are invalid
+    if (isNaN(rating) || rating <= 0 || feederLegs.length === 0) {
       setLoadInfo({
         ratedLoad: 0,
         redPhaseBulkLoad: 0,
@@ -290,10 +279,11 @@ export default function CreateLoadMonitoringPage() {
       return;
     }
 
-    // Proceed with calculations only if inputs are valid
-    const redPhaseBulkLoad = feederLegs.reduce((sum, leg) => sum + Number(leg.redPhaseCurrent), 0);
-    const yellowPhaseBulkLoad = feederLegs.reduce((sum, leg) => sum + Number(leg.yellowPhaseCurrent), 0);
-    const bluePhaseBulkLoad = feederLegs.reduce((sum, leg) => sum + Number(leg.bluePhaseCurrent), 0);
+    // Use 0 for any empty or invalid phase/neutral values
+    const safeNumber = (val: any) => (val === '' || isNaN(Number(val))) ? 0 : Number(val);
+    const redPhaseBulkLoad = feederLegs.reduce((sum, leg) => sum + safeNumber(leg.redPhaseCurrent), 0);
+    const yellowPhaseBulkLoad = feederLegs.reduce((sum, leg) => sum + safeNumber(leg.yellowPhaseCurrent), 0);
+    const bluePhaseBulkLoad = feederLegs.reduce((sum, leg) => sum + safeNumber(leg.bluePhaseCurrent), 0);
 
     const averageCurrent = (redPhaseBulkLoad + yellowPhaseBulkLoad + bluePhaseBulkLoad) / 3;
     const ratedLoad = rating * 1.334;
@@ -415,6 +405,7 @@ export default function CreateLoadMonitoringPage() {
       substationName: formData.substationName,
       substationNumber: formData.substationNumber,
       location: formData.location || "",
+      gpsLocation: formData.gpsLocation || "", // Include gpsLocation
       rating: formData.rating,
       peakLoadStatus: formData.peakLoadStatus || "day",
       feederLegs: processedFeederLegs,
@@ -437,7 +428,9 @@ export default function CreateLoadMonitoringPage() {
       createdBy: {
         id: user?.id || '',
         name: user?.name || 'Unknown'
-      }
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
 
@@ -565,6 +558,42 @@ export default function CreateLoadMonitoringPage() {
                       onChange={(e) => handleInputChange('location', e.target.value)}
                       required
                     />
+                  </div>
+                  {/* GPS Location Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="gpsLocation">GPS Location (Latitude, Longitude)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="gpsLocation"
+                        type="text"
+                        placeholder="e.g., 7.12345, -1.23456"
+                        value={formData.gpsLocation || ''}
+                        onChange={(e) => handleInputChange('gpsLocation', e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                const latitude = position.coords.latitude.toFixed(6);
+                                const longitude = position.coords.longitude.toFixed(6);
+                                handleInputChange('gpsLocation', `${latitude}, ${longitude}`);
+                              },
+                              (error) => {
+                                toast.error('Unable to retrieve your location.');
+                              },
+                              { enableHighAccuracy: true }
+                            );
+                          } else {
+                            toast.error('Geolocation is not supported by your browser.');
+                          }
+                        }}
+                      >
+                        Get Location
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="rating">Rating (KVA)</Label>
