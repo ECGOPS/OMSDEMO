@@ -413,6 +413,10 @@ export default function EditLoadMonitoringPage() {
       },
       createdAt: formData.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      updatedBy: {
+        id: user?.id || '',
+        name: user?.name || 'Unknown'
+      },
     };
 
     if (updateLoadMonitoringRecord) {

@@ -14,18 +14,19 @@ import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 
 // Helper function to format time
-const formatTime = (timeStr: string) => {
+const formatTime = (timeStr?: string) => {
+  if (!timeStr || typeof timeStr !== 'string' || !/^\d{1,2}:\d{2}$/.test(timeStr)) {
+    return 'N/A';
+  }
   try {
-    // Create a base date to work with (today's date)
-    const baseDate = new Date();
-    // Parse the time string and set it on today's date
     const [hours, minutes] = timeStr.split(':').map(Number);
-    baseDate.setHours(hours, minutes);
-    // Format the time in 12-hour format with AM/PM
+    if (isNaN(hours) || isNaN(minutes)) return 'N/A';
+    const baseDate = new Date();
+    baseDate.setHours(hours, minutes, 0, 0);
     return format(baseDate, 'h:mm a');
   } catch (error) {
     console.error('Error formatting time:', error, timeStr);
-    return timeStr; // Return original string if parsing fails
+    return 'N/A';
   }
 };
 
@@ -133,7 +134,17 @@ export default function LoadMonitoringDetailsPage() {
           navigate("/asset-management/load-monitoring");
           return;
         }
-        
+
+        // Convert Firestore Timestamp to ISO string if needed
+        const convertTimestamp = (val: any) => {
+          if (val && typeof val === 'object' && typeof val.toDate === 'function') {
+            return val.toDate().toISOString();
+          }
+          return val;
+        };
+        fetchedRecord.updatedAt = convertTimestamp(fetchedRecord.updatedAt);
+        fetchedRecord.createdAt = convertTimestamp(fetchedRecord.createdAt);
+
         setRecord(fetchedRecord);
         setFormattedPercentageLoad(fetchedRecord.percentageLoad?.toFixed(2) ?? "0.00");
         setWarningLevels(calculateWarningLevels(fetchedRecord));
@@ -272,6 +283,7 @@ export default function LoadMonitoringDetailsPage() {
                    </Badge>
                  </div>
                  <DetailItem label="Created By" value={record.createdBy?.name || 'Unknown'} />
+                 <DetailItem label="Updated By" value={`${record.updatedBy?.name || record.createdBy?.name || 'Unknown'} (${isValidDate(record.updatedAt) ? format(new Date(record.updatedAt), 'MMM d, yyyy h:mm a') : 'N/A'})`} />
               </CardContent>
             </Card>
 
@@ -355,4 +367,11 @@ export default function LoadMonitoringDetailsPage() {
       </div>
     </Layout>
   );
+}
+
+// Helper to check if a date string is valid
+function isValidDate(dateStr?: string) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  return !isNaN(d.getTime());
 }

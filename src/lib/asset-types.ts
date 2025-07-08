@@ -59,6 +59,10 @@ export interface LoadMonitoringData extends BaseRecord {
   syncStatus?: 'pending' | 'synced' | 'failed';
   createdAt: string;
   updatedAt: string;
+  updatedBy?: {
+    id: string;
+    name: string;
+  };
 }
 
 export type ConditionStatus = 'good' | 'bad';
