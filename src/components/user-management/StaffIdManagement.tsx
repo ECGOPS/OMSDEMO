@@ -498,7 +498,7 @@ Admin User,system_admin,,,ECGADMIN`;
       toast.info('Testing Share API...');
       await Share.share({
         title: 'Test Share',
-        text: 'This is a test share from ECG OMS app.',
+        text: 'This is a test share from ECG NMS app.',
         dialogTitle: 'Share Test'
       });
       toast.success('Share dialog opened!');

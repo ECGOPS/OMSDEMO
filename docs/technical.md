@@ -1,4 +1,4 @@
-# ECG OMS Technical Documentation
+# ECG NMS Technical Documentation
 
 ## Table of Contents
 1. [System Architecture](#system-architecture)
@@ -812,7 +812,7 @@ npm run type-check
 ```env
 # Application
 VITE_API_URL=https://api.ecg-oms.com
-VITE_APP_NAME=ECG OMS
+VITE_APP_NAME=ECG NMS
 VITE_ENV=production
 
 # Database

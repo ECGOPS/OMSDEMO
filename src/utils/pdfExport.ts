@@ -775,7 +775,7 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
         currentY = height - margin;
       }
 
-      currentPage.drawText('Inspection Photos:', {
+      currentPage.drawText('Before Inspection Photos:', {
         x: margin,
         y: currentY,
         size: 14,
@@ -784,7 +784,7 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
       });
       currentY -= lineHeight * 2;
 
-      // Process each image
+      // Process each before image
       for (const imageUrl of inspection.images) {
         try {
           // Fetch the image
@@ -831,7 +831,77 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
 
           currentY -= scaledHeight + lineHeight;
         } catch (error) {
-          console.error('Error processing image:', error);
+          console.error('Error processing before image:', error);
+          // Continue with the next image if one fails
+          continue;
+        }
+      }
+    }
+
+    // Add after inspection photos if available (for secondary substation inspections)
+    if ((inspection as any).afterImages && (inspection as any).afterImages.length > 0) {
+      if (currentY < margin + lineHeight * 3) {
+        currentPage = pdfDoc.addPage([595.28, 841.89]);
+        currentY = height - margin;
+      }
+
+      currentPage.drawText('After Inspection Photos:', {
+        x: margin,
+        y: currentY,
+        size: 14,
+        color: rgb(0, 0.2, 0.4),
+        font: boldFont,
+      });
+      currentY -= lineHeight * 2;
+
+      // Process each after image
+      for (const imageUrl of (inspection as any).afterImages) {
+        try {
+          // Fetch the image
+          const response = await fetch(imageUrl);
+          const imageBytes = await response.arrayBuffer();
+          
+          // Embed the image in the PDF
+          const image = await pdfDoc.embedJpg(imageBytes);
+          
+          // Calculate image dimensions to fit the page width while maintaining aspect ratio
+          const maxWidth = width - (margin * 2);
+          const maxHeight = 300; // Maximum height for each image
+          const imageWidth = image.width;
+          const imageHeight = image.height;
+          
+          let scaledWidth = imageWidth;
+          let scaledHeight = imageHeight;
+          
+          if (scaledWidth > maxWidth) {
+            const ratio = maxWidth / scaledWidth;
+            scaledWidth = maxWidth;
+            scaledHeight = scaledHeight * ratio;
+          }
+          
+          if (scaledHeight > maxHeight) {
+            const ratio = maxHeight / scaledHeight;
+            scaledHeight = maxHeight;
+            scaledWidth = scaledWidth * ratio;
+          }
+
+          // Check if we need a new page
+          if (currentY - scaledHeight < margin + lineHeight * 3) {
+            currentPage = pdfDoc.addPage([595.28, 841.89]);
+            currentY = height - margin;
+          }
+
+          // Draw the image
+          currentPage.drawImage(image, {
+            x: margin,
+            y: currentY - scaledHeight,
+            width: scaledWidth,
+            height: scaledHeight,
+          });
+
+          currentY -= scaledHeight + lineHeight;
+        } catch (error) {
+          console.error('Error processing after image:', error);
           // Continue with the next image if one fails
           continue;
         }

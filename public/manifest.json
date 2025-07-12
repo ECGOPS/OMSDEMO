@@ -1,7 +1,7 @@
 {
-  "name": "ECG Outage Management System",
-  "short_name": "ECG OMS",
-  "description": "Outage Management System for ECG",
+  "name": "ECG Network Management System",
+  "short_name": "ECG NMS",
+  "description": "Network Management System for ECG",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

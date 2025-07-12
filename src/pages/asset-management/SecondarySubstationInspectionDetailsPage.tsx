@@ -118,11 +118,11 @@ export default function SecondarySubstationInspectionDetailsPage({ inspection }:
         </CardContent>
       </Card>
 
-      {/* Photo Section */}
+      {/* Before Photos Section */}
       {inspection.images && inspection.images.length > 0 && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Photos</CardTitle>
+            <CardTitle>Before Inspection Photos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -130,7 +130,30 @@ export default function SecondarySubstationInspectionDetailsPage({ inspection }:
                 <div key={index} className="relative group">
                   <img
                     src={image}
-                    alt={`Inspection image ${index + 1}`}
+                    alt={`Before inspection image ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-lg cursor-pointer"
+                    onClick={() => setShowFullImage(image)}
+                  />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* After Photos Section */}
+      {inspection.afterImages && inspection.afterImages.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>After Inspection Photos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {inspection.afterImages.map((image, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={image}
+                    alt={`After inspection image ${index + 1}`}
                     className="w-full h-32 object-cover rounded-lg cursor-pointer"
                     onClick={() => setShowFullImage(image)}
                   />

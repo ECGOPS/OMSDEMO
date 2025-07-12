@@ -190,4 +190,5 @@ export interface SecondarySubstationInspection {
   switchgear: InspectionItem[];
   paintWork: InspectionItem[];
   images?: string[];
+  afterImages?: string[];
 }

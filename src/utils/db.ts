@@ -48,7 +48,7 @@ export async function initDB() {
         console.log('Starting database initialization...');
         
         // Create new database with version 4
-        db = await openDB('ecg-oms-db', 4, {
+        db = await openDB('ecg-nms-db', 4, {
           upgrade(db, oldVersion, newVersion) {
             console.log(`Upgrading database from version ${oldVersion} to ${newVersion}...`);
             

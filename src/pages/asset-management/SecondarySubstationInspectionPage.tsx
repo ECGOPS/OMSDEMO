@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import Webcam from "react-webcam";
+import { processImageWithMetadata, captureImageWithMetadata } from "@/utils/imageUtils";
 
 interface Category {
   id: string;
@@ -60,6 +61,13 @@ export default function SecondarySubstationInspectionPage() {
   const webcamRef = useRef<Webcam>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  // Add state for after-correction camera
+  const [isCapturingAfter, setIsCapturingAfter] = useState(false);
+  const [afterImages, setAfterImages] = useState<string[]>([]);
+  const videoRefAfter = useRef<HTMLVideoElement>(null);
+  const [isVideoReadyAfter, setIsVideoReadyAfter] = useState(false);
+  let cameraStreamAfter: MediaStream | null = null;
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | undefined>(undefined);
   const [formData, setFormData] = useState<SecondarySubstationInspection>({
     id: id || uuidv4(),
     date: new Date().toISOString().split('T')[0],
@@ -109,29 +117,49 @@ export default function SecondarySubstationInspectionPage() {
     toast.error("Failed to access camera. Please check your camera permissions.");
   };
 
-  // Capture image from webcam
-  const captureImage = () => {
+  // Capture image from webcam with metadata
+  const captureImage = async () => {
     if (webcamRef.current) {
       const imageSrc = webcamRef.current.getScreenshot();
       if (imageSrc) {
-        setCapturedImages(prev => [...prev, imageSrc]);
-        setIsCapturing(false);
-        setCameraError(null);
+        try {
+          const processedImage = await processImageWithMetadata(
+            imageSrc,
+            formData.gpsLocation,
+            gpsAccuracy
+          );
+          setCapturedImages(prev => [...prev, processedImage]);
+          setIsCapturing(false);
+          setCameraError(null);
+        } catch (error) {
+          console.error('Error processing image:', error);
+          toast.error('Failed to process image with metadata');
+        }
       }
     }
   };
 
-  // Handle file upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file upload with metadata
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => {
+      for (const file of Array.from(files)) {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          setCapturedImages(prev => [...prev, reader.result as string]);
+        reader.onloadend = async () => {
+          try {
+            const processedImage = await processImageWithMetadata(
+              reader.result as string,
+              formData.gpsLocation,
+              gpsAccuracy
+            );
+            setCapturedImages(prev => [...prev, processedImage]);
+          } catch (error) {
+            console.error('Error processing uploaded image:', error);
+            toast.error('Failed to process uploaded image with metadata');
+          }
         };
         reader.readAsDataURL(file);
-      });
+      }
     }
   };
 
@@ -139,6 +167,86 @@ export default function SecondarySubstationInspectionPage() {
   const removeImage = (index: number) => {
     setCapturedImages(prev => prev.filter((_, i) => i !== index));
   };
+
+  // Add functions for after images with metadata
+  const handleAfterImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      for (const file of Array.from(files)) {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          try {
+            const processedImage = await processImageWithMetadata(
+              reader.result as string,
+              formData.gpsLocation,
+              gpsAccuracy
+            );
+            setAfterImages(prev => [...prev, processedImage]);
+          } catch (error) {
+            console.error('Error processing uploaded after image:', error);
+            toast.error('Failed to process uploaded after image with metadata');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  const removeAfterImage = (index: number) => {
+    setAfterImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const startCameraAfter = async () => {
+    setIsCapturingAfter(true);
+    setIsVideoReadyAfter(false);
+    try {
+      cameraStreamAfter = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      if (videoRefAfter.current) {
+        videoRefAfter.current.srcObject = cameraStreamAfter;
+        videoRefAfter.current.onloadedmetadata = () => setIsVideoReadyAfter(true);
+      }
+    } catch (err) {
+      setIsCapturingAfter(false);
+      toast.error("Failed to access camera for after-correction photo.");
+    }
+  };
+
+  const stopCameraAfter = () => {
+    setIsCapturingAfter(false);
+    setIsVideoReadyAfter(false);
+    if (videoRefAfter.current) {
+      videoRefAfter.current.srcObject = null;
+    }
+    if (cameraStreamAfter) {
+      cameraStreamAfter.getTracks().forEach(track => track.stop());
+      cameraStreamAfter = null;
+    }
+  };
+
+  const captureAfterImage = async () => {
+    if (videoRefAfter.current) {
+      try {
+        const processedImage = captureImageWithMetadata(
+          videoRefAfter.current,
+          formData.gpsLocation,
+          gpsAccuracy
+        );
+        setAfterImages(prev => [...prev, processedImage]);
+        stopCameraAfter();
+      } catch (error) {
+        console.error('Error capturing after image:', error);
+        toast.error('Failed to capture after image with metadata');
+      }
+    }
+  };
+
+
 
   // Update formData when capturedImages changes
   useEffect(() => {
@@ -150,68 +258,174 @@ export default function SecondarySubstationInspectionPage() {
 
   // Add the photo section to the form
   const renderPhotoSection = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Photos</CardTitle>
-        <CardDescription>Take or upload photos of the inspection</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsCapturing(true)}
-              className="w-full sm:flex-1"
-            >
-              <Camera className="mr-2 h-4 w-4" />
-              Take Photo
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:flex-1"
-              onClick={() => document.getElementById('file-upload')?.click()}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Photos
-              <input
-                id="file-upload"
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-            </Button>
-          </div>
-
-          {capturedImages.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {capturedImages.map((image, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={image}
-                    alt={`Inspection image ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg cursor-pointer"
-                    onClick={() => setShowFullImage(image)}
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => removeImage(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+    <div className="space-y-6">
+      {/* Before Inspection Photos */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Before Inspection Photos</CardTitle>
+          <CardDescription>Take or upload photos of the inspection</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCapturing(true)}
+                className="w-full sm:flex-1"
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Take Photo
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:flex-1"
+                onClick={() => document.getElementById('file-upload')?.click()}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Photos
+                <input
+                  id="file-upload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </Button>
             </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+
+            {capturedImages.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {capturedImages.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={image}
+                      alt={`Inspection image ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg cursor-pointer"
+                      onClick={() => setShowFullImage(image)}
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeImage(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* After Inspection Photos - Only show if there are before images */}
+      {capturedImages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>After Inspection Correction Photos</CardTitle>
+            <CardDescription>Take or upload photos after corrections have been made</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={startCameraAfter}
+                  disabled={isCapturingAfter}
+                  className="w-full sm:flex-1"
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Take Photo
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:flex-1"
+                  onClick={() => document.getElementById('after-file-upload')?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Photos
+                  <input
+                    id="after-file-upload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleAfterImageUpload}
+                  />
+                </Button>
+              </div>
+
+              {/* After Camera View */}
+              {isCapturingAfter && (
+                <div className="relative border-2 border-gray-300 rounded-lg p-2">
+                  <video
+                    ref={videoRefAfter}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full max-w-md rounded-lg bg-black"
+                    style={{
+                      transform: 'scaleX(-1)',
+                      minHeight: '300px',
+                      objectFit: 'cover'
+                    }}
+                  />
+                  {isVideoReadyAfter && (
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                      <Button
+                        type="button"
+                        onClick={captureAfterImage}
+                        className="bg-white text-black hover:bg-gray-100"
+                      >
+                        Capture
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={stopCameraAfter}
+                        variant="destructive"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {afterImages.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {afterImages.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={image}
+                        alt={`After Correction image ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg cursor-pointer"
+                        onClick={() => setShowFullImage(image)}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeAfterImage(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 
   // Define the inspection items based on the provided list
@@ -435,7 +649,7 @@ export default function SecondarySubstationInspectionPage() {
   useEffect(() => {
     if (regionId && id) {
       const inspection = getSavedInspection(id);
-      if (inspection && inspection.type === "secondary") {
+      if (inspection && String(inspection.type) === "secondary") {
         const district = districts.find(d => d.id === inspection.districtId);
         if (district) {
           setDistrictId(district.id);
@@ -498,6 +712,16 @@ export default function SecondarySubstationInspectionPage() {
           siteCondition: initialFormData["site-condition"],
           type: "secondary"
         }));
+
+        // Load captured images and after images if they exist
+        if (inspection.images && inspection.images.length > 0) {
+          setCapturedImages(inspection.images);
+        }
+        // Cast to SecondarySubstationInspection to access afterImages
+        const secondaryInspection = inspection as unknown as SecondarySubstationInspection;
+        if (secondaryInspection.afterImages && secondaryInspection.afterImages.length > 0) {
+          setAfterImages(secondaryInspection.afterImages);
+        }
         return;
       }
     }
@@ -566,7 +790,8 @@ export default function SecondarySubstationInspectionPage() {
         createdAt: formData.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         inspectedBy: formData.inspectedBy || user?.name || "Unknown",
-        images: capturedImages // Add the captured images to the inspection data
+        images: capturedImages, // Add the captured images to the inspection data
+        afterImages: afterImages // Add the after images to the inspection data
       };
 
       console.log('Saving inspection data:', inspectionData); // Debug log
@@ -810,6 +1035,7 @@ export default function SecondarySubstationInspectionPage() {
                                                         const preciseLat = latitude.toFixed(6);
                                                         const preciseLong = longitude.toFixed(6);
                                                         handleInputChange('gpsLocation', `${preciseLat}, ${preciseLong}`);
+                                                        setGpsAccuracy(accuracy); // Store accuracy for image metadata
                                                         if (accuracy > 20) {
                                                             toast.warning(`GPS accuracy is poor (±${accuracy.toFixed(1)} meters). Please try again for a better reading.`);
                                                         } else {

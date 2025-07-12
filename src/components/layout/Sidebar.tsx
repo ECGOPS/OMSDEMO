@@ -235,7 +235,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         <Link to="/" className="flex items-center gap-2">
           <img src="/ecg-images/ecg-logo.png" alt="ECG Logo" className="h-8 w-auto" />
           {!isCollapsed && (
-            <span className="font-bold text-sm">ECG OMS</span>
+            <span className="font-bold text-sm">ECG NMS</span>
           )}
         </Link>
         <Button

@@ -2,7 +2,7 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 export type StoreName = 'vitAssets' | 'vitInspections' | 'pendingSync';
 
-interface ECGOMSDatabase extends DBSchema {
+interface ECGNMSDatabase extends DBSchema {
   vitAssets: {
     key: string;
     value: any;
@@ -22,15 +22,15 @@ interface ECGOMSDatabase extends DBSchema {
   };
 }
 
-let db: IDBPDatabase<ECGOMSDatabase> | null = null;
+let db: IDBPDatabase<ECGNMSDatabase> | null = null;
 
-const DB_NAME = 'ecg-oms-db';
+const DB_NAME = 'ecg-nms-db';
 const DB_VERSION = 1;
 
 export async function initDB() {
   if (db) return db;
 
-  db = await openDB<ECGOMSDatabase>(DB_NAME, DB_VERSION, {
+  db = await openDB<ECGNMSDatabase>(DB_NAME, DB_VERSION, {
     upgrade(database) {
       // Create object stores
       if (!database.objectStoreNames.contains('vitAssets')) {

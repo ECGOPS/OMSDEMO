@@ -1,7 +1,7 @@
-# ECG OMS - Power Distribution Asset Management System
+# ECG NMS - Power Distribution Asset Management System
 
 ## Overview
-ECG OMS is a comprehensive asset management and fault tracking system designed for power distribution networks. It provides real-time asset inspection, fault tracking, advanced analytics, and detailed reporting capabilities for utility companies and power distribution operators.
+ECG NMS is a comprehensive asset management and fault tracking system designed for power distribution networks. It provides real-time asset inspection, fault tracking, advanced analytics, and detailed reporting capabilities for utility companies and power distribution operators.
 
 ## Key Features
 
@@ -60,8 +60,8 @@ ECG OMS is a comprehensive asset management and fault tracking system designed f
 ## Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/ECGOPS/OMS.git
-   cd OMS
+   git clone https://github.com/ECGOPS/NMS.git
+   cd NMS
    ```
 
 2. Install dependencies:
@@ -138,6 +138,6 @@ For support and inquiries, please contact:
 - Email: afiifi@ecggh.com
 - Phone: +233245003731
 
-# OPSOMS
+# OPSNMS
 
-Test sync with OMSDEMO repository.
+Test sync with NMSDEMO repository.

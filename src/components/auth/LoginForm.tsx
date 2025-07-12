@@ -81,7 +81,7 @@ export function LoginForm() {
             className="h-12 sm:h-16 w-auto mx-auto"
           />
         </div>
-        <CardTitle className="text-xl sm:text-2xl">Login to ECG Outage Management System</CardTitle>
+        <CardTitle className="text-xl sm:text-2xl">Login to ECG Network Management System</CardTitle>
         <CardDescription className="text-sm">
           Enter your credentials to access your account
         </CardDescription>

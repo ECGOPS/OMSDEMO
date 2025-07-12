@@ -207,7 +207,7 @@ export function SignupForm() {
       <CardHeader className="space-y-1 sm:space-y-2">
         <CardTitle className="text-xl sm:text-2xl">Create an Account</CardTitle>
         <CardDescription className="text-sm">
-          Sign up to access ECG Outage Management System
+          Sign up to access ECG Network Management System
         </CardDescription>
       </CardHeader>
       <CardContent>

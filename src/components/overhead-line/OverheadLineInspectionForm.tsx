@@ -25,6 +25,7 @@ import { OfflineInspectionService } from '@/services/OfflineInspectionService';
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { FeederService } from "@/services/FeederService";
+import { processImageWithMetadata, captureImageWithMetadata } from "@/utils/imageUtils";
 
 interface OverheadLineInspectionFormProps {
   inspection?: OverheadLineInspection | null;
@@ -70,6 +71,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const videoRefAfter = useRef<HTMLVideoElement>(null);
   const [isVideoReadyAfter, setIsVideoReadyAfter] = useState(false);
   let cameraStreamAfter: MediaStream | null = null;
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | undefined>(undefined);
   
   const feederService = FeederService.getInstance();
 
@@ -321,12 +323,13 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, accuracy } = position.coords;
         setFormData(prev => ({ ...prev, latitude, longitude }));
+        setGpsAccuracy(accuracy); // Store accuracy for image metadata
         setIsGettingLocation(false);
         toast({
           title: "Success",
-          description: "Location obtained successfully!",
+          description: `Location obtained successfully! Accuracy: ±${accuracy.toFixed(1)} meters`,
         });
       },
       (error) => {
@@ -1882,51 +1885,117 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     return canvas.toDataURL('image/jpeg');
   };
 
-  const captureImage = () => {
+  const captureImage = async () => {
     if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        // Add timestamp overlay
-        const imageUrl = addTimestampToImage(canvas, ctx);
+      try {
+        // Get fresh GPS location at the time of photo capture
+        const getCurrentGPS = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
+          return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+              reject(new Error('Geolocation not supported'));
+              return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const { latitude, longitude, accuracy } = position.coords;
+                resolve({ latitude, longitude, accuracy });
+              },
+              (error) => {
+                reject(error);
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+              }
+            );
+          });
+        };
+
+        const gpsData = await getCurrentGPS();
+        const processedImage = captureImageWithMetadata(
+          videoRef.current,
+          `${gpsData.latitude}, ${gpsData.longitude}`,
+          gpsData.accuracy
+        );
         setFormData(prev => ({
           ...prev,
-          images: [...(Array.isArray(prev.images) ? prev.images : []), imageUrl]
+          images: [...(Array.isArray(prev.images) ? prev.images : []), processedImage]
         }));
         stopCamera();
+        toast({
+          title: "Success",
+          description: `Photo captured with GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+        });
+      } catch (error) {
+        console.error('Error capturing image:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to capture image with GPS metadata"
+        });
       }
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => {
+      for (const file of Array.from(files)) {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          // Draw uploaded image to canvas, add timestamp, then save
-          const img = new window.Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0);
-              const imageUrl = addTimestampToImage(canvas, ctx);
-          setFormData(prev => ({
-            ...prev,
-                images: [...(Array.isArray(prev.images) ? prev.images : []), imageUrl]
-          }));
-            }
-          };
-          img.src = reader.result as string;
+        reader.onloadend = async () => {
+          try {
+            // Get fresh GPS location for each uploaded image
+            const getCurrentGPS = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
+              return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                  reject(new Error('Geolocation not supported'));
+                  return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    const { latitude, longitude, accuracy } = position.coords;
+                    resolve({ latitude, longitude, accuracy });
+                  },
+                  (error) => {
+                    reject(error);
+                  },
+                  {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                  }
+                );
+              });
+            };
+
+            const gpsData = await getCurrentGPS();
+            const processedImage = await processImageWithMetadata(
+              reader.result as string,
+              `${gpsData.latitude}, ${gpsData.longitude}`,
+              gpsData.accuracy
+            );
+            setFormData(prev => ({
+              ...prev,
+              images: [...(Array.isArray(prev.images) ? prev.images : []), processedImage]
+            }));
+            toast({
+              title: "Success",
+              description: `Image uploaded with GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+            });
+          } catch (error) {
+            console.error('Error processing uploaded image:', error);
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Failed to process uploaded image with GPS metadata"
+            });
+          }
         };
         reader.readAsDataURL(file);
-      });
+      }
     }
   };
 
@@ -2044,31 +2113,63 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     </Card>
   ), [formData.images, isCapturing, isVideoReady]);
 
-  const handleAfterImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAfterImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => {
+      for (const file of Array.from(files)) {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          const img = new window.Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0);
-              const imageUrl = addTimestampToImage(canvas, ctx);
-              setFormData(prev => ({
-                ...prev,
-                afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), imageUrl]
-              }));
-            }
-          };
-          img.src = reader.result as string;
+        reader.onloadend = async () => {
+          try {
+            // Get fresh GPS location for each uploaded after image
+            const getCurrentGPS = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
+              return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                  reject(new Error('Geolocation not supported'));
+                  return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    const { latitude, longitude, accuracy } = position.coords;
+                    resolve({ latitude, longitude, accuracy });
+                  },
+                  (error) => {
+                    reject(error);
+                  },
+                  {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                  }
+                );
+              });
+            };
+
+            const gpsData = await getCurrentGPS();
+            const processedImage = await processImageWithMetadata(
+              reader.result as string,
+              `${gpsData.latitude}, ${gpsData.longitude}`,
+              gpsData.accuracy
+            );
+            setFormData(prev => ({
+              ...prev,
+              afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), processedImage]
+            }));
+            toast({
+              title: "Success",
+              description: `After image uploaded with GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+            });
+          } catch (error) {
+            console.error('Error processing uploaded after image:', error);
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Failed to process uploaded after image with GPS metadata"
+            });
+          }
         };
         reader.readAsDataURL(file);
-      });
+      }
     }
   };
 
@@ -2110,20 +2211,56 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       cameraStreamAfter = null;
     }
   };
-  const captureAfterImage = () => {
+  const captureAfterImage = async () => {
     if (videoRefAfter.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRefAfter.current.videoWidth;
-      canvas.height = videoRefAfter.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(videoRefAfter.current, 0, 0);
-        const imageUrl = addTimestampToImage(canvas, ctx);
+      try {
+        // Get fresh GPS location at the time of photo capture
+        const getCurrentGPS = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
+          return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+              reject(new Error('Geolocation not supported'));
+              return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const { latitude, longitude, accuracy } = position.coords;
+                resolve({ latitude, longitude, accuracy });
+              },
+              (error) => {
+                reject(error);
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+              }
+            );
+          });
+        };
+
+        const gpsData = await getCurrentGPS();
+        const processedImage = captureImageWithMetadata(
+          videoRefAfter.current,
+          `${gpsData.latitude}, ${gpsData.longitude}`,
+          gpsData.accuracy
+        );
         setFormData(prev => ({
           ...prev,
-          afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), imageUrl]
+          afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), processedImage]
         }));
         stopCameraAfter();
+        toast({
+          title: "Success",
+          description: `After photo captured with GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+        });
+      } catch (error) {
+        console.error('Error capturing after image:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to capture after image with GPS metadata"
+        });
       }
     }
   };

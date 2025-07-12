@@ -75,7 +75,7 @@ import LoggingService from "@/services/LoggingService";
 import { COLLECTIONS } from '@/lib/constants';
 import { FeederService } from '@/services/FeederService';
 
-const DB_NAME = 'ecg-oms-db';
+const DB_NAME = 'ecg-nms-db';
 const DB_VERSION = 4;  // Update from 3 to 4
 
 // Define store name constants

@@ -29,7 +29,7 @@ export default function SignupPage() {
             <div className="flex justify-center mb-4 sm:mb-6">
               <img src="/ecg-images/ecg-logo.png" alt="ECG Logo" className="h-12 sm:h-16 w-auto" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Sign Up for ECG Outage Management System</h1>
+            <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Sign Up for ECG Network Management System</h1>
             <SignupForm />
           </div>
         </div>

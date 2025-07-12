@@ -1,4 +1,4 @@
-# ECG OMS User Guide
+# ECG NMS User Guide
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -13,7 +13,7 @@
 10. [Advanced Features](#advanced-features)
 
 ## Introduction
-ECG OMS (Outage Management System) is a comprehensive fault management system designed for power distribution networks. This guide will help you understand and effectively use the system's features to manage power outages, track fault resolution, and maintain system reliability.
+ECG NMS (Network Management System) is a comprehensive fault management system designed for power distribution networks. This guide will help you understand and effectively use the system's features to manage power outages, track fault resolution, and maintain system reliability.
 
 ### Key Features
 - Real-time fault monitoring
