@@ -1888,7 +1888,26 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const captureImage = async () => {
     if (videoRef.current) {
       try {
-        // Get fresh GPS location at the time of photo capture
+        // Capture the image immediately
+        const baseImage = captureImageWithMetadata(
+          videoRef.current,
+          `${formData.latitude}, ${formData.longitude}`,
+          gpsAccuracy
+        );
+        
+        // Add the image to form data immediately
+        setFormData(prev => ({
+          ...prev,
+          images: [...(Array.isArray(prev.images) ? prev.images : []), baseImage]
+        }));
+        
+        stopCamera();
+        toast({
+          title: "Success",
+          description: "Photo captured successfully!"
+        });
+
+        // Get fresh GPS location in the background and update the image
         const getCurrentGPS = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
           return new Promise((resolve, reject) => {
             if (!navigator.geolocation) {
@@ -1913,27 +1932,37 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           });
         };
 
-        const gpsData = await getCurrentGPS();
-        const processedImage = captureImageWithMetadata(
-          videoRef.current,
-          `${gpsData.latitude}, ${gpsData.longitude}`,
-          gpsData.accuracy
-        );
-        setFormData(prev => ({
-          ...prev,
-          images: [...(Array.isArray(prev.images) ? prev.images : []), processedImage]
-        }));
-        stopCamera();
-        toast({
-          title: "Success",
-          description: `Photo captured with GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+        // Update image with fresh GPS in background using the base image
+        getCurrentGPS().then(async gpsData => {
+          const updatedImage = await processImageWithMetadata(
+            baseImage,
+            `${gpsData.latitude}, ${gpsData.longitude}`,
+            gpsData.accuracy
+          );
+          
+          // Update the last added image with fresh GPS
+          setFormData(prev => ({
+            ...prev,
+            images: prev.images.map((img, index) => 
+              index === prev.images.length - 1 ? updatedImage : img
+            )
+          }));
+          
+          toast({
+            title: "GPS Updated",
+            description: `Photo updated with fresh GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+          });
+        }).catch(error => {
+          console.error('Error getting GPS for image:', error);
+          // Don't show error to user since photo was already captured
         });
+        
       } catch (error) {
         console.error('Error capturing image:', error);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to capture image with GPS metadata"
+          description: "Failed to capture image"
         });
       }
     }
@@ -1946,7 +1975,25 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         const reader = new FileReader();
         reader.onloadend = async () => {
           try {
-            // Get fresh GPS location for each uploaded image
+            // Process image immediately with current GPS
+            const baseImage = await processImageWithMetadata(
+              reader.result as string,
+              `${formData.latitude}, ${formData.longitude}`,
+              gpsAccuracy
+            );
+            
+            // Add image to form data immediately
+            setFormData(prev => ({
+              ...prev,
+              images: [...(Array.isArray(prev.images) ? prev.images : []), baseImage]
+            }));
+            
+            toast({
+              title: "Success",
+              description: "Image uploaded successfully!"
+            });
+
+            // Get fresh GPS location in the background and update the image
             const getCurrentGPS = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
               return new Promise((resolve, reject) => {
                 if (!navigator.geolocation) {
@@ -1971,26 +2018,37 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
               });
             };
 
-            const gpsData = await getCurrentGPS();
-            const processedImage = await processImageWithMetadata(
-              reader.result as string,
-              `${gpsData.latitude}, ${gpsData.longitude}`,
-              gpsData.accuracy
-            );
-            setFormData(prev => ({
-              ...prev,
-              images: [...(Array.isArray(prev.images) ? prev.images : []), processedImage]
-            }));
-            toast({
-              title: "Success",
-              description: `Image uploaded with GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+            // Update image with fresh GPS in background
+            getCurrentGPS().then(async gpsData => {
+              const updatedImage = await processImageWithMetadata(
+                reader.result as string,
+                `${gpsData.latitude}, ${gpsData.longitude}`,
+                gpsData.accuracy
+              );
+              
+              // Update the last added image with fresh GPS
+              setFormData(prev => ({
+                ...prev,
+                images: prev.images.map((img, index) => 
+                  index === prev.images.length - 1 ? updatedImage : img
+                )
+              }));
+              
+              toast({
+                title: "GPS Updated",
+                description: `Image updated with fresh GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+              });
+            }).catch(error => {
+              console.error('Error getting GPS for uploaded image:', error);
+              // Don't show error to user since image was already uploaded
             });
+            
           } catch (error) {
             console.error('Error processing uploaded image:', error);
             toast({
               variant: "destructive",
               title: "Error",
-              description: "Failed to process uploaded image with GPS metadata"
+              description: "Failed to process uploaded image"
             });
           }
         };
@@ -2120,7 +2178,25 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         const reader = new FileReader();
         reader.onloadend = async () => {
           try {
-            // Get fresh GPS location for each uploaded after image
+            // Process after image immediately with current GPS
+            const baseImage = await processImageWithMetadata(
+              reader.result as string,
+              `${formData.latitude}, ${formData.longitude}`,
+              gpsAccuracy
+            );
+            
+            // Add image to form data immediately
+            setFormData(prev => ({
+              ...prev,
+              afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), baseImage]
+            }));
+            
+            toast({
+              title: "Success",
+              description: "After image uploaded successfully!"
+            });
+
+            // Get fresh GPS location in the background and update the image
             const getCurrentGPS = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
               return new Promise((resolve, reject) => {
                 if (!navigator.geolocation) {
@@ -2145,26 +2221,37 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
               });
             };
 
-            const gpsData = await getCurrentGPS();
-            const processedImage = await processImageWithMetadata(
-              reader.result as string,
-              `${gpsData.latitude}, ${gpsData.longitude}`,
-              gpsData.accuracy
-            );
-            setFormData(prev => ({
-              ...prev,
-              afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), processedImage]
-            }));
-            toast({
-              title: "Success",
-              description: `After image uploaded with GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+            // Update image with fresh GPS in background
+            getCurrentGPS().then(async gpsData => {
+              const updatedImage = await processImageWithMetadata(
+                reader.result as string,
+                `${gpsData.latitude}, ${gpsData.longitude}`,
+                gpsData.accuracy
+              );
+              
+              // Update the last added after image with fresh GPS
+              setFormData(prev => ({
+                ...prev,
+                afterImages: prev.afterImages.map((img, index) => 
+                  index === prev.afterImages.length - 1 ? updatedImage : img
+                )
+              }));
+              
+              toast({
+                title: "GPS Updated",
+                description: `After image updated with fresh GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+              });
+            }).catch(error => {
+              console.error('Error getting GPS for uploaded after image:', error);
+              // Don't show error to user since image was already uploaded
             });
+            
           } catch (error) {
             console.error('Error processing uploaded after image:', error);
             toast({
               variant: "destructive",
               title: "Error",
-              description: "Failed to process uploaded after image with GPS metadata"
+              description: "Failed to process uploaded after image"
             });
           }
         };
@@ -2214,7 +2301,26 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const captureAfterImage = async () => {
     if (videoRefAfter.current) {
       try {
-        // Get fresh GPS location at the time of photo capture
+        // Capture the after image immediately
+        const baseImage = captureImageWithMetadata(
+          videoRefAfter.current,
+          `${formData.latitude}, ${formData.longitude}`,
+          gpsAccuracy
+        );
+        
+        // Add the image to form data immediately
+        setFormData(prev => ({
+          ...prev,
+          afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), baseImage]
+        }));
+        
+        stopCameraAfter();
+        toast({
+          title: "Success",
+          description: "After photo captured successfully!"
+        });
+
+        // Get fresh GPS location in the background and update the image
         const getCurrentGPS = (): Promise<{ latitude: number; longitude: number; accuracy: number }> => {
           return new Promise((resolve, reject) => {
             if (!navigator.geolocation) {
@@ -2239,27 +2345,37 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           });
         };
 
-        const gpsData = await getCurrentGPS();
-        const processedImage = captureImageWithMetadata(
-          videoRefAfter.current,
-          `${gpsData.latitude}, ${gpsData.longitude}`,
-          gpsData.accuracy
-        );
-        setFormData(prev => ({
-          ...prev,
-          afterImages: [...(Array.isArray(prev.afterImages) ? prev.afterImages : []), processedImage]
-        }));
-        stopCameraAfter();
-        toast({
-          title: "Success",
-          description: `After photo captured with GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+        // Update image with fresh GPS in background using the base image
+        getCurrentGPS().then(async gpsData => {
+          const updatedImage = await processImageWithMetadata(
+            baseImage,
+            `${gpsData.latitude}, ${gpsData.longitude}`,
+            gpsData.accuracy
+          );
+          
+          // Update the last added after image with fresh GPS
+          setFormData(prev => ({
+            ...prev,
+            afterImages: prev.afterImages.map((img, index) => 
+              index === prev.afterImages.length - 1 ? updatedImage : img
+            )
+          }));
+          
+          toast({
+            title: "GPS Updated",
+            description: `After photo updated with fresh GPS! Accuracy: ±${gpsData.accuracy.toFixed(1)} meters`
+          });
+        }).catch(error => {
+          console.error('Error getting GPS for after image:', error);
+          // Don't show error to user since photo was already captured
         });
+        
       } catch (error) {
         console.error('Error capturing after image:', error);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to capture after image with GPS metadata"
+          description: "Failed to capture after image"
         });
       }
     }
