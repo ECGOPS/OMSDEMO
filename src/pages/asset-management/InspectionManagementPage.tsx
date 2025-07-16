@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PermissionService } from '@/services/PermissionService';
+import { Badge } from "@/components/ui/badge";
 
 export default function InspectionManagementPage() {
   const { user } = useAuth();
@@ -952,7 +953,7 @@ export default function InspectionManagementPage() {
                 <TableHead>District</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Substation Type</TableHead>
-                <TableHead>Status Summary</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Sync Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -1006,7 +1007,21 @@ export default function InspectionManagementPage() {
                          (inspection.paintWork && inspection.paintWork.length > 0) ?
                          'secondary' : 'primary'}
                       </TableCell>
-                      <TableCell>{statusSummary}</TableCell>
+                      <TableCell>
+                        <Badge
+                          className={
+                            inspection.status === 'Completed'
+                              ? 'bg-green-500'
+                              : inspection.status === 'In Progress'
+                              ? 'bg-yellow-500 text-black'
+                              : inspection.status === 'Pending'
+                              ? 'bg-gray-500'
+                              : ''
+                          }
+                        >
+                          {inspection.status || 'N/A'}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{syncStatus}</TableCell>
                       <TableCell className="text-right actions-cell">
                         <DropdownMenu>

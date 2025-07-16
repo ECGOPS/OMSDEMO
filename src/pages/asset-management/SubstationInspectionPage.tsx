@@ -57,6 +57,7 @@ export default function SubstationInspectionPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
+    time: new Date().toISOString().split('T')[1].slice(0,5),
     inspectionDate: new Date().toISOString().split('T')[0],
     substationNo: "",
     substationName: "",
@@ -284,13 +285,19 @@ export default function SubstationInspectionPage() {
 
   // Initialize region and district based on user's assigned values
   useEffect(() => {
-    if (user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "technician" || user?.role === "district_manager") {
+    if (
+      user?.role === "district_engineer" ||
+      user?.role === "regional_engineer" ||
+      user?.role === "regional_general_manager" ||
+      user?.role === "technician" ||
+      user?.role === "district_manager"
+    ) {
       // Find region ID based on user's assigned region name
       const userRegion = regions.find(r => r.name === user.region);
       if (userRegion) {
         setRegionId(userRegion.id);
         setFormData(prev => ({ ...prev, region: userRegion.name }));
-        
+
         // For district engineer, technician, and district manager, also set the district
         if ((user.role === "district_engineer" || user?.role === "technician" || user?.role === "district_manager") && user.district) {
           const userDistrict = districts.find(d => 
@@ -299,6 +306,14 @@ export default function SubstationInspectionPage() {
           if (userDistrict) {
             setDistrictId(userDistrict.id);
             setFormData(prev => ({ ...prev, district: userDistrict.name }));
+          }
+        }
+        // For regional_engineer and regional_general_manager, set district to first in region if available
+        if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && !user.district) {
+          const regionDistricts = districts.filter(d => d.regionId === userRegion.id);
+          if (regionDistricts.length > 0) {
+            setDistrictId(regionDistricts[0].id);
+            setFormData(prev => ({ ...prev, district: regionDistricts[0].name }));
           }
         }
       }
@@ -391,6 +406,7 @@ export default function SubstationInspectionPage() {
         // Set formData with all inspection data
         setFormData({
           date: inspection.date || new Date().toISOString().split('T')[0],
+          time: inspection.time || (inspection.createdAt ? new Date(inspection.createdAt).toISOString().split('T')[1].slice(0,5) : new Date().toISOString().split('T')[1].slice(0,5)),
           inspectionDate: inspection.inspectionDate || new Date().toISOString().split('T')[0],
           substationNo: inspection.substationNo || "",
           substationName: inspection.substationName || "",
@@ -696,6 +712,12 @@ export default function SubstationInspectionPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
+    if (!regionId || !districtId) {
+      toast.error("Region and District are required.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       // Get the selected region and district names
       const selectedRegionName = regions.find(r => r.id === regionId)?.name || "";
@@ -718,6 +740,7 @@ export default function SubstationInspectionPage() {
         district: selectedDistrictName,
         districtId: districtId,
         date: formData.date || new Date().toISOString().split('T')[0],
+        time: formData.time || new Date().toISOString().split('T')[1].slice(0,5),
         inspectionDate: formData.inspectionDate || new Date().toISOString().split('T')[0],
         substationNo: formData.substationNo,
         substationName: formData.substationName || "",
@@ -907,7 +930,7 @@ export default function SubstationInspectionPage() {
                     required
                     disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "technician" || user?.role === "district_manager" || user?.role === "regional_general_manager"}
                   >
-                    <SelectTrigger id="region">
+                    <SelectTrigger>
                       <SelectValue placeholder="Select Region" />
                     </SelectTrigger>
                     <SelectContent>
@@ -928,7 +951,7 @@ export default function SubstationInspectionPage() {
                     required
                     disabled={user?.role === "district_engineer" || user?.role === "technician" || user?.role === "district_manager" || !regionId}
                   >
-                    <SelectTrigger id="district" className={user?.role === "district_engineer" || user?.role === "district_manager" ? "bg-muted" : ""}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Select District" />
                     </SelectTrigger>
                     <SelectContent>
@@ -948,6 +971,16 @@ export default function SubstationInspectionPage() {
                     type="date"
                     value={formData.date}
                     onChange={(e) => handleInputChange("date", e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="time">Time</Label>
+                  <Input
+                    id="time"
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => handleInputChange("time", e.target.value)}
                     required
                   />
                 </div>
@@ -999,6 +1032,26 @@ export default function SubstationInspectionPage() {
                     value={formData.location || ''}
                     onChange={(e) => handleInputChange('location', e.target.value)}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    id="status"
+                    value={formData.status || "Pending"}
+                    onValueChange={value => handleInputChange('status', value)}
+                    required
+                    className="w-full"
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -1478,6 +1531,7 @@ export default function SubstationInspectionPage() {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="w-full sm:w-auto"
+                disabled={currentPage === 1 && (!regionId || !districtId)}
               >
                 Next
                 <ChevronRight className="ml-2 h-4 w-4" />

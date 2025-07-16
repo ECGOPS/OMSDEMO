@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, MapPin, Camera, Upload, X } from "lucide-react";
-import { OverheadLineInspection, ConditionStatus } from "@/lib/types";
+import { NetworkInspection, ConditionStatus } from "@/lib/types";
 import { getRegions, getDistricts } from "@/lib/api";
 import { showNotification, showServiceWorkerNotification } from '@/utils/notifications';
 import { serverTimestamp } from "firebase/firestore";
@@ -28,8 +28,8 @@ import { FeederService } from "@/services/FeederService";
 import { processImageWithMetadata, captureImageWithMetadata } from "@/utils/imageUtils";
 
 interface OverheadLineInspectionFormProps {
-  inspection?: OverheadLineInspection | null;
-  onSubmit: (inspection: OverheadLineInspection) => void;
+  inspection?: NetworkInspection | null;
+  onSubmit: (inspection: NetworkInspection) => void;
   onCancel: () => void;
 }
 
@@ -52,9 +52,9 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const navigate = useNavigate();
-  const { addOverheadLineInspection, updateOverheadLineInspection } = useData();
+  const { addNetworkInspection, updateNetworkInspection } = useData();
   const offlineStorage = OfflineInspectionService.getInstance();
-  const [offlineInspections, setOfflineInspections] = useState<OverheadLineInspection[]>([]);
+  const [offlineInspections, setOfflineInspections] = useState<NetworkInspection[]>([]);
   const [isCapturing, setIsCapturing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -84,8 +84,8 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     notes: ""
   };
 
-  const [formData, setFormData] = useState<OverheadLineInspection>(() => {
-    const defaultFormData: OverheadLineInspection = {
+  const [formData, setFormData] = useState<NetworkInspection>(() => {
+    const defaultFormData: NetworkInspection = {
       id: "",
       region: "",
       district: "",
@@ -112,6 +112,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         rotten: false,
         burnt: false,
         substandard: false,
+        conflictWithLV: false,
         notes: ""
       },
       stayCondition: {
@@ -136,13 +137,11 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         burntLugs: false,
         saggedLine: false,
         undersized: false,
-        linked: false,
         notes: ""
       },
       lightningArresterCondition: {
         brokenOrCracked: false,
         flashOver: false,
-        missing: false,
         noEarthing: false,
         bypassed: false,
         noArrester: false,
@@ -179,21 +178,30 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       },
       additionalNotes: "",
       images: [],
+      afterImages: [],
       date: new Date().toISOString().split('T')[0],
       time: new Date().toTimeString().slice(0, 5)
     };
 
     // Set region and district based on user role
     if (user) {
-      if ((user.role === "district_engineer" || user.role === "technician") && user.region && user.district) {
+      if ((user.role === "district_engineer" || user.role === "district_manager" || user.role === "technician") && user.region && user.district) {
         defaultFormData.region = user.region;
         defaultFormData.district = user.district;
-      } else if (user.role === "regional_engineer" && user.region) {
+      } else if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region) {
         defaultFormData.region = user.region;
+        // Set district to first district in this region if available
+        const regionObj = regions.find(r => r.name === user.region);
+        if (regionObj) {
+          const regionDistricts = districts.filter(d => d.regionId === regionObj.id);
+          if (regionDistricts.length > 0) {
+            defaultFormData.district = regionDistricts[0].name;
+          }
+        }
       } else if (user.role === "system_admin" && regions.length > 0) {
-      defaultFormData.region = regions[0].name;
-      if (districts.length > 0) {
-        defaultFormData.district = districts[0].name;
+        defaultFormData.region = regions[0].name;
+        if (districts.length > 0) {
+          defaultFormData.district = districts[0].name;
         }
       }
     }
@@ -218,10 +226,10 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const filteredRegions = useMemo(() => {
     if (!user) return [];
     if (user.role === "global_engineer" || user.role === "system_admin") return regions;
-    if (user.role === "regional_engineer" && user.region) {
+    if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region) {
       return regions.filter(r => r.name === user.region);
     }
-    if ((user.role === "district_engineer" || user.role === "technician") && user.region) {
+    if ((user.role === "district_engineer" || user.role === "district_manager" || user.role === "technician") && user.region) {
       return regions.filter(r => r.name === user.region);
     }
     return [];
@@ -235,10 +243,10 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     if (user.role === "global_engineer" || user.role === "system_admin") {
       return districts.filter(d => d.regionId === region.id);
     }
-    if (user.role === "regional_engineer") {
+    if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
       return districts.filter(d => d.regionId === region.id);
     }
-    if ((user.role === "district_engineer" || user.role === "technician") && user.district) {
+    if ((user.role === "district_engineer" || user.role === "district_manager" || user.role === "technician") && user.district) {
       return districts.filter(d => d.name === user.district && d.regionId === region.id);
     }
     return [];
@@ -269,21 +277,31 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   // Update form data when user or regions/districts change
   useEffect(() => {
     if (user && !inspection) {
-      if ((user.role === "district_engineer" || user.role === "technician") && user.region && user.district) {
-      setFormData(prev => ({
-        ...prev,
-          region: user.region,
-          district: user.district,
-        inspector: {
-          id: user.id,
-          name: user.name,
-          email: user.email
-        }
-      }));
-      } else if (user.role === "regional_engineer" && user.region) {
+      if ((user.role === "district_engineer" || user.role === "district_manager" || user.role === "technician") && user.region && user.district) {
         setFormData(prev => ({
           ...prev,
           region: user.region,
+          district: user.district,
+          inspector: {
+            id: user.id,
+            name: user.name,
+            email: user.email
+          }
+        }));
+      } else if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region) {
+        // Set region and default district for regional_general_manager
+        const regionObj = regions.find(r => r.name === user.region);
+        let defaultDistrict = "";
+        if (regionObj) {
+          const regionDistricts = districts.filter(d => d.regionId === regionObj.id);
+          if (regionDistricts.length > 0) {
+            defaultDistrict = regionDistricts[0].name;
+          }
+        }
+        setFormData(prev => ({
+          ...prev,
+          region: user.region,
+          district: defaultDistrict,
           inspector: {
             id: user.id,
             name: user.name,
@@ -292,7 +310,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         }));
       }
     }
-  }, [user, inspection]);
+  }, [user, inspection, regions, districts]);
 
   // Update form data when inspection prop changes
   useEffect(() => {
@@ -391,6 +409,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           rotten: formData.poleCondition?.rotten || false,
           burnt: formData.poleCondition?.burnt || false,
           substandard: formData.poleCondition?.substandard || false,
+          conflictWithLV: formData.poleCondition?.conflictWithLV || false,
           notes: formData.poleCondition?.notes || ''
         },
         stayCondition: {
@@ -422,13 +441,11 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           burntLugs: formData.conductorCondition?.burntLugs || false,
           saggedLine: formData.conductorCondition?.saggedLine || false,
           undersized: formData.conductorCondition?.undersized || false,
-          linked: formData.conductorCondition?.linked || false,
           notes: formData.conductorCondition?.notes || ''
         },
         lightningArresterCondition: {
           brokenOrCracked: formData.lightningArresterCondition?.brokenOrCracked || false,
           flashOver: formData.lightningArresterCondition?.flashOver || false,
-          missing: formData.lightningArresterCondition?.missing || false,
           noEarthing: formData.lightningArresterCondition?.noEarthing || false,
           bypassed: formData.lightningArresterCondition?.bypassed || false,
           noArrester: formData.lightningArresterCondition?.noArrester || false,
@@ -469,7 +486,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         Object.entries(cleanData)
           .map(([key, value]) => [key, cleanValue(value)])
           .filter(([_, value]) => value !== undefined)
-      ) as OverheadLineInspection;
+      ) as NetworkInspection;
 
       const isOnline = offlineStorage.isInternetAvailable();
       console.log('[OverheadLineInspectionForm] Internet available:', isOnline);
@@ -477,13 +494,13 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       if (isOnline) {
         if (inspection) {
           try {
-            await updateOverheadLineInspection(inspection.id, finalData);
+            await updateNetworkInspection(inspection.id, finalData);
             toast({ title: "Success", description: "Inspection updated successfully" });
           } catch (error) {
             if (error instanceof Error && error.message.includes("not found")) {
               // If the inspection was not found, create a new one instead
               const { id, ...dataWithoutId } = finalData;
-              await addOverheadLineInspection(dataWithoutId);
+              await addNetworkInspection(dataWithoutId);
               toast({ 
                 title: "Success", 
                 description: "Inspection was not found and has been recreated" 
@@ -494,7 +511,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           }
         } else {
           const { id, ...dataWithoutId } = finalData;
-          await addOverheadLineInspection(dataWithoutId);
+          await addNetworkInspection(dataWithoutId);
           toast({ title: "Success", description: "Inspection created successfully" });
         }
       } else {
@@ -776,17 +793,17 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           </div>
 
           <div className="space-y-2">
-            <Label>Location</Label>
+            <Label>GPS</Label>
             <div className="flex gap-2">
               <Input
                 type="number"
-                placeholder="Latitude"
+                placeholder="Latitude (GPS)"
                 value={formData.latitude}
                 onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) })}
               />
               <Input
                 type="number"
-                placeholder="Longitude"
+                placeholder="Longitude (GPS)"
                 value={formData.longitude}
                 onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) })}
               />
@@ -803,6 +820,15 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
                 )}
               </Button>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Location</Label>
+            <Input
+              type="text"
+              placeholder="Enter location description (optional)"
+              value={formData.location || ''}
+              onChange={e => setFormData({ ...formData, location: e.target.value })}
+            />
           </div>
         </div>
       </CardContent>
@@ -938,6 +964,19 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
               }
             />
             <Label htmlFor="poleSubstandard">Substandard</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="poleConflictWithLV"
+              checked={formData.poleCondition.conflictWithLV}
+              onCheckedChange={(checked) => 
+                setFormData({
+                  ...formData,
+                  poleCondition: { ...formData.poleCondition, conflictWithLV: checked as boolean },
+                })
+              }
+            />
+            <Label htmlFor="poleConflictWithLV">Conflict with LV</Label>
           </div>
           <div className="space-y-2">
             <Label htmlFor="poleNotes">Notes</Label>
@@ -2489,12 +2528,33 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     );
   }, [formData.images, formData.afterImages, isCapturingAfter, isVideoReadyAfter]);
 
+  useEffect(() => {
+    if (user && !inspection && (user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region && regions.length > 0 && districts.length > 0) {
+      const regionObj = regions.find(r => r.name === user.region);
+      if (regionObj) {
+        const regionDistricts = districts.filter(d => d.regionId === regionObj.id);
+        if (regionDistricts.length > 0 && !formData.district) {
+          setFormData(prev => ({
+            ...prev,
+            region: user.region,
+            district: regionDistricts[0].name,
+            inspector: {
+              id: user.id,
+              name: user.name,
+              email: user.email
+            }
+          }));
+        }
+      }
+    }
+  }, [user, inspection, regions, districts, formData.district]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">
-            {inspection ? "Edit Overhead Line Inspection" : "New Overhead Line Inspection"}
+            {inspection ? "Edit Network Inspection" : "New Network Inspection"}
           </h2>
           {isOffline && (
             <div className="mt-1">

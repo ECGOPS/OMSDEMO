@@ -162,7 +162,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           show: showMenuItem("district_engineer"),
         },
         {
-          title: "Overhead Line Inspection",
+          title: "Network Inspection",
           icon: Building2,
           href: "/asset-management/overhead-line",
           show: showMenuItem("district_engineer"),

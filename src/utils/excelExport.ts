@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { OverheadLineInspection } from '@/lib/types';
+import { NetworkInspection } from '@/lib/types';
 import ExcelJS from 'exceljs';
 
 /**
@@ -106,8 +106,8 @@ const splitIntoChunks = (str: string, chunkSize: number = 30000): string[] => {
  * Export overhead line inspections to Excel with embedded images using ExcelJS
  */
 export const exportOverheadLineInspectionsToExcel = async (
-  inspections: OverheadLineInspection[],
-  filename: string = 'overhead-line-inspections.xlsx'
+  inspections: NetworkInspection[],
+  filename: string = 'network-inspections.xlsx'
 ) => {
   try {
     console.log('ExcelJS export utility called with:', inspections.length, 'inspections');
@@ -117,7 +117,7 @@ export const exportOverheadLineInspectionsToExcel = async (
     console.log('Workbook created');
     
     // Create the main worksheet
-    const worksheet = workbook.addWorksheet('Inspections');
+    const worksheet = workbook.addWorksheet('Network Inspections');
     console.log('Worksheet created');
     
     // Define headers
@@ -178,6 +178,10 @@ export const exportOverheadLineInspectionsToExcel = async (
       'Arrester Bypassed',
       'Arrester No Arrester',
       'Arrester Notes',
+      // New fields before images
+      'GPS',
+      'Location',
+      'Additional Note',
       // Images (Before Correction)
       'Before Image 1',
       'Before Image 2',
@@ -324,6 +328,10 @@ export const exportOverheadLineInspectionsToExcel = async (
           inspection.lightningArresterCondition?.bypassed ? 'Yes' : 'No',
           inspection.lightningArresterCondition?.noArrester ? 'Yes' : 'No',
           inspection.lightningArresterCondition?.notes || 'N/A',
+          // New fields before images
+          `${inspection.latitude || 0}, ${inspection.longitude || 0}`,
+          inspection.location || '',
+          inspection.additionalNotes || '',
           // Images - placeholder text with hyperlinks
           imageBuffers[0] ? 'Click to view Image 1' : '',
           imageBuffers[1] ? 'Click to view Image 2' : '',
@@ -357,8 +365,8 @@ export const exportOverheadLineInspectionsToExcel = async (
                 extension: 'jpeg',
               });
 
-              // Calculate proper image position - images are in columns 50-54 (0-indexed) = AY-BB
-              const imageCol = 50 + imgIndex; // Image columns start at column 50 (AY)
+              // Move image columns to start at column 53 (BB)
+              const imageCol = 53 + imgIndex; // Image columns start at column 53 (BB)
               const imageRow = rowNumber - 1; // Excel rows are 0-indexed
               
               console.log(`Positioning image ${imgIndex + 1} at column ${imageCol}, row ${imageRow}`);
@@ -398,8 +406,8 @@ export const exportOverheadLineInspectionsToExcel = async (
                 buffer: imageBuffer,
                 extension: 'jpeg',
               });
-              // After images start at column 55 (AZ)
-              const imageCol = 55 + imgIndex;
+              // After images start at column 58 (BE)
+              const imageCol = 58 + imgIndex;
               const imageRow = rowNumber - 1;
               worksheet.addImage(imageId, {
                 tl: { nativeCol: imageCol, nativeRow: imageRow, nativeColOff: 0, nativeRowOff: 0 },
@@ -411,17 +419,17 @@ export const exportOverheadLineInspectionsToExcel = async (
         }
 
         // Add clickable links row below the data row
-        const linkRow = new Array(50).fill(''); // Fill with empty cells up to image columns
+        const linkRow = new Array(53).fill(''); // Fill with empty cells up to image columns
         for (let imgIndex = 0; imgIndex < Math.min(images.length, 5); imgIndex++) {
           const image = images[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            linkRow[50 + imgIndex] = `Click to open Image ${imgIndex + 1}`;
+            linkRow[53 + imgIndex] = `Click to open Image ${imgIndex + 1}`;
           }
         }
         for (let imgIndex = 0; imgIndex < Math.min(afterImages.length, 5); imgIndex++) {
           const image = afterImages[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            linkRow[55 + imgIndex] = `Click to open After Image ${imgIndex + 1}`;
+            linkRow[58 + imgIndex] = `Click to open After Image ${imgIndex + 1}`;
           }
         }
         
@@ -432,7 +440,7 @@ export const exportOverheadLineInspectionsToExcel = async (
         for (let imgIndex = 0; imgIndex < Math.min(images.length, 5); imgIndex++) {
           const image = images[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            const imageCol = 50 + imgIndex; // Image columns start at column 50 (AY)
+            const imageCol = 53 + imgIndex; // Image columns start at column 53 (BB)
             const cell = worksheet.getCell(linksRowNumber, imageCol + 1); // Excel is 1-indexed for cells
             
             // Add hyperlink to the cell
@@ -455,7 +463,7 @@ export const exportOverheadLineInspectionsToExcel = async (
         for (let imgIndex = 0; imgIndex < Math.min(afterImages.length, 5); imgIndex++) {
           const image = afterImages[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            const imageCol = 55 + imgIndex;
+            const imageCol = 58 + imgIndex;
             const cell = worksheet.getCell(linksRowNumber, imageCol + 1);
             cell.value = {
               text: `Click to open After Image ${imgIndex + 1}`,
@@ -602,7 +610,7 @@ export const exportOverheadLineInspectionsToExcel = async (
  * Export single inspection to Excel with embedded images
  */
 export const exportSingleInspectionToExcel = async (
-  inspection: OverheadLineInspection,
+  inspection: NetworkInspection,
   filename?: string
 ) => {
   const defaultFilename = `inspection-${inspection.id}-${new Date().toISOString().split('T')[0]}.xlsx`;

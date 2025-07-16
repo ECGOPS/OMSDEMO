@@ -82,6 +82,10 @@ export function OverheadLineInspectionDetails({
               ? format(new Date(inspection.updatedAt), "dd/MM/yyyy HH:mm")
               : new Date().toLocaleDateString()}</p>
           </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Location</p>
+            <p>{inspection.location || 'N/A'}</p>
+          </div>
         </CardContent>
       </Card>
 
@@ -460,7 +464,7 @@ export function OverheadLineInspectionDetails({
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Location</p>
+              <p className="text-sm font-medium text-muted-foreground">GPS</p>
               <p>{`${inspection.latitude}, ${inspection.longitude}`}</p>
             </div>
             <div>

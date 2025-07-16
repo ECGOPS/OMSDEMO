@@ -10,7 +10,7 @@ import { OverheadLineInspectionForm } from "@/components/overhead-line/OverheadL
 import { OverheadLineInspectionsTable } from "@/components/overhead-line/OverheadLineInspectionsTable";
 import { PlusCircle } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
-import { OverheadLineInspection } from "@/lib/types";
+import { NetworkInspection } from "@/lib/types";
 import { OverheadLineInspectionDetails } from "@/components/overhead-line/OverheadLineInspectionDetails";
 import { AccessControlWrapper } from "@/components/access-control/AccessControlWrapper";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -33,9 +33,9 @@ export default function OverheadLineInspectionPage() {
   const [activeTab, setActiveTab] = useState("inspections");
   const [isInspectionFormOpen, setIsInspectionFormOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  const [selectedInspection, setSelectedInspection] = useState<OverheadLineInspection | null>(null);
-  const [editingInspection, setEditingInspection] = useState<OverheadLineInspection | null>(null);
-  const { overheadLineInspections, updateOverheadLineInspection, deleteOverheadLineInspection, addOverheadLineInspection, districts, regions } = useData();
+  const [selectedInspection, setSelectedInspection] = useState<NetworkInspection | null>(null);
+  const [editingInspection, setEditingInspection] = useState<NetworkInspection | null>(null);
+  const { networkInspections, updateNetworkInspection, deleteNetworkInspection, addNetworkInspection, districts, regions } = useData();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export default function OverheadLineInspectionPage() {
   const pageSize = 10;
   const navigate = useNavigate();
   const offlineStorage = OfflineInspectionService.getInstance();
-  const [offlineInspections, setOfflineInspections] = useState<OverheadLineInspection[]>([]);
+  const [offlineInspections, setOfflineInspections] = useState<NetworkInspection[]>([]);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   // Load offline inspections
@@ -94,7 +94,7 @@ export default function OverheadLineInspectionPage() {
   const filteredInspections = useMemo(() => {
     // Combine online and offline inspections
     const allInspections = [
-      ...(overheadLineInspections || []),
+      ...(networkInspections || []),
       ...offlineInspections
     ];
     
@@ -149,7 +149,7 @@ export default function OverheadLineInspectionPage() {
     }
     
     return filtered;
-  }, [overheadLineInspections, offlineInspections, user, selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, regions, districts]);
+  }, [networkInspections, offlineInspections, user, selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, regions, districts]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredInspections.length / pageSize);
@@ -161,7 +161,7 @@ export default function OverheadLineInspectionPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, overheadLineInspections]);
+  }, [selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, networkInspections]);
 
   // Reset all filters
   const handleResetFilters = () => {
@@ -182,32 +182,32 @@ export default function OverheadLineInspectionPage() {
     setEditingInspection(null);
   };
 
-  const handleViewInspection = (inspection: OverheadLineInspection) => {
+  const handleViewInspection = (inspection: NetworkInspection) => {
     setSelectedInspection(inspection);
     setIsDetailsDialogOpen(true);
   };
 
-  const handleEditInspection = (inspection: OverheadLineInspection) => {
+  const handleEditInspection = (inspection: NetworkInspection) => {
     setEditingInspection(inspection);
     setIsInspectionFormOpen(true);
   };
 
-  const handleDeleteInspection = async (inspection: OverheadLineInspection) => {
+  const handleDeleteInspection = async (inspection: NetworkInspection) => {
     try {
-      await deleteOverheadLineInspection(inspection.id);
+      await deleteNetworkInspection(inspection.id);
       toast.success("Inspection deleted successfully");
     } catch (error) {
       toast.error("Failed to delete inspection");
     }
   };
 
-  const handleFormSubmit = async (inspection: OverheadLineInspection) => {
+  const handleFormSubmit = async (inspection: NetworkInspection) => {
     try {
       if (editingInspection) {
-        await updateOverheadLineInspection(editingInspection.id, inspection);
+        await updateNetworkInspection(editingInspection.id, inspection);
         toast.success("Inspection updated successfully");
       } else {
-        await addOverheadLineInspection(inspection);
+        await addNetworkInspection(inspection);
         toast.success("Inspection created successfully");
       }
       setIsInspectionFormOpen(false);
@@ -223,9 +223,9 @@ export default function OverheadLineInspectionPage() {
         <div className="container py-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Overhead Line Inspection</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Network Inspection</h1>
               <p className="text-muted-foreground mt-1">
-                Manage and monitor overhead line inspections
+                Manage and monitor network inspections
               </p>
               {isOffline && (
                 <p className="text-sm text-yellow-600 mt-1">
@@ -236,7 +236,7 @@ export default function OverheadLineInspectionPage() {
                 </p>
               )}
             </div>
-            {(user?.role === 'global_engineer' || user?.role === 'district_engineer' || user?.role === 'regional_engineer' || user?.role === 'technician' || user?.role === 'system_admin') && (
+            {(user?.role === 'global_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_engineer' || user?.role === 'regional_general_manager' || user?.role === 'technician' || user?.role === 'system_admin') && (
               <Button onClick={handleAddInspection} className="mt-4 md:mt-0">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 New Inspection
@@ -404,10 +404,10 @@ export default function OverheadLineInspectionPage() {
             <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
               <SheetHeader>
                 <SheetTitle>
-                  {editingInspection ? "Edit Overhead Line Inspection" : "New Overhead Line Inspection"}
+                  {editingInspection ? "Edit Network Inspection" : "New Network Inspection"}
                 </SheetTitle>
                 <SheetDescription>
-                  {editingInspection ? "Update the inspection details." : "Complete the inspection checklist for the overhead line."}
+                  {editingInspection ? "Update the inspection details." : "Complete the inspection checklist for the network."}
                 </SheetDescription>
               </SheetHeader>
               <div className="mt-6">
@@ -424,7 +424,7 @@ export default function OverheadLineInspectionPage() {
           <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
             <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Overhead Line Inspection Details</DialogTitle>
+                <DialogTitle>Network Inspection Details</DialogTitle>
                 <DialogDescription>
                   Inspection performed on {selectedInspection 
                     ? (selectedInspection.date 

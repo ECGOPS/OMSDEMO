@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, FileEdit, Trash2, Eye, Download, FileDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { OverheadLineInspection } from "@/lib/types";
+import { NetworkInspection } from "@/lib/types";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "react-hot-toast";
@@ -25,11 +25,11 @@ import autoTable from "jspdf-autotable";
 import { exportOverheadLineInspectionsToExcel } from '@/utils/excelExport';
 
 interface OverheadLineInspectionsTableProps {
-  inspections: OverheadLineInspection[];
-  allInspections?: OverheadLineInspection[];
-  onEdit: (inspection: OverheadLineInspection) => void;
-  onDelete: (inspection: OverheadLineInspection) => void;
-  onView: (inspection: OverheadLineInspection) => void;
+  inspections: NetworkInspection[];
+  allInspections?: NetworkInspection[];
+  onEdit: (inspection: NetworkInspection) => void;
+  onDelete: (inspection: NetworkInspection) => void;
+  onView: (inspection: NetworkInspection) => void;
   userRole?: string;
 }
 
@@ -117,7 +117,7 @@ export function OverheadLineInspectionsTable({
   }, [inspections]);
 
   // Helper function to get display date
-  const getDisplayDate = (inspection: OverheadLineInspection): string => {
+  const getDisplayDate = (inspection: NetworkInspection): string => {
     if (inspection.date && inspection.time) {
       return `${inspection.date} ${inspection.time}`;
     } else if (inspection.date) {
@@ -158,12 +158,12 @@ export function OverheadLineInspectionsTable({
     }
   };
 
-  const exportToPDF = async (inspection: OverheadLineInspection) => {
+  const exportToPDF = async (inspection: NetworkInspection) => {
     const doc = new jsPDF();
     
     // Add title
     doc.setFontSize(20);
-    doc.text('Overhead Line Inspection Report', 14, 20);
+    doc.text('Network Inspection Report', 14, 20);
     
     // Add inspection ID and date
     doc.setFontSize(12);
@@ -456,10 +456,10 @@ export function OverheadLineInspectionsTable({
     }
 
     // Save the PDF
-    doc.save(`overhead-line-inspection-${inspection.id}.pdf`);
+    doc.save(`network-inspection-${inspection.id}.pdf`);
   };
 
-  const exportToCSV = (inspection: OverheadLineInspection) => {
+  const exportToCSV = (inspection: NetworkInspection) => {
     const headers = [
       'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole',
       'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Ground Condition',
@@ -550,7 +550,7 @@ export function OverheadLineInspectionsTable({
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `overhead-line-inspection-${inspection.id}.csv`;
+    link.download = `network-inspection-${inspection.id}.csv`;
     link.click();
   };
 
@@ -646,7 +646,7 @@ export function OverheadLineInspectionsTable({
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'all-overhead-line-inspections.csv';
+    link.download = 'all-network-inspections.csv';
     link.click();
   };
 

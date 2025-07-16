@@ -1,4 +1,4 @@
-import { OverheadLineInspection } from "@/lib/types";
+import { NetworkInspection } from "@/lib/types";
 import { format } from "date-fns";
 import { CheckCircle2, AlertCircle, ChevronLeft, Pencil, ChevronRight, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 
 interface OverheadLineInspectionDetailsViewProps {
-  inspection: OverheadLineInspection;
+  inspection: NetworkInspection;
   showHeader?: boolean;
   showBackButton?: boolean;
   onBack?: () => void;
@@ -630,7 +630,7 @@ export function OverheadLineInspectionDetailsView({
               </Button>
             )}
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">Overhead Line Inspection Details</h2>
+              <h2 className="text-2xl font-bold tracking-tight">Network Inspection Details</h2>
               <p className="text-muted-foreground">Feeder: {inspection.feederName}</p>
             </div>
           </div>

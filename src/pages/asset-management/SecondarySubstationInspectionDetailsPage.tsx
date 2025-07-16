@@ -54,6 +54,12 @@ export default function SecondarySubstationInspectionDetailsPage({ inspection }:
               <Label>Date:</Label> <span>{inspection.date}</span>
             </div>
             <div>
+              <Label>Time:</Label> <span>{inspection.time || "N/A"}</span>
+            </div>
+            <div>
+              <Label>Voltage Level:</Label> <span>{inspection.voltageLevel || "N/A"}</span>
+            </div>
+            <div>
               <Label>Substation Number:</Label> <span>{inspection.substationNo}</span>
             </div>
             <div>
@@ -83,6 +89,9 @@ export default function SecondarySubstationInspectionDetailsPage({ inspection }:
               ) : (
                 <span className="text-muted-foreground">N/A</span>
               )}
+            </div>
+            <div>
+              <Label>Status:</Label> <span>{inspection.status || "N/A"}</span>
             </div>
           </div>
         </CardContent>

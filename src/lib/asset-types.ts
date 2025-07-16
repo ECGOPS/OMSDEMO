@@ -115,6 +115,7 @@ export interface SubstationInspection {
   district: string;
   districtId: string;
   date: string;
+  time?: string;
   inspectionDate?: string;
   substationNo: string;
   substationName?: string;
@@ -158,6 +159,7 @@ export interface SubstationInspection {
   silicaGelCondition?: string;
   correctLabelling?: string;
   images?: string[];
+  afterImages?: string[];
 }
 
 export interface SecondarySubstationInspection {
@@ -168,6 +170,7 @@ export interface SecondarySubstationInspection {
   district: string;
   districtId: string;
   date: string;
+  time?: string;
   inspectionDate?: string;
   substationNo: string;
   substationName?: string;

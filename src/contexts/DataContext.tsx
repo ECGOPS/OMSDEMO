@@ -17,7 +17,7 @@ import {
   InspectionItem,
   AffectedPopulation,
   ReliabilityIndices,
-  OverheadLineInspection,
+  NetworkInspection,
   ConditionStatus
 } from "@/lib/types";
 import { LoadMonitoringData, SubstationInspection } from "@/lib/asset-types";
@@ -313,10 +313,10 @@ export interface DataContextType {
   canAddAsset: (regionName: string, districtName: string) => boolean;
   canAddInspection: (regionId: string, districtId: string) => boolean;
   getOP5FaultById: (id: string) => OP5Fault | undefined;
-  overheadLineInspections: OverheadLineInspection[];
-  addOverheadLineInspection: (inspection: Omit<OverheadLineInspection, "id">) => Promise<string>;
-  updateOverheadLineInspection: (id: string, updates: Partial<OverheadLineInspection>) => Promise<void>;
-  deleteOverheadLineInspection: (id: string) => Promise<void>;
+  networkInspections: NetworkInspection[];
+  addNetworkInspection: (inspection: Omit<NetworkInspection, "id">) => Promise<string>;
+  updateNetworkInspection: (id: string, updates: Partial<NetworkInspection>) => Promise<void>;
+  deleteNetworkInspection: (id: string) => Promise<void>;
   canEditLoadMonitoring: boolean;
   canDeleteLoadMonitoring: boolean;
   refreshInspections: () => Promise<void>;
@@ -472,10 +472,10 @@ export const DataContext = createContext<DataContextType>({
   canAddAsset: () => false,
   canAddInspection: () => false,
   getOP5FaultById: () => undefined,
-  overheadLineInspections: [],
-  addOverheadLineInspection: async () => '',
-  updateOverheadLineInspection: async () => {},
-  deleteOverheadLineInspection: async () => {},
+  networkInspections: [],
+  addNetworkInspection: async () => '',
+  updateNetworkInspection: async () => {},
+  deleteNetworkInspection: async () => {},
   canEditLoadMonitoring: false,
   canDeleteLoadMonitoring: false,
   refreshInspections: async () => {},
@@ -610,7 +610,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [vitAssets, setVITAssets] = useState<VITAsset[]>([]);
   const [vitInspections, setVITInspections] = useState<VITInspectionChecklist[]>([]);
   const [savedInspections, setSavedInspections] = useState<SubstationInspection[]>([]);
-  const [overheadLineInspections, setOverheadLineInspections] = useState<OverheadLineInspection[]>([]);
+  const [networkInspections, setNetworkInspections] = useState<NetworkInspection[]>([]);
   const [canEditLoadMonitoring, setCanEditLoadMonitoring] = useState(false);
   const [canDeleteLoadMonitoring, setCanDeleteLoadMonitoring] = useState(false);
   const [isDBInitialized, setIsDBInitialized] = useState(false);
@@ -1229,12 +1229,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const inspections = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })) as OverheadLineInspection[];
-        setOverheadLineInspections(inspections);
+        })) as NetworkInspection[];
+        setNetworkInspections(inspections);
       },
       (error) => {
         console.error("Error fetching overhead line inspections:", error);
-        toast.error("Failed to load overhead line inspections");
+        toast.error("Failed to load network inspections");
       }
     );
 
@@ -2231,8 +2231,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     canAddAsset: () => true,
     canAddInspection: () => true,
     getOP5FaultById: (id: string) => op5Faults.find(f => f.id === id),
-    overheadLineInspections,
-    addOverheadLineInspection: async (inspection) => {
+    networkInspections,
+    addNetworkInspection: async (inspection) => {
       try {
         const docRef = await addDoc(collection(db, "overheadLineInspections"), {
           ...inspection,
@@ -2241,12 +2241,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         });
         return docRef.id;
       } catch (error) {
-        console.error("Error adding overhead line inspection:", error);
+        console.error("Error adding network inspection:", error);
         toast.error("Failed to add inspection");
         throw error;
       }
     },
-    updateOverheadLineInspection: async (id, updates) => {
+    updateNetworkInspection: async (id, updates) => {
       try {
         const docRef = doc(db, "overheadLineInspections", id);
         await updateDoc(docRef, {
@@ -2254,18 +2254,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           updatedAt: serverTimestamp()
         });
       } catch (error) {
-        console.error("Error updating overhead line inspection:", error);
+        console.error("Error updating network inspection:", error);
         toast.error("Failed to update inspection");
         throw error;
       }
     },
-    deleteOverheadLineInspection: async (id) => {
+    deleteNetworkInspection: async (id) => {
       try {
         // Get the inspection data before deleting
         const docRef = doc(db, "overheadLineInspections", id);
         const docSnap = await getDoc(docRef);
         if (!docSnap.exists()) {
-          throw new Error("Overhead line inspection not found");
+          throw new Error("Network inspection not found");
         }
         const inspectionData = docSnap.data();
 
@@ -2289,9 +2289,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             user.name,
             user.role,
             "Delete",
-            "OverheadLineInspection",
+            "NetworkInspection",
             id,
-            `Deleted overhead line inspection for ${inspectionData.lineName} in ${inspectionData.region}${inspectionData.district ? `, ${inspectionData.district}` : ''}`,
+            `Deleted network inspection for ${inspectionData.lineName} in ${inspectionData.region}${inspectionData.district ? `, ${inspectionData.district}` : ''}`,
             inspectionData.region,
             inspectionData.district
           );
@@ -2299,7 +2299,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         toast.success("Inspection deleted successfully");
       } catch (error) {
-        console.error("Error deleting overhead line inspection:", error);
+        console.error("Error deleting network inspection:", error);
         toast.error("Failed to delete inspection");
         throw error;
       }

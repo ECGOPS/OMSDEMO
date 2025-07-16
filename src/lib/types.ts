@@ -413,7 +413,8 @@ export type PoleHeight = "8m" | "9m" | "10m" | "11m" | "14m" | "others";
 
 export type PoleType = "CP" | "WP" | "SP" | "ST"; // CP - Concrete, WP - Wood, SP - Steel Tubular, ST - Steel Tower
 
-export interface OverheadLineInspection {
+// Rename interface and all references
+export interface NetworkInspection {
   id: string;
   originalOfflineId?: string;
   createdAt: string;
@@ -427,6 +428,7 @@ export interface OverheadLineInspection {
   referencePole: string;
   latitude: number;
   longitude: number;
+  location?: string;
   status: "pending" | "in-progress" | "completed" | "rejected";
   inspector: {
     id: string;

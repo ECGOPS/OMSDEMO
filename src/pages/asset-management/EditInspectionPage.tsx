@@ -62,6 +62,8 @@ export default function EditInspectionPage() {
   const [showFullImage, setShowFullImage] = useState<string | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [afterCapturedImages, setAfterCapturedImages] = useState<string[]>(formData.afterImages || []);
+  const [isCapturingAfter, setIsCapturingAfter] = useState(false);
 
   // Add video constraints
   const videoConstraints = {
@@ -90,6 +92,7 @@ export default function EditInspectionPage() {
           basement: inspection.basement || [],
           remarks: inspection.remarks || "", // This is used for additional notes
           images: inspection.images || [], // Add images to formData
+          afterImages: inspection.afterImages || [], // Add after-inspection images to formData
           // Combine items for backward compatibility
           items: [
             ...(inspection.siteCondition || []),
@@ -102,6 +105,7 @@ export default function EditInspectionPage() {
         });
         setLoading(false);
         setCapturedImages(inspection.images || []);
+        setAfterCapturedImages(inspection.afterImages || []);
       } else {
         toast.error("Inspection not found");
         navigate("/asset-management/inspection-management");
@@ -293,6 +297,46 @@ export default function EditInspectionPage() {
     }));
   }, [capturedImages]);
 
+  // Add after-inspection photo handlers and effect at the top of the component
+  const handleAfterFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAfterCapturedImages(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeAfterImage = (index: number) => {
+    setAfterCapturedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      afterImages: afterCapturedImages
+    }));
+  }, [afterCapturedImages]);
+
+  // Optionally, add logic for capturing after-inspection photos with camera if isCapturingAfter is used
+  useEffect(() => {
+    if (isCapturingAfter && webcamRef.current) {
+      setIsCapturingAfter(false); // Close dialog after capture
+      const capture = () => {
+        const imageSrc = webcamRef.current?.getScreenshot();
+        if (imageSrc) {
+          setAfterCapturedImages(prev => [...prev, imageSrc]);
+          setCameraError(null);
+        }
+      };
+      capture();
+    }
+  }, [isCapturingAfter]);
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,6 +358,7 @@ export default function EditInspectionPage() {
         basement: formData.basement || [],
         remarks: formData.remarks || "",
         images: capturedImages, // Use capturedImages state for the latest images
+        afterImages: afterCapturedImages, // Use afterCapturedImages state for after-inspection images
         // Update the combined items array to match category-specific arrays
         items: [
           ...(formData.siteCondition || []),
@@ -466,6 +511,24 @@ export default function EditInspectionPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select
+                      id="status"
+                      value={formData.status || ''}
+                      onValueChange={(value) => handleInputChange('status', value)}
+                      required
+                    >
+                      <SelectTrigger id="status">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -523,6 +586,69 @@ export default function EditInspectionPage() {
                             size="icon"
                             className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={() => removeImage(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* After Inspection Photos Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>After Inspection Photos</CardTitle>
+                <CardDescription>Take or upload photos after inspection corrections</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCapturingAfter(true)}
+                      className="w-full sm:flex-1"
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      Take After Photo
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full sm:flex-1"
+                      onClick={() => document.getElementById('after-file-upload')?.click()}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload After Photos
+                      <input
+                        id="after-file-upload"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleAfterFileUpload}
+                      />
+                    </Button>
+                  </div>
+                  {afterCapturedImages && afterCapturedImages.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {afterCapturedImages.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={image}
+                            alt={`After inspection image ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg cursor-pointer"
+                            onClick={() => setShowFullImage(image)}
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeAfterImage(index)}
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -887,6 +1013,57 @@ export default function EditInspectionPage() {
                 className="w-full h-auto rounded-lg"
               />
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Add after-inspection camera dialog after the main form */}
+        <Dialog open={isCapturingAfter} onOpenChange={(open) => {
+          if (!open) setCameraError(null);
+          setIsCapturingAfter(open);
+        }}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Take After Inspection Photo</DialogTitle>
+              <DialogDescription>
+                Take a photo after inspection corrections. Make sure the area is clearly visible and well-lit.
+              </DialogDescription>
+              {cameraError && (
+                <p className="text-sm text-red-500 mt-2">Error: {cameraError}</p>
+              )}
+            </DialogHeader>
+            <div className="relative aspect-video bg-black">
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                videoConstraints={videoConstraints}
+                onUserMediaError={handleCameraError}
+                className="w-full h-full rounded-md object-cover"
+                mirrored={isMobile}
+                imageSmoothing={true}
+              />
+            </div>
+            <div className="flex justify-center gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsCapturingAfter(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (webcamRef.current) {
+                    const imageSrc = webcamRef.current.getScreenshot();
+                    if (imageSrc) {
+                      setAfterCapturedImages(prev => [...prev, imageSrc]);
+                      setIsCapturingAfter(false);
+                      setCameraError(null);
+                    }
+                  }
+                }}
+                disabled={!!cameraError}
+              >
+                Capture
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
