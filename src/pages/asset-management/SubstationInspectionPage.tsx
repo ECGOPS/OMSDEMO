@@ -100,6 +100,9 @@ export default function SubstationInspectionPage() {
     gpsLocation: ""
   });
   const [categories, setCategories] = useState<Category[]>([]);
+  const didInit = useRef(false);
+  const didEditInit = useRef(false);
+  const [afterCapturedImages, setAfterCapturedImages] = useState<string[]>([]);
 
   // Add video constraints
   const videoConstraints = {
@@ -228,30 +231,126 @@ export default function SubstationInspectionPage() {
     </Card>
   );
 
-  // Update item status
-  const updateItemStatus = (categoryIndex: number, itemIndex: number, status: ConditionStatus) => {
-    console.log('Updating item status:', { categoryIndex, itemIndex, status }); // Debug log
+  // Add handlers for after-inspection photos
+  const [isCapturingAfter, setIsCapturingAfter] = useState(false);
+  const afterWebcamRef = useRef<Webcam>(null);
+  const captureAfterImage = () => {
+    if (afterWebcamRef.current) {
+      const imageSrc = afterWebcamRef.current.getScreenshot();
+      if (imageSrc) {
+        setAfterCapturedImages(prev => [...prev, imageSrc]);
+        setIsCapturingAfter(false);
+        setCameraError(null);
+      }
+    }
+  };
+  const handleAfterFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAfterCapturedImages(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+  const removeAfterImage = (index: number) => {
+    setAfterCapturedImages(prev => prev.filter((_, i) => i !== index));
+  };
 
-    const categoryName = categories[categoryIndex].name.toLowerCase().replace(" ", "");
-    const categoryKey = categoryName as keyof SubstationInspection;
-
-    // Create updated items array
-    const updatedItems = [...categories[categoryIndex].items];
-    updatedItems[itemIndex] = { ...updatedItems[itemIndex], status };
-
-    // Update categories state
-    const newCategories = [...categories];
-    newCategories[categoryIndex] = {
-      ...newCategories[categoryIndex],
-      items: updatedItems,
-    };
-    setCategories(newCategories);
-
-    // Update formData with only the changed category
+  // Update formData when afterCapturedImages changes
+  useEffect(() => {
     setFormData(prev => ({
       ...prev,
-      [categoryKey]: updatedItems,
+      afterImages: afterCapturedImages
     }));
+  }, [afterCapturedImages]);
+
+  // Add the after-inspection photo section
+  const renderAfterPhotoSection = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>After Inspection Photos</CardTitle>
+        <CardDescription>Take or upload photos after inspection corrections</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsCapturingAfter(true)}
+              className="w-full sm:flex-1"
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Take Photo
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:flex-1"
+              onClick={() => document.getElementById('after-file-upload')?.click()}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Photos
+              <input
+                id="after-file-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleAfterFileUpload}
+              />
+            </Button>
+          </div>
+          {afterCapturedImages.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {afterCapturedImages.map((image, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={image}
+                    alt={`After inspection image ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-lg cursor-pointer"
+                    onClick={() => setShowFullImage(image)}
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removeAfterImage(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Update item status
+  const updateItemStatus = (categoryIndex: number, itemIndex: number, status: ConditionStatus) => {
+    setCategories(prevCategories => {
+      const newCategories = [...prevCategories];
+      const updatedItems = [...newCategories[categoryIndex].items];
+      updatedItems[itemIndex] = { ...updatedItems[itemIndex], status };
+      newCategories[categoryIndex] = {
+        ...newCategories[categoryIndex],
+        items: updatedItems,
+      };
+      const categoryName = newCategories[categoryIndex].name.toLowerCase().replace(" ", "");
+      const categoryKey = categoryName as keyof SubstationInspection;
+      setFormData(prev => ({
+        ...prev,
+        [categoryKey]: newCategories[categoryIndex].items,
+      }));
+      return newCategories;
+    });
   };
 
   // Add calculateStatusSummary function
@@ -446,7 +545,9 @@ export default function SubstationInspectionPage() {
           powerTransformer: inspection.powerTransformer || [],
           outdoorEquipment: inspection.outdoorEquipment || [],
           siteCondition: inspection.siteCondition || [],
-          gpsLocation: inspection.gpsLocation || ""
+          gpsLocation: inspection.gpsLocation || "",
+          images: inspection.images || [],
+          afterImages: inspection.afterImages || []
         });
 
         // Set region and district IDs
@@ -540,11 +641,15 @@ export default function SubstationInspectionPage() {
           powerTransformer: categoriesFromInspection.find(c => c.id === 'power-transformer')?.items || [],
           outdoorEquipment: categoriesFromInspection.find(c => c.id === 'outdoor-equipment')?.items || [],
           remarks: inspection.remarks || "",
-          gpsLocation: inspection.gpsLocation || ""
+          gpsLocation: inspection.gpsLocation || "",
+          images: inspection.images || [],
+          afterImages: inspection.afterImages || []
         }));
       }
     } else {
-      // Create mode - generate unique IDs for new items
+      // Create mode - only initialize once
+      if (didInit.current) return;
+      didInit.current = true;
       const defaultItems = [
         {
           id: "site-condition",
@@ -669,8 +774,6 @@ export default function SubstationInspectionPage() {
 
   // Update item remarks
   const updateItemRemarks = (categoryIndex: number, itemIndex: number, remarks: string) => {
-    console.log('Updating item remarks:', { categoryIndex, itemIndex, remarks }); // Debug log
-
     setCategories(prevCategories => {
       const newCategories = [...prevCategories];
       newCategories[categoryIndex] = {
@@ -679,18 +782,14 @@ export default function SubstationInspectionPage() {
           index === itemIndex ? { ...item, remarks } : item
         ),
       };
+      const categoryName = newCategories[categoryIndex].name.toLowerCase().replace(" ", "");
+      const categoryKey = categoryName as keyof SubstationInspection;
+      setFormData(prev => ({
+        ...prev,
+        [categoryKey]: newCategories[categoryIndex].items,
+      }));
       return newCategories;
     });
-
-    // Also update formData
-    const categoryName = categories[categoryIndex].name.toLowerCase().replace(" ", "");
-    const categoryKey = categoryName as keyof SubstationInspection;
-    setFormData(prev => ({
-      ...prev,
-      [categoryKey]: categories[categoryIndex].items.map((item, index) =>
-        index === itemIndex ? { ...item, remarks } : item
-      ),
-    }));
   };
 
   // Add online status listener
@@ -861,7 +960,8 @@ export default function SubstationInspectionPage() {
         silicaGelCondition: formData.silicaGelCondition,
         correctLabelling: formData.correctLabelling,
         gpsLocation: formData.gpsLocation || "",
-        images: capturedImages
+        images: capturedImages,
+        afterImages: afterCapturedImages
       };
 
       // Log the inspection data before saving
@@ -992,7 +1092,6 @@ export default function SubstationInspectionPage() {
                     type="text"
                     value={formData.substationNo || ''}
                     onChange={(e) => handleInputChange('substationNo', e.target.value)}
-                    required
                   />
                 </div>
 
@@ -1037,11 +1136,9 @@ export default function SubstationInspectionPage() {
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select
-                    id="status"
                     value={formData.status || "Pending"}
                     onValueChange={value => handleInputChange('status', value)}
                     required
-                    className="w-full"
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select status" />
@@ -1507,6 +1604,7 @@ export default function SubstationInspectionPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {renderPage(currentPage)}
           {currentPage === 8 && renderPhotoSection()}
+          {currentPage === 8 && renderAfterPhotoSection()}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8">
             <Button
               type="button"
@@ -1602,6 +1700,58 @@ export default function SubstationInspectionPage() {
                 <Button
                   type="button"
                   onClick={captureImage}
+                  disabled={!!cameraError}
+                >
+                  Capture
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* After Inspection Camera Dialog */}
+        <Dialog open={isCapturingAfter} onOpenChange={(open) => {
+          if (!open) {
+            setCameraError(null);
+          }
+          setIsCapturingAfter(open);
+        }}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Take After Inspection Photo</DialogTitle>
+              <DialogDescription>
+                Take a photo after inspection corrections. Make sure the area is clearly visible and well-lit.
+              </DialogDescription>
+              {cameraError && (
+                <p className="text-sm text-red-500 mt-2">
+                  Error: {cameraError}
+                </p>
+              )}
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="relative aspect-video bg-black">
+                <Webcam
+                  audio={false}
+                  ref={afterWebcamRef}
+                  screenshotFormat="image/jpeg"
+                  videoConstraints={videoConstraints}
+                  onUserMediaError={handleCameraError}
+                  className="w-full h-full rounded-md object-cover"
+                  mirrored={!isMobile}
+                  imageSmoothing={true}
+                />
+              </div>
+              <div className="flex justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCapturingAfter(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={captureAfterImage}
                   disabled={!!cameraError}
                 >
                   Capture

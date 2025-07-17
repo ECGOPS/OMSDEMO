@@ -364,6 +364,7 @@ export function InspectionDetailsView({
                     </div>
                   </div>
                 )}
+                {/* Do NOT render afterImages here */}
               </div>
             </CardContent>
           </Card>
@@ -451,40 +452,13 @@ export function InspectionDetailsView({
         </Card>
       )}
 
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={handlePreviousPage}
-          disabled={currentPage === 1}
-        >
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Previous
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          Page {currentPage} of {totalPages}
-        </span>
-        <Button
-          variant="outline"
-          onClick={handleNextPage}
-          disabled={currentPage === totalPages}
-        >
-          Next
-          <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Full Image Dialog */}
-      <Dialog open={!!showFullImage} onOpenChange={(open) => !open && setShowFullImage(null)}>
-        <DialogContent className="max-w-4xl">
-          {showFullImage && (
-            <img
-              src={showFullImage}
-              alt="Full size inspection image"
-              className="w-full h-auto rounded-lg"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {showFullImage && (
+        <Dialog open={!!showFullImage} onOpenChange={setShowFullImage}>
+          <DialogContent className="max-w-screen-xl h-[90vh]">
+            <img src={showFullImage} alt="Full Inspection Image" className="w-full h-full object-contain" />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
-} 
+}
