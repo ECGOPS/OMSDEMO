@@ -323,3 +323,47 @@ export const calculateReliabilityIndicesByLevel = (
 
   return indices;
 };
+
+// Haversine formula to calculate distance between two GPS coordinates (in meters)
+export function haversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const R = 6371000; // Earth radius in meters
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Calculate total feeder length for a given feeder name from NetworkInspection records
+export function calculateFeederLengthForFeeder(
+  inspections: { feederName: string; latitude: number; longitude: number; date?: string; time?: string }[],
+  feederName: string
+): number {
+  // Filter inspections for the given feeder name and valid GPS
+  const feederInspections = inspections
+    .filter(i => i.feederName === feederName && typeof i.latitude === 'number' && typeof i.longitude === 'number')
+    // Sort by date and time if available
+    .sort((a, b) => {
+      const dateA = new Date(`${a.date || ''}T${a.time || '00:00'}`).getTime();
+      const dateB = new Date(`${b.date || ''}T${b.time || '00:00'}`).getTime();
+      return dateA - dateB;
+    });
+
+  let totalLength = 0;
+  for (let i = 1; i < feederInspections.length; i++) {
+    const prev = feederInspections[i - 1];
+    const curr = feederInspections[i];
+    totalLength += haversineDistance(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+  }
+  return totalLength; // in meters
+}

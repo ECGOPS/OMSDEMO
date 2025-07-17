@@ -23,6 +23,7 @@ import { toast } from "react-hot-toast";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { exportOverheadLineInspectionsToExcel } from '@/utils/excelExport';
+import { calculateFeederLengthForFeeder } from '@/utils/calculations';
 
 interface OverheadLineInspectionsTableProps {
   inspections: NetworkInspection[];
@@ -695,6 +696,7 @@ export function OverheadLineInspectionsTable({
               <TableHead>Region</TableHead>
               <TableHead>District</TableHead>
               <TableHead>Feeder Name</TableHead>
+              <TableHead>Estimated Feeder Length (km)</TableHead>
               <TableHead>Voltage Level</TableHead>
               <TableHead>Reference Pole</TableHead>
               <TableHead>Status</TableHead>
@@ -702,98 +704,114 @@ export function OverheadLineInspectionsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentInspections.map((inspection) => (
-              <TableRow
-                key={inspection.id}
-                onClick={e => {
-                  if ((e.target as HTMLElement).closest('td')?.classList.contains('actions-cell')) return;
-                  onView(inspection);
-                }}
-                className="cursor-pointer hover:bg-muted transition-colors"
-              >
-                <TableCell>
-                  {getDisplayDate(inspection)}
-                  {inspection.id.startsWith('inspection_') && (
-                    <span className="ml-2 text-xs text-yellow-600">(Offline)</span>
-                  )}
-                </TableCell>
-                <TableCell>{inspection.region || "Unknown"}</TableCell>
-                <TableCell>{inspection.district || "Unknown"}</TableCell>
-                <TableCell>{inspection.feederName}</TableCell>
-                <TableCell>{inspection.voltageLevel}</TableCell>
-                <TableCell>{inspection.referencePole}</TableCell>
-                <TableCell>
-                  <Badge
-                    className={
-                      inspection.status === "completed"
-                        ? "bg-green-500"
-                        : inspection.status === "in-progress"
-                        ? "bg-yellow-500"
-                        : "bg-gray-500"
-                    }
-                  >
-                    {inspection.status ? inspection.status.charAt(0).toUpperCase() + inspection.status.slice(1) : "Unknown"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right actions-cell">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        onView(inspection);
-                      }}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Details
-                      </DropdownMenuItem>
-                      {(userRole === 'global_engineer' || userRole === 'district_engineer' || userRole === 'regional_engineer' || userRole === 'technician' || userRole === 'system_admin') && (
+            {currentInspections.map((inspection, idx) => {
+              // Calculate feeder length for this feeder using allInspections
+              let feederLength = 0;
+              if (allInspections) {
+                feederLength = calculateFeederLengthForFeeder(allInspections, inspection.feederName) / 1000; // meters to km
+              }
+              return (
+                <TableRow
+                  key={inspection.id}
+                  onClick={e => {
+                    if ((e.target as HTMLElement).closest('td')?.classList.contains('actions-cell')) return;
+                    onView(inspection);
+                  }}
+                  className="cursor-pointer hover:bg-muted transition-colors"
+                >
+                  <TableCell>
+                    {getDisplayDate(inspection)}
+                    {inspection.id.startsWith('inspection_') && (
+                      <span className="ml-2 text-xs text-yellow-600">(Offline)</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{inspection.region || "Unknown"}</TableCell>
+                  <TableCell>{inspection.district || "Unknown"}</TableCell>
+                  <TableCell>{inspection.feederName}</TableCell>
+                  <TableCell>
+                    {feederLength > 0 ? (
+                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        {feederLength.toFixed(2)}
+                      </Badge>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                  <TableCell>{inspection.voltageLevel}</TableCell>
+                  <TableCell>{inspection.referencePole}</TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        inspection.status === "completed"
+                          ? "bg-green-500"
+                          : inspection.status === "in-progress"
+                          ? "bg-yellow-500"
+                          : "bg-gray-500"
+                      }
+                    >
+                      {inspection.status ? inspection.status.charAt(0).toUpperCase() + inspection.status.slice(1) : "Unknown"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right actions-cell">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          onEdit(inspection);
+                          onView(inspection);
                         }}>
-                          <FileEdit className="mr-2 h-4 w-4" />
-                          Edit
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
                         </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        if (!inspection?.id) {
-                          toast.error("Invalid inspection ID");
-                          return;
-                        }
-                        onDelete(inspection);
-                      }}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        exportToPDF(inspection);
-                      }}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Export to PDF
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        exportToCSV(inspection);
-                      }}>
-                        <FileDown className="mr-2 h-4 w-4" />
-                        Export to CSV
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+                        {(userRole === 'global_engineer' || userRole === 'district_engineer' || userRole === 'regional_engineer' || userRole === 'technician' || userRole === 'system_admin') && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(inspection);
+                          }}>
+                            <FileEdit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          if (!inspection?.id) {
+                            toast.error("Invalid inspection ID");
+                            return;
+                          }
+                          onDelete(inspection);
+                        }}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          exportToPDF(inspection);
+                        }}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Export to PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          exportToCSV(inspection);
+                        }}>
+                          <FileDown className="mr-2 h-4 w-4" />
+                          Export to CSV
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {inspections.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   No inspections found
                 </TableCell>
               </TableRow>
