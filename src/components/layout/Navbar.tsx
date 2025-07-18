@@ -235,7 +235,7 @@ export function Navbar() {
                             )
                           }
                         >
-                          Overhead Line Inspection
+                          Network Inspection
                         </NavLink>
                       </>
                     )}

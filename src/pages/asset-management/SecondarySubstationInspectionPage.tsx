@@ -70,7 +70,7 @@ export default function SecondarySubstationInspectionPage() {
   const [isMobile, setIsMobile] = useState(false);
   // Add state for after-correction camera
   const [isCapturingAfter, setIsCapturingAfter] = useState(false);
-  const [afterImages, setAfterImages] = useState<string[]>([]);
+  const [afterImages, setAfterImages] = useState<string[]>(() => []);
   const videoRefAfter = useRef<HTMLVideoElement>(null);
   const [isVideoReadyAfter, setIsVideoReadyAfter] = useState(false);
   let cameraStreamAfter: MediaStream | null = null;
@@ -265,6 +265,14 @@ export default function SecondarySubstationInspectionPage() {
       images: capturedImages
     }));
   }, [capturedImages]);
+
+  // Always sync afterImages to formData
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      afterImages: afterImages
+    }));
+  }, [afterImages]);
 
   // Add the photo section to the form
   const renderPhotoSection = () => (
@@ -742,11 +750,8 @@ export default function SecondarySubstationInspectionPage() {
         if (inspection.images && inspection.images.length > 0) {
           setCapturedImages(inspection.images);
         }
-        // Cast to SecondarySubstationInspection to access afterImages
-        const secondaryInspection = inspection as unknown as SecondarySubstationInspection;
-        if (secondaryInspection.afterImages && secondaryInspection.afterImages.length > 0) {
-          setAfterImages(secondaryInspection.afterImages);
-        }
+        // Always set afterImages, even if empty
+        setAfterImages(Array.isArray(inspection.afterImages) ? inspection.afterImages : []);
         return;
       }
     }
@@ -773,6 +778,7 @@ export default function SecondarySubstationInspectionPage() {
       inspectedBy: user?.name || "Unknown",
       status: "Pending"
     }));
+    setAfterImages([]); // Always initialize to empty array for new inspections
   }, [id, user]);
 
    // Add online status listener (similar logic)
@@ -1131,11 +1137,9 @@ export default function SecondarySubstationInspectionPage() {
                         <div className="space-y-2">
                             <Label htmlFor="status">Status</Label>
                             <Select
-                                id="status"
                                 value={formData.status || "Pending"}
                                 onValueChange={value => handleInputChange('status', value)}
                                 required
-                                className="w-full"
                             >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Select status" />

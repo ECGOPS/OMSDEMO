@@ -17,6 +17,7 @@ export class PermissionService {
     'regional_general_manager': 3,
     'global_engineer': 4,
     'system_admin': 5,
+    'ict': 2,
     'load_monitoring_edit': 2,
     'load_monitoring_delete': 3,
     'admin': 5
@@ -98,9 +99,9 @@ export class PermissionService {
     'feeder_management_delete_all': ['global_engineer', 'system_admin'],
     
     // User Management Features
-    'user_management': ['global_engineer', 'system_admin'],
-    'user_management_update': ['global_engineer', 'system_admin'],
-    'user_management_delete': ['system_admin'],
+    'user_management': ['global_engineer', 'system_admin', 'ict'],
+    'user_management_update': ['global_engineer', 'system_admin', 'ict'],
+    'user_management_delete': ['system_admin', 'ict'],
     
     'district_population': ['district_engineer', 'district_manager', 'regional_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
     'district_population_update': ['district_engineer', 'district_manager', 'regional_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
@@ -118,6 +119,7 @@ export class PermissionService {
     'music_management': ['system_admin'],
     'music_management_update': ['system_admin'],
     'music_management_delete': ['system_admin'],
+    'staff_ids_management': ['system_admin', 'ict'],
   };
 
   private featurePermissions: { [key: string]: UserRole[] } = {};

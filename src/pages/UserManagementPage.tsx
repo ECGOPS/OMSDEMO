@@ -10,11 +10,13 @@ import { StaffIdManagement } from "@/components/user-management/StaffIdManagemen
 import { AccessControlWrapper } from "@/components/access-control/AccessControlWrapper";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PermissionService } from "@/services/PermissionService";
 
 export default function UserManagementPage() {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const permissionService = PermissionService.getInstance();
   const isDistrictPopulationRoute = location.pathname === "/district-population";
   const isStaffIdsRoute = location.pathname === "/staff-ids";
   
@@ -33,7 +35,7 @@ export default function UserManagementPage() {
       if (!isDistrictPopulationRoute) {
         navigate("/dashboard");
       }
-    } else if (user?.role !== "system_admin" && user?.role !== "global_engineer") {
+    } else if (user?.role !== "system_admin" && user?.role !== "global_engineer" && user?.role !== "ict") {
       navigate("/dashboard");
     }
 
@@ -96,15 +98,19 @@ export default function UserManagementPage() {
                 
                 <div className="p-4">
                   <TabsContent value="users" className="mt-0">
-                    <AccessControlWrapper requiredRole="global_engineer">
+                    {permissionService.canAccessFeature(user?.role || '', 'user_management') ? (
                       <UsersList />
-                    </AccessControlWrapper>
+                    ) : (
+                      <div className="text-center text-destructive font-semibold">You don't have permission to access this page.</div>
+                    )}
                   </TabsContent>
                   
                   <TabsContent value="staff-ids" className="mt-0">
-                    <AccessControlWrapper requiredRole="system_admin">
+                    {permissionService.canAccessFeature(user?.role || '', 'staff_ids_management') ? (
                       <StaffIdManagement />
-                    </AccessControlWrapper>
+                    ) : (
+                      <div className="text-center text-destructive font-semibold">You don't have permission to access this page.</div>
+                    )}
                   </TabsContent>
                 </div>
               </Tabs>

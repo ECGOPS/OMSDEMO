@@ -182,7 +182,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           title: "User Management",
           icon: Users,
           href: "/user-management",
-          show: user?.role === "system_admin" || user?.role === "global_engineer",
+          show: user?.role === "system_admin" || user?.role === "global_engineer" || user?.role === "ict",
         },
         {
           title: "User Logs",

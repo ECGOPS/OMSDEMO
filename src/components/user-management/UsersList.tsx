@@ -56,6 +56,7 @@ export function UsersList() {
   const isSystemAdmin = currentUser?.role === "system_admin";
   const isGlobalEngineer = currentUser?.role === "global_engineer";
   const canManageUsers = isSystemAdmin || isGlobalEngineer;
+  const isICT = currentUser?.role === "ict";
   
   const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,6 +77,8 @@ export function UsersList() {
         return "bg-red-100 text-red-800 hover:bg-red-100";
       case "technician":
         return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
+      case "ict":
+        return "bg-cyan-100 text-cyan-800 hover:bg-cyan-100";
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-100";
     }
@@ -97,6 +100,8 @@ export function UsersList() {
         return "System Administrator";
       case "technician":
         return "Technician";
+      case "ict":
+        return "ICT";
       default:
         return "Unknown Role";
     }
@@ -137,19 +142,21 @@ export function UsersList() {
       // Find region and district IDs
       const region = regions.find(r => r.name === newRegion);
       const district = districts.find(d => d.name === newDistrict && d.regionId === region?.id);
-      
+      const hashedPassword = await hashPassword(tempPass);
       const newUserData: Omit<User, "id"> = {
-      name: newName,
-      email: newEmail,
-      role: newRole,
-      region: (newRole !== "system_admin" && newRole !== "global_engineer") ? newRegion : undefined,
+        uid: '',
+        displayName: newName,
+        name: newName,
+        email: newEmail,
+        role: newRole,
+        region: (newRole !== "system_admin" && newRole !== "global_engineer") ? newRegion : undefined,
         regionId: (newRole !== "system_admin" && newRole !== "global_engineer") ? region?.id : undefined,
         district: (newRole === "district_engineer" || newRole === "technician") ? newDistrict : undefined,
         districtId: (newRole === "district_engineer" || newRole === "technician") ? district?.id : undefined,
-      tempPassword: tempPass,
-      mustChangePassword: true,
-      password: hashPassword(tempPass)
-    };
+        tempPassword: tempPass,
+        mustChangePassword: true,
+        password: hashedPassword
+      };
     
       // Add user to Firestore via AuthContext function
       await addUser(newUserData);
@@ -308,6 +315,8 @@ export function UsersList() {
         const data = doc.data();
         usersList.push({
           id: doc.id,
+          uid: data.uid || doc.id,
+          displayName: data.displayName || data.name || '',
           name: data.name || '',
           email: data.email || '',
           role: data.role || 'technician',
@@ -318,8 +327,8 @@ export function UsersList() {
           staffId: data.staffId || undefined,
           disabled: data.disabled || false,
           mustChangePassword: data.mustChangePassword || false,
-          lastActive: data.lastActive || null,
-          lastIpAddress: data.lastIpAddress || null
+          // tempPassword: data.tempPassword || undefined, // Only set if string
+          // createdAt, updatedAt, photoURL, password, etc. can be added as needed
         });
       });
       console.log(`UsersList: Manually fetched ${usersList.length} users`);
@@ -333,10 +342,16 @@ export function UsersList() {
     }
   }, [setUsers]);
   
-  // When region changes, reset district selection
+  // When region changes, only reset district if the region actually changed from the user's current region
   useEffect(() => {
-    setNewDistrict("");
-  }, [newRegion]);
+    if (isEditDialogOpen && selectedUser) {
+      if (newRegion !== (selectedUser.region || "")) {
+        setNewDistrict("");
+      }
+    } else {
+      setNewDistrict("");
+    }
+  }, [newRegion, isEditDialogOpen, selectedUser]);
   
   // Fetch users when component mounts
   useEffect(() => {
@@ -358,20 +373,28 @@ export function UsersList() {
   
   // Recalculate filtered users when search term or original users list changes
   useEffect(() => {
-    if (!users) return;
-    
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
-    const filtered = users.filter(user => {
-      // Check against multiple fields
-      return (
+    let filtered = users;
+    if (isICT) {
+      // Hide system_admin and global_engineer from ICT users
+      const globalRoles = ["system_admin", "global_engineer"];
+      filtered = filtered.filter(user => !globalRoles.includes(user.role));
+      if (currentUser?.district) {
+        filtered = filtered.filter(user => user.district === currentUser.district);
+      } else if (currentUser?.region) {
+        filtered = filtered.filter(user => user.region === currentUser.region);
+      }
+    }
+    if (searchTerm) {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(user =>
         user.name.toLowerCase().includes(lowerCaseSearchTerm) ||
         user.email.toLowerCase().includes(lowerCaseSearchTerm) ||
-        (user.staffId && user.staffId.toLowerCase().includes(lowerCaseSearchTerm)) ||
-        user.role.toLowerCase().includes(lowerCaseSearchTerm)
+        (user.region && user.region.toLowerCase().includes(lowerCaseSearchTerm)) ||
+        (user.district && user.district.toLowerCase().includes(lowerCaseSearchTerm))
       );
-    });
+    }
     setFilteredUsers(filtered);
-  }, [users, searchTerm]);
+  }, [users, searchTerm, isICT, currentUser]);
   
   return (
     <div className="space-y-6">
@@ -483,7 +506,7 @@ export function UsersList() {
                         </TableCell>
                         <TableCell className="p-0 sticky right-0 bg-background">
                           <div className="flex justify-end items-center gap-1 px-2 py-1 bg-background">
-                            {canManageUsers && (
+                            {(canManageUsers || isICT) && (
                               <div className="flex items-center gap-0.5">
                                 <Button
                                   variant="ghost"
@@ -616,6 +639,7 @@ export function UsersList() {
                     <SelectItem value="district_manager">District Manager</SelectItem>
                     <SelectItem value="district_engineer">District Engineer</SelectItem>
                     <SelectItem value="technician">Technician</SelectItem>
+                    <SelectItem value="ict">ICT</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -623,12 +647,16 @@ export function UsersList() {
               {(newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") && (
                 <div className="space-y-2">
                   <Label htmlFor="region">Region</Label>
-                  <Select value={newRegion} onValueChange={setNewRegion}>
+                  <Select
+                    value={newRegion}
+                    onValueChange={setNewRegion}
+                    disabled={isICT}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select region" />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredRegions.map(region => (
+                      {regions.map(region => (
                         <SelectItem key={region.id} value={region.name}>
                           {region.name}
                         </SelectItem>
@@ -641,7 +669,7 @@ export function UsersList() {
               {(newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") && newRegion && (
                 <div className="space-y-2">
                   <Label htmlFor="district">District</Label>
-                  <Select value={newDistrict} onValueChange={setNewDistrict}>
+                  <Select value={newDistrict} onValueChange={setNewDistrict} disabled={false}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select district" />
                     </SelectTrigger>
@@ -790,21 +818,45 @@ export function UsersList() {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {isSystemAdmin && <SelectItem value="system_admin">System Administrator</SelectItem>}
-                  <SelectItem value="global_engineer">Global Engineer</SelectItem>
-                  <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
-                  <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
-                  <SelectItem value="district_manager">District Manager</SelectItem>
-                  <SelectItem value="district_engineer">District Engineer</SelectItem>
-                  <SelectItem value="technician">Technician</SelectItem>
+                  {isICT ? (
+                    currentUser?.district ? (
+                      <>
+                        <SelectItem value="technician">Technician</SelectItem>
+                        <SelectItem value="district_engineer">District Engineer</SelectItem>
+                        <SelectItem value="district_manager">District Manager</SelectItem>
+                        <SelectItem value="ict">ICT</SelectItem>
+                      </>
+                    ) : currentUser?.region ? (
+                      <>
+                        <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                        <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
+                        <SelectItem value="district_engineer">District Engineer</SelectItem>
+                        <SelectItem value="district_manager">District Manager</SelectItem>
+                        <SelectItem value="technician">Technician</SelectItem>
+                        <SelectItem value="ict">ICT</SelectItem>
+                      </>
+                    ) : null
+                  ) : (
+                    <>
+                      <SelectItem value="system_admin">System Admin</SelectItem>
+                      <SelectItem value="global_engineer">Global Engineer</SelectItem>
+                      <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
+                      <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                      <SelectItem value="district_manager">District Manager</SelectItem>
+                      <SelectItem value="district_engineer">District Engineer</SelectItem>
+                      <SelectItem value="technician">Technician</SelectItem>
+                      <SelectItem value="ict">ICT</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
             
-            {(newRole === "regional_engineer" || newRole === "regional_general_manager" || newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") && (
+            {((newRole === "regional_engineer" || newRole === "regional_general_manager" || newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ||
+              (newRole === "ict" && (isSystemAdmin || isGlobalEngineer))) && (
               <div className="space-y-2">
                 <Label htmlFor="edit-region">Region</Label>
-                <Select value={newRegion} onValueChange={setNewRegion}>
+                <Select value={newRegion} onValueChange={setNewRegion} disabled={isICT && !(isSystemAdmin || isGlobalEngineer)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select region" />
                   </SelectTrigger>
@@ -819,10 +871,11 @@ export function UsersList() {
               </div>
             )}
             
-            {(newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") && newRegion && (
+            {((newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ||
+              (newRole === "ict" && (isSystemAdmin || isGlobalEngineer))) && newRegion && (
               <div className="space-y-2">
                 <Label htmlFor="edit-district">District</Label>
-                <Select value={newDistrict} onValueChange={setNewDistrict}>
+                <Select value={newDistrict} onValueChange={setNewDistrict} disabled={false}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select district" />
                   </SelectTrigger>

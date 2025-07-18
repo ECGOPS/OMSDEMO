@@ -22,7 +22,7 @@ export const userSchema = z.object({
     .regex(/[0-9]/, "Password must contain at least one number")
     .regex(/^[A-Za-z0-9]+$/, "Password can only contain letters and numbers"),
   name: z.string().min(2),
-  role: z.enum(['district_engineer', 'regional_engineer', 'global_engineer', 'system_admin', 'technician', 'district_manager', 'regional_general_manager']),
+  role: z.enum(['district_engineer', 'regional_engineer', 'global_engineer', 'system_admin', 'technician', 'district_manager', 'regional_general_manager', 'ict']),
   region: z.string().optional(),
   district: z.string().optional()
 });
@@ -87,6 +87,7 @@ const roleHierarchy: { [key in Exclude<UserRole, null>]: number } = {
   district_engineer: 1,
   district_manager: 1,
   technician: 0,
+  ict: 2,
   load_monitoring_edit: 1,
   load_monitoring_delete: 2
 };

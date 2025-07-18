@@ -270,6 +270,7 @@ export function SignupForm() {
                   <SelectItem value="district_manager">District Manager</SelectItem>
                   <SelectItem value="district_engineer">District Engineer</SelectItem>
                   <SelectItem value="technician">Technician</SelectItem>
+                  <SelectItem value="ict">ICT</SelectItem>
                 </SelectContent>
               </Select>
               {errors.role && <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.role}</p>}

@@ -45,7 +45,7 @@ export interface StaffIdEntry {
 }
 
 export function StaffIdManagement() {
-  const { staffIds, setStaffIds, addStaffId, updateStaffId, deleteStaffId } = useAuth();
+  const { staffIds, setStaffIds, addStaffId, updateStaffId, deleteStaffId, user: currentUser } = useAuth();
   const { regions, districts } = useData();
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export function StaffIdManagement() {
     if (!staffIds) return [];
     
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
-    return staffIds.filter(idObj => {
+    let filtered = staffIds.filter(idObj => {
       const matchesSearch = 
         idObj.id.toLowerCase().includes(lowerCaseSearchTerm) ||
         idObj.name.toLowerCase().includes(lowerCaseSearchTerm) ||
@@ -90,7 +90,19 @@ export function StaffIdManagement() {
 
       return matchesSearch && matchesRole && matchesRegion && matchesDistrict;
     });
-  }, [staffIds, searchTerm, roleFilter, regionFilter, districtFilter]);
+    // ICT region/district restriction
+    if (currentUser?.role === "ict") {
+      // Hide global roles from ICT users, but allow them to see other ICT users
+      const globalRoles = ["system_admin", "global_engineer"];
+      filtered = filtered.filter(idObj => !globalRoles.includes(idObj.role));
+      if (currentUser.district) {
+        filtered = filtered.filter(idObj => idObj.district === currentUser.district);
+      } else if (currentUser.region) {
+        filtered = filtered.filter(idObj => idObj.region === currentUser.region);
+      }
+    }
+    return filtered;
+  }, [staffIds, searchTerm, roleFilter, regionFilter, districtFilter, currentUser]);
 
   // Load all staff IDs when searching
   useEffect(() => {
@@ -335,6 +347,8 @@ export function StaffIdManagement() {
         return "bg-red-100 text-red-800 hover:bg-red-100";
       case "technician":
         return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
+      case "ict":
+        return "bg-cyan-100 text-cyan-800 hover:bg-cyan-100";
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-100";
     }
@@ -356,6 +370,8 @@ export function StaffIdManagement() {
         return "System Administrator";
       case "technician":
         return "Technician";
+      case "ict":
+        return "ICT";
       default:
         return "Unknown Role";
     }
@@ -387,7 +403,7 @@ export function StaffIdManagement() {
         
         try {
           // Validate role is a valid UserRole
-          if (!['system_admin', 'global_engineer', 'regional_engineer', 'district_engineer', 'technician'].includes(role)) {
+          if (!['system_admin', 'global_engineer', 'regional_engineer', 'district_engineer', 'technician', 'ict'].includes(role)) {
             throw new Error(`Invalid role: ${role}`);
           }
 
@@ -573,6 +589,29 @@ Admin User,system_admin,,,ECGADMIN`;
     setDistrictFilter("all");
   };
 
+  // For ICT users, restrict region/district filter options
+  const availableRegions = useMemo(() => {
+    if (currentUser?.role === "ict") {
+      if (currentUser.region) {
+        return regions.filter(r => r.name === currentUser.region);
+      }
+      return [];
+    }
+    return regions;
+  }, [regions, currentUser]);
+
+  const availableDistricts = useMemo(() => {
+    if (currentUser?.role === "ict") {
+      if (currentUser.district) {
+        return districts.filter(d => d.name === currentUser.district);
+      } else if (currentUser.region) {
+        return districts.filter(d => d.regionId === regions.find(r => r.name === currentUser.region)?.id);
+      }
+      return [];
+    }
+    return districts;
+  }, [districts, regions, currentUser]);
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -600,24 +639,28 @@ Admin User,system_admin,,,ECGADMIN`;
                 <Download className="w-4 h-4 mr-2" />
                 Download Sample CSV
               </Button>
-              <Button variant="outline" size="sm" onClick={exportToCSV} className="w-full sm:w-auto">
-                <Download className="w-4 h-4 mr-2" />
-                Export Staff Data
-              </Button>
-              <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
-                <Label htmlFor="csv-upload">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload CSV
-                  <input
-                    id="csv-upload"
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    disabled={isUploading}
-                  />
-                </Label>
-              </Button>
+              {/* Export and Add Buttons */}
+              <div className="flex flex-wrap gap-2 justify-end mb-4">
+                {currentUser?.role !== "ict" && (
+                  <Button variant="outline" onClick={exportToCSV} className="w-full sm:w-auto">
+                    Export Staff Data
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+                  <Label htmlFor="csv-upload">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload CSV
+                    <input
+                      id="csv-upload"
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                  </Label>
+                </Button>
+              </div>
             </div>
           </AlertDescription>
         </Alert>
@@ -670,6 +713,7 @@ Admin User,system_admin,,,ECGADMIN`;
                     <SelectItem value="district_manager">District Manager</SelectItem>
                     <SelectItem value="district_engineer">District Engineer</SelectItem>
                     <SelectItem value="technician">Technician</SelectItem>
+                    <SelectItem value="ict">ICT</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -682,8 +726,7 @@ Admin User,system_admin,,,ECGADMIN`;
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Regions</SelectItem>
-                    <SelectItem value="none">None</SelectItem>
-                    {regions?.map(region => (
+                    {availableRegions?.map(region => (
                       <SelectItem key={region.id} value={region.name}>
                         {region.name}
                       </SelectItem>
@@ -700,13 +743,11 @@ Admin User,system_admin,,,ECGADMIN`;
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Districts</SelectItem>
-                    {districts
-                      ?.filter(d => regionFilter === "all" || d.regionId === regions?.find(r => r.name === regionFilter)?.id)
-                      ?.map(district => (
-                        <SelectItem key={district.id} value={district.name}>
-                          {district.name}
-                        </SelectItem>
-                      ))}
+                    {availableDistricts?.map(district => (
+                      <SelectItem key={district.id} value={district.name}>
+                        {district.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -771,13 +812,36 @@ Admin User,system_admin,,,ECGADMIN`;
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="system_admin">System Admin</SelectItem>
-                    <SelectItem value="global_engineer">Global Engineer</SelectItem>
-                    <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
-                    <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
-                    <SelectItem value="district_manager">District Manager</SelectItem>
-                    <SelectItem value="district_engineer">District Engineer</SelectItem>
-                    <SelectItem value="technician">Technician</SelectItem>
+                    {currentUser?.role === "ict" ? (
+                      currentUser.district ? (
+                        <>
+                          <SelectItem value="technician">Technician</SelectItem>
+                          <SelectItem value="district_engineer">District Engineer</SelectItem>
+                          <SelectItem value="district_manager">District Manager</SelectItem>
+                          <SelectItem value="ict">ICT</SelectItem>
+                        </>
+                      ) : currentUser.region ? (
+                        <>
+                          <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                          <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
+                          <SelectItem value="district_engineer">District Engineer</SelectItem>
+                          <SelectItem value="district_manager">District Manager</SelectItem>
+                          <SelectItem value="technician">Technician</SelectItem>
+                          <SelectItem value="ict">ICT</SelectItem>
+                        </>
+                      ) : null
+                    ) : (
+                      <>
+                        <SelectItem value="system_admin">System Admin</SelectItem>
+                        <SelectItem value="global_engineer">Global Engineer</SelectItem>
+                        <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
+                        <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                        <SelectItem value="district_manager">District Manager</SelectItem>
+                        <SelectItem value="district_engineer">District Engineer</SelectItem>
+                        <SelectItem value="technician">Technician</SelectItem>
+                        <SelectItem value="ict">ICT</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -794,7 +858,7 @@ Admin User,system_admin,,,ECGADMIN`;
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {regions?.map(region => (
+                        {availableRegions?.map(region => (
                           <SelectItem key={region.id} value={region.name}>
                             {region.name}
                           </SelectItem>
@@ -813,8 +877,8 @@ Admin User,system_admin,,,ECGADMIN`;
                           <SelectValue placeholder="Select district" />
                         </SelectTrigger>
                         <SelectContent>
-                          {districts
-                            ?.filter(d => d.regionId === regions?.find(r => r.name === newEntry.region)?.id)
+                          {availableDistricts
+                            ?.filter(d => d.regionId === availableRegions?.find(r => r.name === newEntry.region)?.id)
                             ?.map(district => (
                               <SelectItem key={district.id} value={district.name}>
                                 {district.name}
@@ -898,13 +962,35 @@ Admin User,system_admin,,,ECGADMIN`;
                               <SelectValue placeholder="Select role" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="system_admin">System Admin</SelectItem>
-                              <SelectItem value="global_engineer">Global Engineer</SelectItem>
-                              <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
-                              <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
-                              <SelectItem value="district_manager">District Manager</SelectItem>
-                              <SelectItem value="district_engineer">District Engineer</SelectItem>
-                              <SelectItem value="technician">Technician</SelectItem>
+                              {currentUser?.role === "ict" ? (
+                                // ICT can only assign technician, district_engineer, district_manager if district is set; or regional_engineer, regional_general_manager if only region is set
+                                currentUser.district ? (
+                                  <>
+                                    <SelectItem value="technician">Technician</SelectItem>
+                                    <SelectItem value="district_engineer">District Engineer</SelectItem>
+                                    <SelectItem value="district_manager">District Manager</SelectItem>
+                                  </>
+                                ) : currentUser.region ? (
+                                  <>
+                                    <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                                    <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
+                                    <SelectItem value="district_engineer">District Engineer</SelectItem>
+                                    <SelectItem value="district_manager">District Manager</SelectItem>
+                                    <SelectItem value="technician">Technician</SelectItem>
+                                  </>
+                                ) : null
+                              ) : (
+                                <>
+                                  <SelectItem value="system_admin">System Admin</SelectItem>
+                                  <SelectItem value="global_engineer">Global Engineer</SelectItem>
+                                  <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
+                                  <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                                  <SelectItem value="district_manager">District Manager</SelectItem>
+                                  <SelectItem value="district_engineer">District Engineer</SelectItem>
+                                  <SelectItem value="technician">Technician</SelectItem>
+                                  <SelectItem value="ict">ICT</SelectItem>
+                                </>
+                              )}
                             </SelectContent>
                           </Select>
                         ) : (
@@ -927,7 +1013,7 @@ Admin User,system_admin,,,ECGADMIN`;
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">None</SelectItem>
-                              {regions?.map(region => (
+                              {availableRegions?.map(region => (
                                 <SelectItem key={region.id} value={region.name}>
                                   {region.name}
                                 </SelectItem>
@@ -951,8 +1037,8 @@ Admin User,system_admin,,,ECGADMIN`;
                               <SelectValue placeholder="Select district" />
                             </SelectTrigger>
                             <SelectContent>
-                              {districts
-                                ?.filter(d => d.regionId === regions?.find(r => r.name === entry.region)?.id)
+                              {availableDistricts
+                                ?.filter(d => d.regionId === availableRegions?.find(r => r.name === entry.region)?.id)
                                 ?.map(district => (
                                   <SelectItem key={district.id} value={district.name}>
                                     {district.name}
@@ -974,7 +1060,9 @@ Admin User,system_admin,,,ECGADMIN`;
                           ) : (
                             <>
                               <Button variant="outline" size="sm" onClick={() => setIsEditing(entry.id)} className="w-full sm:w-auto">Edit</Button>
-                              <Button variant="destructive" size="sm" onClick={() => setIsDeleting(entry.id)} className="w-full sm:w-auto">Delete</Button>
+                              {currentUser?.role !== "ict" && (
+                                <Button variant="destructive" size="sm" onClick={() => setIsDeleting(entry.id)} className="w-full sm:w-auto">Delete</Button>
+                              )}
                             </>
                           )}
                         </div>

@@ -11,6 +11,7 @@ export type UserRole =
   | "global_engineer" 
   | "technician" 
   | "system_admin"
+  | "ict"
   | "load_monitoring_edit"
   | "load_monitoring_delete"
   | "admin"
@@ -336,8 +337,8 @@ export interface AuthContextType {
 export interface DataContextType {
   regions: Region[];
   districts: District[];
-  regionsLoading: boolean;
-  districtsLoading: boolean;
+  isLoadingRegions: boolean;
+  isLoadingDistricts: boolean;
   regionsError: string | null;
   districtsError: string | null;
   retryRegionsAndDistricts: () => Promise<void>;
