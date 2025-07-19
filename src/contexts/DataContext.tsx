@@ -909,7 +909,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (user.role !== "system_admin" && user.role !== "global_engineer") {
       if (user.role === "district_engineer" || user.role === "technician" || user.role === "district_manager") {
         q = query(collection(db, "vitAssets"), where("district", "==", user.district));
-      } else if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+      } else if (
+        user.role === "regional_engineer" ||
+        user.role === "regional_general_manager" ||
+        user.role === "project_engineer" // <-- Added project_engineer here
+      ) {
         q = query(collection(db, "vitAssets"), where("region", "==", user.region));
       }
     }
@@ -1077,7 +1081,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (user.role !== "system_admin" && user.role !== "global_engineer") {
       if (user.role === "district_engineer" || user.role === "technician") {
         q = query(collection(db, "vitInspections"), where("district", "==", user.district));
-      } else if (user.role === "regional_engineer") {
+      } else if (user.role === "regional_engineer" || user.role === "project_engineer") {
         q = query(collection(db, "vitInspections"), where("region", "==", user.region));
       }
     }
