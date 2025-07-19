@@ -188,7 +188,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       if ((user.role === "district_engineer" || user.role === "district_manager" || user.role === "technician") && user.region && user.district) {
         defaultFormData.region = user.region;
         defaultFormData.district = user.district;
-      } else if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region) {
+      } else if ((user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") && user.region) {
         defaultFormData.region = user.region;
         // Set district to first district in this region if available
         const regionObj = regions.find(r => r.name === user.region);
@@ -226,7 +226,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const filteredRegions = useMemo(() => {
     if (!user) return [];
     if (user.role === "global_engineer" || user.role === "system_admin") return regions;
-    if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region) {
+    if ((user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") && user.region) {
       return regions.filter(r => r.name === user.region);
     }
     if ((user.role === "district_engineer" || user.role === "district_manager" || user.role === "technician") && user.region) {
@@ -243,7 +243,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     if (user.role === "global_engineer" || user.role === "system_admin") {
       return districts.filter(d => d.regionId === region.id);
     }
-    if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+    if (user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") {
       return districts.filter(d => d.regionId === region.id);
     }
     if ((user.role === "district_engineer" || user.role === "district_manager" || user.role === "technician") && user.district) {
@@ -288,7 +288,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
             email: user.email
           }
         }));
-      } else if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region) {
+      } else if ((user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") && user.region) {
         // Set region and default district for regional_general_manager
         const regionObj = regions.find(r => r.name === user.region);
         let defaultDistrict = "";
@@ -2529,7 +2529,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   }, [formData.images, formData.afterImages, isCapturingAfter, isVideoReadyAfter]);
 
   useEffect(() => {
-    if (user && !inspection && (user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region && regions.length > 0 && districts.length > 0) {
+    if (user && !inspection && (user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") && user.region && regions.length > 0 && districts.length > 0) {
       const regionObj = regions.find(r => r.name === user.region);
       if (regionObj) {
         const regionDistricts = districts.filter(d => d.regionId === regionObj.id);

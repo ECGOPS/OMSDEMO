@@ -102,6 +102,8 @@ export function UsersList() {
         return "Technician";
       case "ict":
         return "ICT";
+      case "project_engineer":
+        return "Project Engineer";
       default:
         return "Unknown Role";
     }
@@ -636,6 +638,7 @@ export function UsersList() {
                     <SelectItem value="global_engineer">Global Engineer</SelectItem>
                     <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                     <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                    <SelectItem value="project_engineer">Project Engineer</SelectItem>
                     <SelectItem value="district_manager">District Manager</SelectItem>
                     <SelectItem value="district_engineer">District Engineer</SelectItem>
                     <SelectItem value="technician">Technician</SelectItem>
@@ -824,6 +827,7 @@ export function UsersList() {
                         <SelectItem value="technician">Technician</SelectItem>
                         <SelectItem value="district_engineer">District Engineer</SelectItem>
                         <SelectItem value="district_manager">District Manager</SelectItem>
+                        <SelectItem value="project_engineer">Project Engineer</SelectItem>
                         <SelectItem value="ict">ICT</SelectItem>
                       </>
                     ) : currentUser?.region ? (
@@ -832,6 +836,7 @@ export function UsersList() {
                         <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                         <SelectItem value="district_engineer">District Engineer</SelectItem>
                         <SelectItem value="district_manager">District Manager</SelectItem>
+                        <SelectItem value="project_engineer">Project Engineer</SelectItem>
                         <SelectItem value="technician">Technician</SelectItem>
                         <SelectItem value="ict">ICT</SelectItem>
                       </>
@@ -842,6 +847,7 @@ export function UsersList() {
                       <SelectItem value="global_engineer">Global Engineer</SelectItem>
                       <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                       <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                      <SelectItem value="project_engineer">Project Engineer</SelectItem>
                       <SelectItem value="district_manager">District Manager</SelectItem>
                       <SelectItem value="district_engineer">District Engineer</SelectItem>
                       <SelectItem value="technician">Technician</SelectItem>

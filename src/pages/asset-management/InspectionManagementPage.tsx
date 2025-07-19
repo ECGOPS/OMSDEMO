@@ -70,11 +70,16 @@ export default function InspectionManagementPage() {
     
     let filtered = savedInspections;
     
-    // Apply role-based filtering
-    if (user?.role === 'regional_engineer') {
+    // Strict role-based filtering
+    if (user?.role === 'system_admin' || user?.role === 'global_engineer') {
+      // See all
+    } else if (user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager') {
       filtered = filtered.filter(inspection => inspection.region === user.region);
-    } else if (user?.role === 'district_engineer' || user?.role === 'technician') {
+    } else if (user?.role === 'district_engineer' || user?.role === 'technician' || user?.role === 'district_manager') {
       filtered = filtered.filter(inspection => inspection.district === user.district);
+    } else {
+      // Default: see nothing
+      filtered = [];
     }
     
     // Apply date filter

@@ -349,6 +349,8 @@ export function StaffIdManagement() {
         return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
       case "ict":
         return "bg-cyan-100 text-cyan-800 hover:bg-cyan-100";
+      case "project_engineer":
+        return "bg-indigo-100 text-indigo-800 hover:bg-indigo-100";
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-100";
     }
@@ -372,6 +374,8 @@ export function StaffIdManagement() {
         return "Technician";
       case "ict":
         return "ICT";
+      case "project_engineer":
+        return "Project Engineer";
       default:
         return "Unknown Role";
     }
@@ -710,6 +714,7 @@ Admin User,system_admin,,,ECGADMIN`;
                     <SelectItem value="global_engineer">Global Engineer</SelectItem>
                     <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                     <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                    <SelectItem value="project_engineer">Project Engineer</SelectItem>
                     <SelectItem value="district_manager">District Manager</SelectItem>
                     <SelectItem value="district_engineer">District Engineer</SelectItem>
                     <SelectItem value="technician">Technician</SelectItem>
@@ -818,6 +823,7 @@ Admin User,system_admin,,,ECGADMIN`;
                           <SelectItem value="technician">Technician</SelectItem>
                           <SelectItem value="district_engineer">District Engineer</SelectItem>
                           <SelectItem value="district_manager">District Manager</SelectItem>
+                          <SelectItem value="project_engineer">Project Engineer</SelectItem>
                           <SelectItem value="ict">ICT</SelectItem>
                         </>
                       ) : currentUser.region ? (
@@ -826,6 +832,7 @@ Admin User,system_admin,,,ECGADMIN`;
                           <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                           <SelectItem value="district_engineer">District Engineer</SelectItem>
                           <SelectItem value="district_manager">District Manager</SelectItem>
+                          <SelectItem value="project_engineer">Project Engineer</SelectItem>
                           <SelectItem value="technician">Technician</SelectItem>
                           <SelectItem value="ict">ICT</SelectItem>
                         </>
@@ -836,6 +843,7 @@ Admin User,system_admin,,,ECGADMIN`;
                         <SelectItem value="global_engineer">Global Engineer</SelectItem>
                         <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                         <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                        <SelectItem value="project_engineer">Project Engineer</SelectItem>
                         <SelectItem value="district_manager">District Manager</SelectItem>
                         <SelectItem value="district_engineer">District Engineer</SelectItem>
                         <SelectItem value="technician">Technician</SelectItem>
@@ -969,6 +977,7 @@ Admin User,system_admin,,,ECGADMIN`;
                                     <SelectItem value="technician">Technician</SelectItem>
                                     <SelectItem value="district_engineer">District Engineer</SelectItem>
                                     <SelectItem value="district_manager">District Manager</SelectItem>
+                                    <SelectItem value="project_engineer">Project Engineer</SelectItem>
                                   </>
                                 ) : currentUser.region ? (
                                   <>
@@ -976,6 +985,7 @@ Admin User,system_admin,,,ECGADMIN`;
                                     <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                                     <SelectItem value="district_engineer">District Engineer</SelectItem>
                                     <SelectItem value="district_manager">District Manager</SelectItem>
+                                    <SelectItem value="project_engineer">Project Engineer</SelectItem>
                                     <SelectItem value="technician">Technician</SelectItem>
                                   </>
                                 ) : null
@@ -985,6 +995,7 @@ Admin User,system_admin,,,ECGADMIN`;
                                   <SelectItem value="global_engineer">Global Engineer</SelectItem>
                                   <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                                   <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                                  <SelectItem value="project_engineer">Project Engineer</SelectItem>
                                   <SelectItem value="district_manager">District Manager</SelectItem>
                                   <SelectItem value="district_engineer">District Engineer</SelectItem>
                                   <SelectItem value="technician">Technician</SelectItem>

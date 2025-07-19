@@ -50,11 +50,12 @@ export function Navbar() {
         requiredRole === "global_engineer"
       );
     }
-    if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+    if (user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") {
       return (
         requiredRole === "district_engineer" ||
         requiredRole === "district_manager" ||
         requiredRole === "regional_engineer" ||
+        requiredRole === "project_engineer" ||
         requiredRole === "regional_general_manager" ||
         requiredRole === "global_engineer"
       );
@@ -151,7 +152,7 @@ export function Navbar() {
                     </NavLink>
                     
                     {/* Analytics Links */}
-                    {(showMenuItem("district_engineer") || showMenuItem("district_manager") || showMenuItem("regional_engineer") || showMenuItem("regional_general_manager")) && (
+                    {(showMenuItem("district_engineer") || showMenuItem("district_manager") || showMenuItem("regional_engineer") || showMenuItem("project_engineer") || showMenuItem("regional_general_manager")) && (
                       <>
                         <NavLink 
                           to="/analytics" 

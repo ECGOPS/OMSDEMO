@@ -250,7 +250,16 @@ export default function PermissionManagementPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Get all available roles in hierarchy order
-  const allRoles: UserRole[] = ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'];
+  const allRoles: UserRole[] = [
+    'technician',
+    'district_engineer',
+    'district_manager',
+    'regional_engineer',
+    'project_engineer',
+    'regional_general_manager',
+    'global_engineer',
+    'system_admin'
+  ];
 
   // Initialize and listen for permission changes from Firestore
   useEffect(() => {

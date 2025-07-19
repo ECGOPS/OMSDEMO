@@ -49,7 +49,7 @@ export function DistrictPopulationForm() {
     console.log("User region:", user?.region);
     console.log("User district:", user?.district);
     
-    if ((user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "district_manager") && user.region) {
+    if ((user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "district_manager") && user.region) {
       const userRegion = regions.find(r => r.name === user.region);
       console.log("Found user region:", userRegion);
       
@@ -189,7 +189,7 @@ export function DistrictPopulationForm() {
               <Select 
                 value={selectedRegion} 
                 onValueChange={setSelectedRegion}
-                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "district_manager"}
+                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "district_manager"}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select region" />

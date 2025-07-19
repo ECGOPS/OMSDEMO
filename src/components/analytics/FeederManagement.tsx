@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useData } from "@/contexts/DataContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -493,26 +493,34 @@ export function FeederManagement() {
     }
   };
 
-  const filteredFeeders = feeders.filter(feeder => {
+  const filteredFeeders = useMemo(() => {
+    let filtered = feeders;
+    if (user?.role === 'regional_engineer' || user?.role === 'project_engineer') {
+      filtered = filtered.filter(feeder => feeder.region === user.region);
+    }
     // First apply region and district filters
-    if (selectedRegion && selectedRegion !== "all" && feeder.regionId !== selectedRegion) return false;
-    if (selectedDistrict && selectedDistrict !== "all" && feeder.districtId !== selectedDistrict) return false;
+    if (selectedRegion && selectedRegion !== "all" && filtered.some(feeder => feeder.regionId !== selectedRegion)) {
+      filtered = filtered.filter(feeder => feeder.regionId === selectedRegion);
+    }
+    if (selectedDistrict && selectedDistrict !== "all" && filtered.some(feeder => feeder.districtId !== selectedDistrict)) {
+      filtered = filtered.filter(feeder => feeder.districtId === selectedDistrict);
+    }
 
     // Then apply search filter if there's a search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      return (
+      filtered = filtered.filter(feeder => (
         feeder.name.toLowerCase().includes(query) ||
         feeder.bspPss.toLowerCase().includes(query) ||
         feeder.region.toLowerCase().includes(query) ||
         feeder.district.toLowerCase().includes(query) ||
         feeder.voltageLevel.toLowerCase().includes(query) ||
         feeder.feederType.toLowerCase().includes(query)
-      );
+      ));
     }
 
-    return true;
-  });
+    return filtered;
+  }, [feeders, user, selectedRegion, selectedDistrict, searchQuery]);
 
   // Calculate pagination
   const totalItems = filteredFeeders.length;
@@ -577,8 +585,8 @@ export function FeederManagement() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === 'regional_engineer') {
-        // Set the region for regional engineers
+      if (user.role === 'regional_engineer' || user.role === 'project_engineer') {
+        // Set the region for regional/project engineers
         const { regionId } = getUserRegionAndDistrict(user, regions, districts);
         if (regionId) {
           setSelectedRegion(regionId);
@@ -604,12 +612,22 @@ export function FeederManagement() {
     }
   }, [user, regions, districts]);
 
+  // Set region automatically for project_engineer on load
+  useEffect(() => {
+    if (user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager') {
+      const regionObj = regions.find(r => r.name === user.region);
+      if (regionObj) {
+        setSelectedRegion(regionObj.id);
+      }
+    }
+  }, [user, regions]);
+
   // Initialize new feeder with user's region and district
   useEffect(() => {
     if (user) {
       const { regionId, districtId } = getUserRegionAndDistrict(user, regions, districts);
       
-      if (user.role === 'district_engineer' || user.role === 'regional_engineer' || user.role === 'district_manager' || user.role === 'regional_general_manager') {
+      if (user.role === 'district_engineer' || user.role === 'regional_engineer' || user.role === 'project_engineer' || user.role === 'district_manager' || user.role === 'regional_general_manager') {
         // For district and regional engineers, set their assigned region
         if (regionId) {
           const regionName = regions.find(r => r.id === regionId)?.name;
@@ -679,7 +697,7 @@ export function FeederManagement() {
                     <Select
                       value={newFeeder.region}
                       onValueChange={(value) => setNewFeeder({ ...newFeeder, region: value })}
-                      disabled={user?.role === 'regional_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_general_manager'}
+                      disabled={user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_general_manager'}
                     >
                       <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Select region" />
@@ -778,17 +796,27 @@ export function FeederManagement() {
           <div className="w-full sm:w-1/3">
             <Label>Region</Label>
             <div className="flex flex-col sm:flex-row gap-2 mt-1">
-              <Select value={selectedRegion} onValueChange={setSelectedRegion} disabled={user?.role === 'regional_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_general_manager'}>
-                <SelectTrigger className="w-full">
+              <Select
+                value={selectedRegion}
+                onValueChange={setSelectedRegion}
+                disabled={user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_general_manager'}
+              >
+                <SelectTrigger className="w-full mt-1">
                   <SelectValue placeholder="All Regions" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  {regions.map((region) => (
-                    <SelectItem key={region.id} value={region.id}>
-                      {region.name}
-                    </SelectItem>
-                  ))}
+                  {(user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager')
+                    ? regions.filter(r => r.name === user.region).map(region => (
+                        <SelectItem key={region.id} value={region.id}>
+                          {region.name}
+                        </SelectItem>
+                      ))
+                    : [<SelectItem value="all" key="all">All Regions</SelectItem>,
+                       ...regions.map(region => (
+                         <SelectItem key={region.id} value={region.id}>
+                           {region.name}
+                         </SelectItem>
+                       ))]}
                 </SelectContent>
               </Select>
               <div className="flex gap-2">
@@ -812,6 +840,7 @@ export function FeederManagement() {
                   disabled={
                     selectedRegion === "all" || 
                     user?.role === 'regional_engineer' || 
+                    user?.role === 'project_engineer' || 
                     user?.role === 'district_engineer' || 
                     user?.role === 'district_manager' || 
                     user?.role === 'regional_general_manager' ||

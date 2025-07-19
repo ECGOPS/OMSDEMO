@@ -103,7 +103,7 @@ export default function OverheadLineInspectionPage() {
     // Apply role-based filtering
     if (user?.role === 'district_engineer' || user?.role === 'technician') {
       filtered = filtered.filter(inspection => inspection.district === user.district);
-    } else if (user?.role === 'regional_engineer') {
+    } else if (user?.role === 'regional_engineer' || user?.role === 'project_engineer') {
       filtered = filtered.filter(inspection => inspection.region === user.region);
     }
     
@@ -236,7 +236,7 @@ export default function OverheadLineInspectionPage() {
                 </p>
               )}
             </div>
-            {(user?.role === 'global_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_engineer' || user?.role === 'regional_general_manager' || user?.role === 'technician' || user?.role === 'system_admin') && (
+            {(user?.role === 'global_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager' || user?.role === 'technician' || user?.role === 'system_admin') && (
               <Button onClick={handleAddInspection} className="mt-4 md:mt-0">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 New Inspection

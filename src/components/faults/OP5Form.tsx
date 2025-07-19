@@ -121,7 +121,7 @@ export function OP5Form({ defaultRegionId = "", defaultDistrictId = "", onSubmit
     if (user?.role === "global_engineer" || user?.role === "system_admin") return true;
     
     // Regional engineers and regional general managers can only see their assigned region
-    if (user?.role === "regional_engineer" || user?.role === "regional_general_manager") 
+    if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") 
       return region.id === user.regionId;
     
     // District engineers, district managers and technicians can only see their assigned region
@@ -141,7 +141,7 @@ export function OP5Form({ defaultRegionId = "", defaultDistrictId = "", onSubmit
       return district.regionId === regionId;
     
     // Regional engineers and regional general managers can see all districts in their region
-    if (user?.role === "regional_engineer" || user?.role === "regional_general_manager") 
+    if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") 
       return district.regionId === user.regionId;
     
     // District engineers, district managers and technicians can only see their assigned district
@@ -684,7 +684,7 @@ export function OP5Form({ defaultRegionId = "", defaultDistrictId = "", onSubmit
     }
     
     // For regional engineers and regional general managers
-    if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region) {
+    if ((user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") && user.region) {
       const userRegion = regions.find(r => r.name === user.region);
       console.log("[OP5Form] Found user region:", userRegion);
       
@@ -732,7 +732,7 @@ export function OP5Form({ defaultRegionId = "", defaultDistrictId = "", onSubmit
               <Select 
                 value={regionId} 
                 onValueChange={setRegionId}
-                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "technician" || user?.role === "regional_general_manager"}
+                disabled={user?.role === "district_engineer" || user?.role === "technician" || user?.role === "district_manager" || user?.role === "project_engineer" || user?.role === "regional_general_manager"}
                 required
               >
                 <SelectTrigger className="h-12 text-base bg-background/50 border-muted">

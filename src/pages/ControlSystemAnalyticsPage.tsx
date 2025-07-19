@@ -252,7 +252,7 @@ export default function ControlSystemAnalyticsPage() {
       let q = query(outagesRef);
 
       // Apply role-based filtering
-      if (user?.role === 'regional_engineer' || user?.role === 'regional_general_manager') {
+      if (user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager') {
         q = query(q, where("regionId", "==", user.region));
       } else if (user?.role === 'district_engineer' || user?.role === 'district_manager') {
         q = query(q, where("districtId", "==", user.district));
@@ -1635,6 +1635,15 @@ export default function ControlSystemAnalyticsPage() {
     }
   }, [isAuthenticated, user, navigate, regions, districts]);
 
+  useEffect(() => {
+    if (user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager') {
+      const regionObj = regions.find(r => r.name === user.region);
+      if (regionObj) {
+        setFilterRegion(regionObj.id);
+      }
+    }
+  }, [user, regions]);
+
   // Update the district filter handler
   const handleDistrictChange = (value: string) => {
     console.log('District filter changed:', value);
@@ -1692,18 +1701,24 @@ export default function ControlSystemAnalyticsPage() {
                   <Select
                     value={filterRegion || ""}
                     onValueChange={setFilterRegion}
-                    disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "district_manager" || user?.role === "regional_general_manager"}
+                    disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "district_manager" || user?.role === "regional_general_manager"}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Regions" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Regions</SelectItem>
-                      {regions.map(region => (
-                        <SelectItem key={region.id} value={region.id}>
-                          {region.name}
-                        </SelectItem>
-                      ))}
+                      {(user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager")
+                        ? regions.filter(r => r.name === user.region).map(region => (
+                            <SelectItem key={region.id} value={region.id}>
+                              {region.name}
+                            </SelectItem>
+                          ))
+                        : [<SelectItem value="all" key="all">All Regions</SelectItem>,
+                           ...regions.map(region => (
+                             <SelectItem key={region.id} value={region.id}>
+                               {region.name}
+                             </SelectItem>
+                           ))]}
                     </SelectContent>
                   </Select>
                 </div>

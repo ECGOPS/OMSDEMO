@@ -117,7 +117,7 @@ export function FilterBar({
             setFilterDistrict(userDistrict.id);
           }
         }
-      } else if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region) {
+      } else if ((user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") && user.region) {
         const userRegion = regions.find(r => r.name === user.region);
         if (userRegion) {
           setSelectedRegion(userRegion.id);
@@ -185,7 +185,7 @@ export function FilterBar({
         }
         
         // For regional engineers and regional general managers, only show districts in their region
-        if (user?.role === "regional_engineer" || user?.role === "regional_general_manager") {
+        if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") {
           const userRegion = regions.find(r => r.name === user.region);
           return userRegion ? d.regionId === userRegion.id : false;
         }

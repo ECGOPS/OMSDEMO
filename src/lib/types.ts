@@ -15,6 +15,7 @@ export type UserRole =
   | "load_monitoring_edit"
   | "load_monitoring_delete"
   | "admin"
+  | "project_engineer"
   | null;
 
 export interface User {

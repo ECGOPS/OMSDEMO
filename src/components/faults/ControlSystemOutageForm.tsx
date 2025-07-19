@@ -183,8 +183,8 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
       }
     }
     
-    // For regional engineers and regional general managers
-    if ((user.role === "regional_engineer" || user.role === "regional_general_manager") && user.region) {
+    // For regional engineers, project engineers, and regional general managers
+    if ((user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") && user.region) {
       const userRegion = regions.find(r => r.name === user.region);
       console.log("[ControlSystemOutageForm] Found user region:", userRegion);
       
@@ -211,8 +211,8 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
     // Global engineers and system admins can see all regions
     if (user?.role === "global_engineer" || user?.role === "system_admin") return true;
     
-    // Regional engineers and regional general managers can only see their assigned region
-    if (user?.role === "regional_engineer" || user?.role === "regional_general_manager") 
+    // Regional engineers, project engineers, and regional general managers can only see their assigned region
+    if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") 
       return region.name === user.region;
     
     // District engineers, district managers and technicians can only see their assigned region
@@ -231,8 +231,8 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
     if (user?.role === "global_engineer" || user?.role === "system_admin") 
       return district.regionId === regionId;
     
-    // Regional engineers and regional general managers can see all districts in their region
-    if (user?.role === "regional_engineer" || user?.role === "regional_general_manager") 
+    // Regional engineers, project engineers, and regional general managers can see all districts in their region
+    if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") 
       return district.regionId === user.regionId;
     
     // District engineers, district managers and technicians can only see their assigned district
@@ -527,7 +527,7 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
                   setSelectedFeeder("");
                   setBspPss("");
                 }}
-                disabled={user?.role === "district_engineer" || user?.role === "district_manager" || user?.role === "regional_engineer" || user?.role === "regional_general_manager" || user?.role === "technician"}
+                disabled={user?.role === "district_engineer" || user?.role === "district_manager" || user?.role === "technician"}
                 required
               >
                 <SelectTrigger className="h-12 text-base bg-background/50 border-muted">

@@ -493,17 +493,23 @@ export default function CreateLoadMonitoringPage() {
                       value={formData.regionId || ""}
                       onValueChange={handleRegionChange}
                       required
-                      disabled={user?.role === "district_engineer" || user?.role === "district_manager" || user?.role === "regional_engineer" || user?.role === "regional_general_manager" || user?.role === "technician"}
+                      disabled={user?.role === "district_engineer" || user?.role === "district_manager" || user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager" || user?.role === "technician"}
                     >
                       <SelectTrigger id="region">
                         <SelectValue placeholder="Select Region" />
                       </SelectTrigger>
                       <SelectContent>
-                        {regions?.map((region) => (
-                          <SelectItem key={region.id} value={region.id}>
-                            {region.name}
-                          </SelectItem>
-                        ))}
+                        {(user?.role === "regional_engineer" || user?.role === "project_engineer")
+                          ? regions.filter(r => r.name === user.region).map(region => (
+                              <SelectItem key={region.id} value={region.id}>
+                                {region.name}
+                              </SelectItem>
+                            ))
+                          : regions.map(region => (
+                              <SelectItem key={region.id} value={region.id}>
+                                {region.name}
+                              </SelectItem>
+                            ))}
                       </SelectContent>
                     </Select>
                   </div>

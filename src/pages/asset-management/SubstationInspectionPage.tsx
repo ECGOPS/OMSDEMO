@@ -981,13 +981,17 @@ export default function SubstationInspectionPage() {
 
   const filteredInspections = useMemo(() => {
     if (!savedInspections) return [];
+    // Use user.region and user.role directly in the dependency array to force update
+    const userRegion = user?.region;
+    const userRole = user?.role;
     return savedInspections.filter(inspection => {
-      if (user?.role === 'global_engineer' || user?.role === 'system_admin') return true;
-      if (user?.role === 'regional_engineer') return inspection.region === user.region;
-      if (user?.role === 'district_engineer' || user?.role === 'technician') return inspection.district === user.district;
+      if (userRole === 'global_engineer' || userRole === 'system_admin') return true;
+      if (userRole === 'regional_engineer' || userRole === 'project_engineer') return inspection.region === userRegion;
+      if (userRole === 'district_engineer' || userRole === 'technician') return inspection.district === user?.district;
       return false;
     });
-  }, [savedInspections, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedInspections, user?.region, user?.role, user?.district]);
 
   // Update the renderPage function to ensure all sections are rendered
   const renderPage = (page: number) => {

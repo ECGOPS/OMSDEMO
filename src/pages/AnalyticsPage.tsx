@@ -1995,6 +1995,17 @@ export default function AnalyticsPage() {
     }));
   };
   
+  // Set region automatically for project_engineer on load
+  useEffect(() => {
+    if ((user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager') && user.region) {
+      const regionObj = regions.find(r => r.name === user.region);
+      if (regionObj) {
+        setFilterRegion(regionObj.id);
+        setSelectedRegion(regionObj.id);
+      }
+    }
+  }, [user, regions]);
+  
   if (!isAuthenticated) {
     return null;
   }
@@ -2038,18 +2049,24 @@ export default function AnalyticsPage() {
               <Select
                 value={selectedRegion}
                 onValueChange={handleRegionChange}
-                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "regional_general_manager" || user?.role === "district_manager"}
+                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "regional_general_manager" || user?.role === "district_manager" || user?.role === "project_engineer"}
               >
                 <SelectTrigger id="region-select" className="mt-1">
                   <SelectValue placeholder="Select Region" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  {regions.map((region) => (
-                    <SelectItem key={region.id} value={region.id}>
-                      {region.name}
-                    </SelectItem>
-                  ))}
+                  {(user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager')
+                    ? regions.filter(r => r.name === user.region).map(region => (
+                        <SelectItem key={region.id} value={region.id}>
+                          {region.name}
+                        </SelectItem>
+                      ))
+                    : [<SelectItem value="all" key="all">All Regions</SelectItem>,
+                       ...regions.map(region => (
+                         <SelectItem key={region.id} value={region.id}>
+                           {region.name}
+                         </SelectItem>
+                       ))]}
                 </SelectContent>
               </Select>
             </div>
