@@ -47,7 +47,7 @@ export function VITAssetManagementPage() {
       let q = query(assetsRef);
       
       // Apply role-based filtering
-      if (user?.role === 'regional_engineer') {
+      if (user?.role === 'regional_engineer' || user?.role === 'project_engineer') {
         q = query(q, where("region", "==", user.region));
       } else if (user?.role === 'district_engineer' || user?.role === 'technician') {
         q = query(q, where("district", "==", user.district));
@@ -145,6 +145,13 @@ export function VITAssetManagementPage() {
     loadData(true);
   }, [selectedRegion, selectedDistrict, searchTerm]);
 
+  // For project engineers, always use their assigned region for filtering
+  useEffect(() => {
+    if (user?.role === 'project_engineer' && user.region) {
+      setSelectedRegion(user.region);
+    }
+  }, [user]);
+
   // Load more data when scrolling
   const handleLoadMore = useCallback(() => {
     if (!isLoading && hasMore) {
@@ -160,14 +167,14 @@ export function VITAssetManagementPage() {
     let filtered = vitAssets;
     
     // Apply role-based filtering
-    if (user?.role === 'regional_engineer') {
+    if (user?.role === 'regional_engineer' || user?.role === 'project_engineer') {
       filtered = filtered.filter(asset => asset.region === user.region);
     } else if (user?.role === 'district_engineer' || user?.role === 'technician') {
       filtered = filtered.filter(asset => asset.district === user.district);
     }
     
-    // Apply region filter
-    if (selectedRegion) {
+    // For project engineers, ignore selectedRegion
+    if (user?.role !== 'project_engineer' && selectedRegion) {
       filtered = filtered.filter(asset => asset.region === selectedRegion);
     }
     
@@ -225,6 +232,38 @@ export function VITAssetManagementPage() {
           <Button asChild>
             <Link to="/asset-management/add">Add New Asset</Link>
           </Button>
+        </div>
+        <div className="flex gap-2 mb-4">
+          {/* Only show region filter if not project engineer */}
+          {user?.role !== 'project_engineer' && (
+            <select
+              value={selectedRegion || ''}
+              onChange={e => setSelectedRegion(e.target.value || null)}
+              className="border rounded px-2 py-1"
+            >
+              <option value="">All Regions</option>
+              {regions.map(region => (
+                <option key={region.id} value={region.name}>{region.name}</option>
+              ))}
+            </select>
+          )}
+          <select
+            value={selectedDistrict || ''}
+            onChange={e => setSelectedDistrict(e.target.value || null)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="">All Districts</option>
+            {districts.map(district => (
+              <option key={district.id} value={district.name}>{district.name}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Search by serial, location, type..."
+            className="border rounded px-2 py-1"
+          />
         </div>
         
         <VITAssetList 

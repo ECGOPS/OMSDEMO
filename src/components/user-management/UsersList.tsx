@@ -60,6 +60,9 @@ export function UsersList() {
   
   const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
+  const [regionFilter, setRegionFilter] = useState<string>("all");
+  const [districtFilter, setDistrictFilter] = useState<string>("all");
   
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
@@ -395,33 +398,109 @@ export function UsersList() {
         (user.district && user.district.toLowerCase().includes(lowerCaseSearchTerm))
       );
     }
+    if (roleFilter !== "all") {
+      filtered = filtered.filter(user => user.role === roleFilter);
+    }
+    if (regionFilter !== "all") {
+      filtered = filtered.filter(user => user.region === regionFilter);
+    }
+    if (districtFilter !== "all") {
+      filtered = filtered.filter(user => user.district === districtFilter);
+    }
     setFilteredUsers(filtered);
-  }, [users, searchTerm, isICT, currentUser]);
+  }, [users, searchTerm, isICT, currentUser, roleFilter, regionFilter, districtFilter]);
+
+  // Reset district filter when region changes
+  useEffect(() => {
+    setDistrictFilter("all");
+  }, [regionFilter]);
+
+  // Reset all filters
+  const resetFilters = () => {
+    setRoleFilter("all");
+    setRegionFilter("all");
+    setDistrictFilter("all");
+  };
   
   return (
     <div className="space-y-6">
       {/* Search and Add User Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-muted/30 p-3 rounded-md">
-        <div className="relative w-full sm:w-auto sm:min-w-[250px]">
-          <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 w-full bg-background h-9 text-sm"
-          />
+      <div className="flex flex-col gap-3 bg-muted/30 p-3 rounded-md">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="relative w-full sm:w-auto sm:min-w-[250px]">
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 w-full bg-background h-9 text-sm"
+            />
+          </div>
+          {canManageUsers && (
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)} 
+              className="w-full sm:w-auto bg-primary hover:bg-primary/90 h-9 text-sm px-3"
+            >
+              <PlusCircle size={15} className="mr-2" />
+              Add New User
+            </Button>
+          )}
         </div>
-
-        {canManageUsers && (
-          <Button 
-            onClick={() => setIsAddDialogOpen(true)} 
-            className="w-full sm:w-auto bg-primary hover:bg-primary/90 h-9 text-sm px-3"
-          >
-            <PlusCircle size={15} className="mr-2" />
-            Add New User
-          </Button>
-        )}
+        {/* Filter Section */}
+        <div className="flex flex-col sm:flex-row gap-2 mt-2 items-end">
+          <div className="w-full sm:w-1/4">
+            <Label>Filter by Role</Label>
+            <Select value={roleFilter} onValueChange={v => setRoleFilter(v as UserRole | "all")}> 
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="system_admin">System Admin</SelectItem>
+                <SelectItem value="global_engineer">Global Engineer</SelectItem>
+                <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
+                <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
+                <SelectItem value="project_engineer">Project Engineer</SelectItem>
+                <SelectItem value="district_manager">District Manager</SelectItem>
+                <SelectItem value="district_engineer">District Engineer</SelectItem>
+                <SelectItem value="technician">Technician</SelectItem>
+                <SelectItem value="ict">ICT</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-1/4">
+            <Label>Filter by Region</Label>
+            <Select value={regionFilter} onValueChange={v => setRegionFilter(v)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Regions</SelectItem>
+                {regions.map(region => (
+                  <SelectItem key={region.id} value={region.name}>{region.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-1/4">
+            <Label>Filter by District</Label>
+            <Select value={districtFilter} onValueChange={v => setDistrictFilter(v)} disabled={regionFilter === "all"}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select district" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Districts</SelectItem>
+                {districts.filter(d => regionFilter === "all" || d.regionId === regions.find(r => r.name === regionFilter)?.id).map(district => (
+                  <SelectItem key={district.id} value={district.name}>{district.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-auto flex items-end">
+            <Button variant="outline" onClick={resetFilters} className="w-full sm:w-auto">Reset Filters</Button>
+          </div>
+        </div>
       </div>
       
       {/* User Stats Dashboard */}
@@ -647,7 +726,8 @@ export function UsersList() {
                 </Select>
               </div>
               
-              {(newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") && (
+              {(newRole === "regional_engineer" || newRole === "project_engineer" || newRole === "regional_general_manager" || newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ||
+                (newRole === "ict" && (isSystemAdmin || isGlobalEngineer)) ? (
                 <div className="space-y-2">
                   <Label htmlFor="region">Region</Label>
                   <Select
@@ -667,7 +747,7 @@ export function UsersList() {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              ) : null}
               
               {(newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") && newRegion && (
                 <div className="space-y-2">
@@ -858,7 +938,7 @@ export function UsersList() {
               </Select>
             </div>
             
-            {((newRole === "regional_engineer" || newRole === "regional_general_manager" || newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ||
+            {((newRole === "regional_engineer" || newRole === "project_engineer" || newRole === "regional_general_manager" || newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ||
               (newRole === "ict" && (isSystemAdmin || isGlobalEngineer))) && (
               <div className="space-y-2">
                 <Label htmlFor="edit-region">Region</Label>

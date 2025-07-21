@@ -151,7 +151,7 @@ export default function VITInspectionPage() {
           uniqueAssets.set(asset.id, asset);
         }
       });
-    } else if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+    } else if (user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") {
       vitAssets
         .filter(asset => asset.region === user.region)
         .forEach(asset => {
@@ -180,7 +180,7 @@ export default function VITInspectionPage() {
     
     if (user.role === "system_admin" || user.role === "global_engineer") {
       filtered = vitInspections;
-    } else if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+    } else if (user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") {
       filtered = vitInspections.filter(inspection => {
         const asset = vitAssets.find(a => a.id === inspection.vitAssetId);
         return asset?.region === user.region;

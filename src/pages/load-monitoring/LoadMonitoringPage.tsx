@@ -17,6 +17,7 @@ import { columns } from "./columns";
 import { LoadMonitoringDialog } from "./LoadMonitoringDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PermissionService } from '@/services/PermissionService';
 
 const { Option } = Select;
 
@@ -75,6 +76,14 @@ const LoadMonitoringPage: React.FC = () => {
       
       // Build query based on filters
       let q = query(loadMonitoringRef);
+      
+      // Use PermissionService for role-based filtering
+      const permissionService = PermissionService.getInstance();
+      if (user?.role && !permissionService.canAccessFeature(user.role, 'load_monitoring')) {
+        setLoadMonitoringRecords([]);
+        setIsLoading(false);
+        return;
+      }
       
       // Apply role-based filtering
       if (user?.role === 'regional_engineer' || user?.role === 'regional_general_manager') {
@@ -195,6 +204,12 @@ const LoadMonitoringPage: React.FC = () => {
   const filteredRecords = useMemo(() => {
     if (!loadMonitoringRecords) return [];
     
+    // Use PermissionService for role-based filtering
+    const permissionService = PermissionService.getInstance();
+    if (user?.role && !permissionService.canAccessFeature(user.role, 'load_monitoring')) {
+      return [];
+    }
+
     let filtered = loadMonitoringRecords;
     
     // Apply role-based filtering

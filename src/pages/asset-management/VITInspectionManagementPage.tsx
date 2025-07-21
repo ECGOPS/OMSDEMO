@@ -111,12 +111,20 @@ export default function VITInspectionManagementPage() {
       let q = query(inspectionsRef);
       
       // Apply role-based filtering
-      if (user?.role === 'global_engineer') {
-        // No filtering for global engineers
-      } else if (user?.role === 'regional_engineer' || user?.role === 'regional_general_manager') {
-        q = query(q, where("region", "==", user.region));
+      if (user?.role === 'global_engineer' || user?.role === 'system_admin') {
+        // No filtering for global engineers or system admins
+      } else if (user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager') {
+        if (user.region) {
+          q = query(q, where("region", "==", user.region));
+        } else {
+          console.warn("Regional/project engineer missing region assignment", user);
+        }
       } else if (user?.role === 'district_engineer' || user?.role === 'technician' || user?.role === 'district_manager') {
-        q = query(q, where("district", "==", user.district));
+        if (user.district && user.region) {
+          q = query(q, where("district", "==", user.district), where("region", "==", user.region));
+        } else {
+          console.warn("District role missing district or region assignment", user);
+        }
       }
 
       // Apply additional filters
@@ -246,10 +254,22 @@ export default function VITInspectionManagementPage() {
     let filtered = vitInspections;
     
     // Apply role-based filtering
-    if (user?.role === 'regional_engineer') {
-      filtered = filtered.filter(inspection => inspection.region === user.region);
-    } else if (user?.role === 'district_engineer' || user?.role === 'technician') {
-      filtered = filtered.filter(inspection => inspection.district === user.district);
+    if (user?.role === 'global_engineer' || user?.role === 'system_admin') {
+      // See all
+    } else if (user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager') {
+      if (user.region) {
+        filtered = filtered.filter(inspection => inspection.region === user.region);
+      } else {
+        console.warn("Regional/project engineer missing region assignment", user);
+        filtered = [];
+      }
+    } else if (user?.role === 'district_engineer' || user?.role === 'technician' || user?.role === 'district_manager') {
+      if (user.district && user.region) {
+        filtered = filtered.filter(inspection => inspection.district === user.district && inspection.region === user.region);
+      } else {
+        console.warn("District role missing district or region assignment", user);
+        filtered = [];
+      }
     }
     
     // Apply region filter
@@ -598,7 +618,7 @@ function InspectionRecordsTable({ onViewDetails, onEditInspection, onViewAsset }
     let roleBasedAccess = true;
     if (user?.role === "global_engineer") {
       roleBasedAccess = true;
-    } else if (user?.role === "regional_engineer" || user?.role === "regional_general_manager") {
+    } else if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") {
       const userRegion = regions.find(r => r.name === user.region);
       roleBasedAccess = userRegion ? asset.region === userRegion.id : false;
     } else if ((user?.role === "district_engineer" || user?.role === "technician" || user?.role === "district_manager") && user.region && user.district) {

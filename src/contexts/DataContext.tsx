@@ -1663,17 +1663,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Set permissions for load monitoring
   useEffect(() => {
     if (!user) return;
-    
-    const canEdit = user.role === "system_admin" || 
-                   user.role === "global_engineer" || 
-                   user.role === "regional_engineer" || 
-                   user.role === "district_engineer";
-    
-    const canDelete = user.role === "system_admin" || 
-                     user.role === "global_engineer";
-    
-    setCanEditLoadMonitoring(canEdit);
-    setCanDeleteLoadMonitoring(canDelete);
+    const permissionService = PermissionService.getInstance();
+    const updatePermissions = () => {
+      const canEdit = permissionService.canUpdateFeature(user.role, "load_monitoring");
+      const canDelete = permissionService.canDeleteFeature(user.role, "load_monitoring");
+      setCanEditLoadMonitoring(canEdit);
+      setCanDeleteLoadMonitoring(canDelete);
+    };
+    updatePermissions();
+    // Listen for permission changes
+    const unsubscribe = permissionService.listenToPermissions(updatePermissions);
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [user]);
 
   const initializeLoadMonitoring = async () => {
