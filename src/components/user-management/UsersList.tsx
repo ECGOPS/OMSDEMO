@@ -31,6 +31,7 @@ import { validateUserRoleAssignment, getFilteredRegionsAndDistricts } from "@/ut
 import { hashPassword } from "@/utils/security";
 import { getFirestore, getDocs, collection } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
+import LoggingService from "@/services/LoggingService";
 
 export function UsersList() {
   const { user: currentUser, users, setUsers, addUser, updateUser, deleteUser, toggleUserStatus, adminResetUserPassword } = useAuth();
@@ -165,6 +166,18 @@ export function UsersList() {
     
       // Add user to Firestore via AuthContext function
       await addUser(newUserData);
+      // Log action
+      await LoggingService.getInstance().logAction(
+        currentUser.id,
+        currentUser.name,
+        currentUser.role,
+        "add",
+        "user",
+        newUserData.email,
+        `Added user: ${newUserData.email}`,
+        newUserData.region,
+        newUserData.district
+      );
     
     resetForm();
     setIsAddDialogOpen(false);
@@ -220,6 +233,18 @@ export function UsersList() {
         district: (newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ? newDistrict : undefined,
         districtId: (newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ? districtId : undefined
       });
+      // Log action
+      await LoggingService.getInstance().logAction(
+        currentUser.id,
+        currentUser.name,
+        currentUser.role,
+        "edit",
+        "user",
+        selectedUser.id,
+        `Edited user: ${selectedUser.email}`,
+        newRegion,
+        newDistrict
+      );
     
       resetForm();
       setIsEditDialogOpen(false);
@@ -236,6 +261,18 @@ export function UsersList() {
     try {
       // Delete user from Firestore via AuthContext function
       await deleteUser(selectedUser.id);
+      // Log action
+      await LoggingService.getInstance().logAction(
+        currentUser.id,
+        currentUser.name,
+        currentUser.role,
+        "delete",
+        "user",
+        selectedUser.id,
+        `Deleted user: ${selectedUser.email}`,
+        selectedUser.region,
+        selectedUser.district
+      );
       
     setSelectedUser(null);
     setIsDeleteDialogOpen(false);

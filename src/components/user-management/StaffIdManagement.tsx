@@ -33,6 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
+import LoggingService from "@/services/LoggingService";
 
 export interface StaffIdEntry {
   id: string;
@@ -255,6 +256,18 @@ export function StaffIdManagement() {
       };
       
       await addStaffId(staffIdData);
+      // Log action
+      await LoggingService.getInstance().logAction(
+        currentUser.id,
+        currentUser.name,
+        currentUser.role,
+        "add",
+        "staff_id",
+        staffIdData.customId || staffIdData.name,
+        `Added staff ID: ${staffIdData.name}`,
+        staffIdData.region,
+        staffIdData.district
+      );
       setIsAdding(false);
       resetForm();
       toast.success("Staff ID added successfully");
@@ -279,6 +292,21 @@ export function StaffIdManagement() {
         region: entry.region,
         district: entry.district
       });
+      // Log action
+      const entry = staffIds.find(e => e.id === id);
+      if (entry) {
+        await LoggingService.getInstance().logAction(
+          currentUser.id,
+          currentUser.name,
+          currentUser.role,
+          "edit",
+          "staff_id",
+          id,
+          `Edited staff ID: ${entry.name}`,
+          entry.region,
+          entry.district
+        );
+      }
       setIsEditing(null);
       toast.success("Staff ID updated successfully");
     } catch (error) {
@@ -290,6 +318,19 @@ export function StaffIdManagement() {
   const handleDelete = async (id: string) => {
     try {
       await deleteStaffId(id);
+      // Log action
+      const entry = staffIds.find(e => e.id === id);
+      await LoggingService.getInstance().logAction(
+        currentUser.id,
+        currentUser.name,
+        currentUser.role,
+        "delete",
+        "staff_id",
+        id,
+        `Deleted staff ID: ${entry?.name || id}`,
+        entry?.region,
+        entry?.district
+      );
       setIsDeleting(null);
       toast.success("Staff ID deleted successfully");
     } catch (error) {
