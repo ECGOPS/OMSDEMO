@@ -106,7 +106,9 @@ export function ChatBox() {
         user.id,
         fileDetails.url,
         fileDetails.name,
-        fileDetails.type
+        fileDetails.type,
+        user.region,
+        user.district
       );
 
       setNewMessage('');
@@ -134,7 +136,12 @@ export function ChatBox() {
       await chatService.sendMessage(
         newMessage.trim(),
         user.name || 'Anonymous',
-        user.id
+        user.id,
+        undefined,
+        undefined,
+        undefined,
+        user.region,
+        user.district
       );
       setNewMessage('');
     } catch (error) {
@@ -198,150 +205,172 @@ export function ChatBox() {
   };
 
   return (
-    <Card className={`w-80 shadow-lg transition-all duration-300 ${isMinimized ? 'h-12 bg-blue-500 text-primary-foreground' : 'h-96'}`}>
-      <CardHeader className={`flex flex-row items-center justify-between space-y-0 ${isMinimized ? 'py-2' : 'pb-2'} px-4 relative`}>
-        <CardTitle className={`text-base font-semibold truncate ${isMinimized ? 'text-primary-foreground' : ''}`}>Team Chat</CardTitle>
-        
-        {isMinimized && (
-           <div className="flex items-center space-x-2">
-              {unreadCount > 0 && (
-                 <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                 </span>
-              )}
-              {unreadCount > 0 && (
-                <span className="ml-1 text-xs font-bold text-primary-foreground">{unreadCount}</span>
-              )}
-               <Bell className={`h-4 w-4 ${isMinimized ? 'text-primary-foreground' : ''}`} />
-           </div>
-        )}
+    <>
+      <style>{`
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.2; }
+        }
+        .blinking-text {
+          animation: blink 1s linear infinite;
+        }
+      `}</style>
+      <Card className={`w-80 shadow-lg transition-all duration-300 ${isMinimized ? 'h-12 bg-blue-500 text-primary-foreground' : 'h-96'}`}>
+        <CardHeader className={`flex flex-row items-center justify-between space-y-0 ${isMinimized ? 'py-2' : 'pb-2'} px-4 relative`}>
+          <CardTitle className={`text-base font-semibold truncate ${isMinimized ? 'text-primary-foreground' : ''}`}>Team Chat</CardTitle>
+          
+          {isMinimized && (
+             <div className="flex items-center space-x-2">
+                {unreadCount > 0 && (
+                   <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                   </span>
+                )}
+                {unreadCount > 0 && (
+                  <span className="ml-1 text-xs font-bold text-primary-foreground">{unreadCount}</span>
+                )}
+                 <Bell className={`h-4 w-4 ${isMinimized ? 'text-primary-foreground' : ''}`} />
+             </div>
+          )}
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsMinimized(!isMinimized)}
-          className={`flex-shrink-0 w-8 h-8 ${isMinimized ? 'text-primary-foreground hover:bg-blue-600' : ''}`}
-        >
-          {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-        </Button>
-      </CardHeader>
-      {!isMinimized && (
-        <CardContent 
-          className="flex flex-col h-[calc(100%-3rem)] p-4"
-          style={{
-            backgroundImage: "url('/images/gina.png')",
-            backgroundSize: 'cover',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-          }}
-        >
-          <ScrollArea ref={scrollRef} className="flex-1 pr-4">
-            <div className="space-y-4">
-              {isLoading ? (
-                <div className="text-center text-sm text-muted-foreground">Loading messages...</div>
-              ) : messages.length === 0 ? (
-                <div className="text-center text-sm text-muted-foreground">No messages yet. Start the conversation!</div>
-              ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {editingMessageId === message.id ? (
-                      <div className="flex flex-col w-full">
-                        <Input
-                          value={editingMessageText}
-                          onChange={(e) => setEditingMessageText(e.target.value)}
-                          onKeyPress={handleKeyPress}
-                          className="mb-2"
-                          autoFocus
-                        />
-                        <div className="flex justify-end space-x-2 text-xs">
-                          <Button variant="outline" size="sm" onClick={handleCancelEdit}>
-                            Cancel
-                          </Button>
-                          <Button variant="default" size="sm" onClick={handleSaveEdit} disabled={!editingMessageText.trim()}>
-                            Save
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        className={`flex flex-col max-w-[80%] group relative ${
-                          message.senderId === user?.id
-                            ? 'bg-primary text-primary-foreground rounded-lg rounded-br-none'
-                            : 'bg-muted rounded-lg rounded-tl-none'
-                        } px-3 py-2 text-sm`}
-                      >
-                        <div className={`text-xs opacity-80 mb-1 ${message.senderId === user?.id ? 'text-right' : 'text-left'}`}>
-                          {message.sender}
-                        </div>
-                        {message.text && <p className="break-words">{message.text}</p>}
-                        {message.fileUrl && message.fileName && (
-                          <a
-                            href={message.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 underline break-words"
-                          >
-                            {message.fileName}
-                          </a>
-                        )}
-                        <div className={`text-xs opacity-60 mt-1 ${message.senderId === user?.id ? 'text-right' : 'text-left'}`}>
-                          {message.timestamp?.toDate().toLocaleTimeString()}
-                        </div>
-                        {message.senderId === user?.id && (
-                          <div className={`absolute ${message.senderId === user?.id ? '-left-12' : '-right-12'} top-1/2 transform -translate-y-1/2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity items-center`}>
-                            <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => handleEditClick(message)}>
-                              <Edit className="h-3 w-3" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsMinimized(!isMinimized)}
+            className={`flex-shrink-0 w-8 h-8 ${isMinimized ? 'text-primary-foreground hover:bg-blue-600' : ''}`}
+          >
+            {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+          </Button>
+        </CardHeader>
+        {!isMinimized && (
+          <CardContent 
+            className="flex flex-col h-[calc(100%-3rem)] p-4"
+            style={{
+              backgroundImage: "url('/images/gina.png')",
+              backgroundSize: 'cover',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center',
+            }}
+          >
+            <ScrollArea ref={scrollRef} className="flex-1 pr-4">
+              <div className="space-y-4">
+                {isLoading ? (
+                  <div className="text-center text-sm text-muted-foreground">Loading messages...</div>
+                ) : messages.length === 0 ? (
+                  <div className="text-center text-sm text-muted-foreground">No messages yet. Start the conversation!</div>
+                ) : (
+                  messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {editingMessageId === message.id ? (
+                        <div className="flex flex-col w-full">
+                          <Input
+                            value={editingMessageText}
+                            onChange={(e) => setEditingMessageText(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            className="mb-2"
+                            autoFocus
+                          />
+                          <div className="flex justify-end space-x-2 text-xs">
+                            <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+                              Cancel
                             </Button>
-                            <Button variant="ghost" size="icon" className="w-6 h-6 text-red-500 hover:text-red-700" onClick={() => handleDeleteClick(message.id)}>
-                              <Trash2 className="h-3 w-3" />
+                            <Button variant="default" size="sm" onClick={handleSaveEdit} disabled={!editingMessageText.trim()}>
+                              Save
                             </Button>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
+                        </div>
+                      ) : (
+                        <div
+                          className={`flex flex-col max-w-[80%] group relative ${
+                            message.senderId === user?.id
+                              ? 'bg-primary text-primary-foreground rounded-lg rounded-br-none'
+                              : 'bg-muted rounded-lg rounded-tl-none'
+                          } px-3 py-2 text-sm`}
+                        >
+                          <div className={`text-xs opacity-80 mb-1 ${message.senderId === user?.id ? 'text-right' : 'text-left'}`}>
+                            {message.sender}
+                          </div>
+                          {(message.senderRegion || message.senderDistrict) && (
+                            <div className={`text-[10px] mt-0.5 mb-1 ${message.senderId === user?.id ? 'text-right' : 'text-left'}`}
+                              style={{ lineHeight: 1 }}
+                            >
+                              <span className="inline-block px-1.5 py-0.5 rounded bg-blue-600 text-white font-medium border border-blue-700 shadow-sm blinking-text">
+                                {message.senderRegion ? message.senderRegion : ''}
+                                {message.senderRegion && message.senderDistrict ? ', ' : ''}
+                                {message.senderDistrict ? message.senderDistrict : ''}
+                              </span>
+                            </div>
+                          )}
+                          {message.text && <p className="break-words">{message.text}</p>}
+                          {message.fileUrl && message.fileName && (
+                            <a
+                              href={message.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 underline break-words"
+                            >
+                              {message.fileName}
+                            </a>
+                          )}
+                          <div className={`text-xs opacity-60 mt-1 ${message.senderId === user?.id ? 'text-right' : 'text-left'}`}>
+                            {message.timestamp?.toDate().toLocaleTimeString()}
+                          </div>
+                          {message.senderId === user?.id && (
+                            <div className={`absolute ${message.senderId === user?.id ? '-left-12' : '-right-12'} top-1/2 transform -translate-y-1/2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity items-center`}>
+                              <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => handleEditClick(message)}>
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="w-6 h-6 text-red-500 hover:text-red-700" onClick={() => handleDeleteClick(message.id)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+            <div className="flex items-center space-x-2 mt-auto pt-3 border-t">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleAttachmentClick}
+                className="flex-shrink-0"
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <svg className="animate-spin h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l2-2.647z"></path></svg>
+                ) : (
+                  <Paperclip className="h-4 w-4" />
+                )}
+              </Button>
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={isUploading ? "Uploading..." : "Type a message..."}
+                className="flex-grow"
+                disabled={isUploading}
+              />
+              <Button type="submit" onClick={handleSendMessage} size="icon" disabled={!newMessage.trim() || isUploading}>
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
-          </ScrollArea>
-          <div className="flex items-center space-x-2 mt-auto pt-3 border-t">
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleAttachmentClick}
-              className="flex-shrink-0"
-              disabled={isUploading}
-            >
-              {isUploading ? (
-                <svg className="animate-spin h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l2-2.647z"></path></svg>
-              ) : (
-                <Paperclip className="h-4 w-4" />
-              )}
-            </Button>
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={isUploading ? "Uploading..." : "Type a message..."}
-              className="flex-grow"
-              disabled={isUploading}
-            />
-            <Button type="submit" onClick={handleSendMessage} size="icon" disabled={!newMessage.trim() || isUploading}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      )}
-    </Card>
+          </CardContent>
+        )}
+      </Card>
+    </>
   );
 } 

@@ -209,7 +209,7 @@ const LoadMonitoringPage: React.FC = () => {
     if (user?.role && !permissionService.canAccessFeature(user.role, 'load_monitoring')) {
       return [];
     }
-
+    
     let filtered = loadMonitoringRecords;
     
     // Apply role-based filtering

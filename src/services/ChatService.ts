@@ -11,6 +11,8 @@ export interface ChatMessage {
   fileUrl?: string;
   fileName?: string;
   fileType?: string;
+  senderRegion?: string;
+  senderDistrict?: string;
 }
 
 export class ChatService {
@@ -27,7 +29,7 @@ export class ChatService {
     return ChatService.instance;
   }
 
-  async sendMessage(text: string | undefined, sender: string, senderId: string, fileUrl?: string, fileName?: string, fileType?: string): Promise<void> {
+  async sendMessage(text: string | undefined, sender: string, senderId: string, fileUrl?: string, fileName?: string, fileType?: string, senderRegion?: string, senderDistrict?: string): Promise<void> {
     if (!text?.trim() && !fileUrl) {
         console.warn("Cannot send empty message or message without attachment.");
         return;
@@ -37,6 +39,8 @@ export class ChatService {
         sender,
         senderId,
         timestamp: serverTimestamp(),
+        senderRegion,
+        senderDistrict,
       };
       if (text?.trim()) {
           messageData.text = text.trim();
@@ -69,6 +73,8 @@ export class ChatService {
           fileUrl: data.fileUrl,
           fileName: data.fileName,
           fileType: data.fileType,
+          senderRegion: data.senderRegion,
+          senderDistrict: data.senderDistrict,
         });
       });
       callback(messages);

@@ -1667,8 +1667,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const updatePermissions = () => {
       const canEdit = permissionService.canUpdateFeature(user.role, "load_monitoring");
       const canDelete = permissionService.canDeleteFeature(user.role, "load_monitoring");
-      setCanEditLoadMonitoring(canEdit);
-      setCanDeleteLoadMonitoring(canDelete);
+    setCanEditLoadMonitoring(canEdit);
+    setCanDeleteLoadMonitoring(canDelete);
     };
     updatePermissions();
     // Listen for permission changes
