@@ -103,8 +103,13 @@ class LoggingService {
         district
       };
 
-      console.log('[LoggingService] Attempting to add document to Firestore with data:', logData);
-      const docRef = await addDoc(collection(db, "userLogs"), logData);
+      // Remove undefined fields from logData
+      const cleanedLogData = Object.fromEntries(
+        Object.entries(logData).filter(([_, v]) => v !== undefined)
+      );
+
+      console.log('[LoggingService] Attempting to add document to Firestore with data:', cleanedLogData);
+      const docRef = await addDoc(collection(db, "userLogs"), cleanedLogData);
       console.log('[LoggingService] Successfully logged action with ID:', docRef.id);
     } catch (error) {
       console.error("[LoggingService] Error logging user action:", error);

@@ -293,20 +293,17 @@ export function StaffIdManagement() {
         district: entry.district
       });
       // Log action
-      const entry = staffIds.find(e => e.id === id);
-      if (entry) {
-        await LoggingService.getInstance().logAction(
-          currentUser.id,
-          currentUser.name,
-          currentUser.role,
-          "edit",
-          "staff_id",
-          id,
-          `Edited staff ID: ${entry.name}`,
-          entry.region,
-          entry.district
-        );
-      }
+      await LoggingService.getInstance().logAction(
+        currentUser.id,
+        currentUser.name,
+        currentUser.role,
+        "edit",
+        "staff_id",
+        id,
+        `Edited staff ID: ${entry.name}`,
+        entry.region,
+        entry.district
+      );
       setIsEditing(null);
       toast.success("Staff ID updated successfully");
     } catch (error) {
