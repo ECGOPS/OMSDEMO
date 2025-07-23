@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { NetworkInspection } from '@/lib/types';
 import ExcelJS from 'exceljs';
