@@ -530,9 +530,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addStaffId = async (entry: Omit<StaffIdEntry, "id"> & { customId?: string }) => {
     try {
-      // Check if current user is a system admin
-      if (user?.role !== "system_admin") {
-        toast.error("Only system administrators can manage staff IDs");
+      // Check if current user is a system admin or ict
+      if (user?.role !== "system_admin" && user?.role !== "ict") {
+        toast.error("Only system administrators and ICT can manage staff IDs");
         return;
       }
       
