@@ -202,7 +202,7 @@ export default defineConfig(({ mode }) => {
           assetFileNames: 'assets/[name]-[hash].[ext]'
         }
       },
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 2000,
       sourcemap: false,
       cssCodeSplit: true,
       assetsInlineLimit: 4096,
