@@ -50,6 +50,7 @@ const UserLogsPage = lazyLoadRoute(() => import("@/pages/UserLogsPage"), "Loadin
 const SecondarySubstationInspectionPage = lazyLoadRoute(() => import("./pages/asset-management/SecondarySubstationInspectionPage"), "Loading secondary substation inspection...");
 const MusicManagementPage = lazyLoadRoute(() => import("@/pages/admin/MusicManagementPage"), "Loading music management...");
 const ImageMigrationPage = lazyLoadRoute(() => import("@/pages/admin/ImageMigrationPage"), "Loading image migration...");
+const SubstationMigrationPage = lazyLoadRoute(() => import("@/pages/admin/SubstationMigrationPage"), "Loading substation migration...");
 const FeederOfflineTestPage = lazyLoadRoute(() => import("./pages/test/FeederOfflineTestPage"), "Loading feeder offline test...");
 
 // Loading fallback component
@@ -284,6 +285,7 @@ function App() {
                     } />
 
                     <Route path="/admin/image-migration" element={<ImageMigrationPage />} />
+                    <Route path="/admin/substation-migration" element={<SubstationMigrationPage />} />
 
                     <Route path="/test/feeder-offline" element={
                       <ProtectedRoute requiredFeature="feeder_offline_testing">

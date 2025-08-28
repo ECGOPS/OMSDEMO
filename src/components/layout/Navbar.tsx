@@ -349,6 +349,22 @@ export function Navbar() {
                           </div>
                         </NavLink>
                         <NavLink 
+                          to="/admin/substation-migration"
+                          className={({ isActive }) =>
+                            cn(
+                              "px-3 py-2 rounded-md transition-colors",
+                              isActive 
+                                ? "bg-primary/10 text-primary font-medium" 
+                                : "text-foreground hover:text-primary hover:bg-primary/5"
+                            )
+                          }
+                        >
+                          <div className="flex items-center gap-2">
+                            <Upload className="h-4 w-4" />
+                            <span>Substation Migration</span>
+                          </div>
+                        </NavLink>
+                        <NavLink 
                           to="/test/feeder-offline"
                           className={({ isActive }) =>
                             cn(

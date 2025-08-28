@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Layout } from "@/components/Layout";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, ChevronRightIcon, Camera, Upload, X } from "lucide-react";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,37 @@ export default function EditSecondarySubstationInspectionPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Function to upload image to cloud storage
+  const uploadImageToStorage = async (base64Image: string, inspectionId: string, imageIndex: number): Promise<string> => {
+    try {
+      // Convert base64 to blob
+      const byteString = atob(base64Image.split(',')[1]);
+      const mimeString = base64Image.split(',')[0].split(':')[1].split(';')[0];
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      
+      const blob = new Blob([ab], { type: mimeString });
+      
+      // Generate unique filename
+      const fileName = `substation-inspections/${inspectionId}/image_${imageIndex}_${Date.now()}.jpg`;
+      const storageRef = ref(getStorage(), fileName);
+      
+      // Upload to Firebase Storage
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading image to storage:', error);
+      // Return original base64 if upload fails
+      return base64Image;
+    }
+  };
 
   // Load inspection data when component mounts
   useEffect(() => {
@@ -112,9 +144,35 @@ export default function EditSecondarySubstationInspectionPage() {
     setIsSubmitting(true);
 
     try {
+      // Upload new images to Storage if they're base64
+      let finalImages = capturedImages;
+      
+      const newImages = capturedImages.filter(img => img.startsWith('data:'));
+      if (newImages.length > 0) {
+        try {
+          const uploadedImages = await Promise.all(
+            newImages.map((image, index) => 
+              uploadImageToStorage(image, id!, index)
+            )
+          );
+          
+          // Replace base64 images with Storage URLs
+          finalImages = capturedImages.map(img => {
+            if (img.startsWith('data:')) {
+              const newIndex = newImages.indexOf(img);
+              return uploadedImages[newIndex];
+            }
+            return img;
+          });
+        } catch (error) {
+          console.error('Error uploading images:', error);
+          toast.error('Failed to upload some images, but inspection will be saved');
+        }
+      }
+      
       const updatedData: Partial<SecondarySubstationInspection> = {
         ...formData,
-        images: capturedImages,
+        images: finalImages,
         updatedAt: new Date().toISOString()
       };
 

@@ -22,6 +22,7 @@ import { useData } from "@/contexts/DataContext";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { SubstationInspectionService } from "@/services/SubstationInspectionService";
 import { ChevronLeft, ChevronRight, ChevronRightIcon, Camera, Upload, X } from "lucide-react";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,38 @@ export default function SubstationInspectionPage() {
   const webcamRef = useRef<Webcam>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Function to upload image to cloud storage
+  const uploadImageToStorage = async (base64Image: string, inspectionId: string, imageIndex: number, isAfterImage: boolean = false): Promise<string> => {
+    try {
+      // Convert base64 to blob
+      const byteString = atob(base64Image.split(',')[1]);
+      const mimeString = base64Image.split(',')[0].split(':')[1].split(';')[0];
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      
+      const blob = new Blob([ab], { type: mimeString });
+      
+      // Generate unique filename
+      const fileName = `substation-inspections/${inspectionId}/image_${imageIndex}_${Date.now()}.jpg`;
+      const storageRef = ref(getStorage(), fileName);
+      
+      // Upload to Firebase Storage
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading image to storage:', error);
+      // Return original base64 if upload fails
+      return base64Image;
+    }
+  };
+  
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     time: new Date().toISOString().split('T')[1].slice(0,5),
@@ -964,11 +997,50 @@ export default function SubstationInspectionPage() {
         afterImages: afterCapturedImages
       };
 
+      // Upload images to Storage if online
+      let finalImages = capturedImages;
+      let finalAfterImages = afterCapturedImages;
+      
+      if (isOnline && capturedImages.length > 0) {
+        try {
+          const uploadedImages = await Promise.all(
+            capturedImages.map((image, index) => 
+              uploadImageToStorage(image, inspectionData.id, index, false)
+            )
+          );
+          finalImages = uploadedImages;
+        } catch (error) {
+          console.error('Error uploading before images:', error);
+          toast.error('Failed to upload some images, but inspection will be saved');
+        }
+      }
+      
+      if (isOnline && afterCapturedImages.length > 0) {
+        try {
+          const uploadedAfterImages = await Promise.all(
+            afterCapturedImages.map((image, index) => 
+              uploadImageToStorage(image, inspectionData.id, index, true)
+            )
+          );
+          finalAfterImages = uploadedAfterImages;
+        } catch (error) {
+          console.error('Error uploading after images:', error);
+          toast.error('Failed to upload some images, but inspection will be saved');
+        }
+      }
+      
+      // Update inspection data with Storage URLs
+      const finalInspectionData = {
+        ...inspectionData,
+        images: finalImages,
+        afterImages: finalAfterImages
+      };
+      
       // Log the inspection data before saving
-      console.log('Inspection data before saving:', inspectionData);
+      console.log('Inspection data before saving:', finalInspectionData);
 
       // Use the saveInspection function from DataContext which handles online/offline logic
-      await saveInspection(inspectionData);
+      await saveInspection(finalInspectionData);
       
       navigate("/asset-management/inspection-management");
     } catch (error) {

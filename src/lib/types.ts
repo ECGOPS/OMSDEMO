@@ -531,6 +531,12 @@ export interface NetworkInspection {
     notes: string;
   };
   
+  vegetationConflicts: {
+    climbers: boolean;
+    trees: boolean;
+    notes: string;
+  };
+  
   additionalNotes: string;
   images: string[];
   afterImages: string[];

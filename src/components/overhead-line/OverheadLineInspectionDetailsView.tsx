@@ -32,7 +32,7 @@ export function OverheadLineInspectionDetailsView({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const totalPages = 10;
+  const totalPages = 11;
 
   const getStatusSummary = () => {
     if (!inspection) return { good: 0, requiresAttention: 0 };
@@ -47,7 +47,8 @@ export function OverheadLineInspectionDetailsView({
       inspection.lightningArresterCondition,
       inspection.dropOutFuseCondition,
       inspection.transformerCondition,
-      inspection.recloserCondition
+      inspection.recloserCondition,
+      inspection.vegetationConflicts
     ];
 
     let requiresAttention = 0;
@@ -613,6 +614,32 @@ export function OverheadLineInspectionDetailsView({
                   )}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        );
+      case 11:
+        return (
+          <Card className="mb-8">
+            <CardHeader className="border-b">
+              <CardTitle>Vegetation Conflicts</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Climbers</p>
+                  <p>{inspection.vegetationConflicts?.climbers ? "Yes" : "No"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Trees</p>
+                  <p>{inspection.vegetationConflicts?.trees ? "Yes" : "No"}</p>
+                </div>
+              </div>
+              {inspection.vegetationConflicts?.notes && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-muted-foreground">Notes</p>
+                  <p>{inspection.vegetationConflicts.notes}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         );

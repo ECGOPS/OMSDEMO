@@ -226,11 +226,19 @@ export function OverheadLineInspectionsTable({
   };
 
   const exportToPDF = async (inspection: NetworkInspection) => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(20);
-    doc.text('Network Inspection Report', 14, 20);
+    try {
+      console.log('🚀 PDF Export - Function started');
+      console.log('🚀 PDF Export - Inspection data:', inspection);
+      console.log('🚀 PDF Export - Inspection ID:', inspection.id);
+      console.log('🚀 PDF Export - Has images:', inspection.images ? inspection.images.length : 'No images array');
+      console.log('🚀 PDF Export - Has afterImages:', inspection.afterImages ? inspection.afterImages.length : 'No afterImages array');
+      
+      const doc = new jsPDF();
+      console.log('🚀 PDF Export - jsPDF document created');
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.text('Network Inspection Report', 14, 20);
     
     // Add inspection ID and date
     doc.setFontSize(12);
@@ -447,6 +455,22 @@ export function OverheadLineInspectionsTable({
       headStyles: { fillColor: [41, 128, 185] },
     });
 
+    // Vegetation Conflicts
+    doc.text('Vegetation Conflicts', 14, doc.lastAutoTable.finalY + 15);
+    const vegetationConflicts = [
+      ['Climbers:', inspection.vegetationConflicts?.climbers ? 'Yes' : 'No'],
+      ['Trees:', inspection.vegetationConflicts?.trees ? 'Yes' : 'No'],
+      ['Notes:', inspection.vegetationConflicts?.notes || 'None'],
+    ];
+    
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 20,
+      head: [['Field', 'Value']],
+      body: vegetationConflicts,
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
     // Additional Information
     doc.text('Additional Information', 14, doc.lastAutoTable.finalY + 15);
     const additionalInfo = [
@@ -463,73 +487,156 @@ export function OverheadLineInspectionsTable({
       headStyles: { fillColor: [41, 128, 185] },
     });
     
-    // Add before images
+    // Add before images with simple page management
     if (inspection.images && inspection.images.length > 0) {
-      doc.text('Inspection Photos (Before Correction):', 14, doc.lastAutoTable.finalY + 15);
-      let y = doc.lastAutoTable.finalY + 25;
+      console.log('🔍 PDF Export - Before images found:', inspection.images.length);
+      console.log('🔍 PDF Export - Before images data:', inspection.images);
+      
+      // Always start on a new page for images to avoid layout issues
+      doc.addPage();
+      doc.text('Inspection Photos (Before Correction):', 14, 20);
+      
+      let y = 30;
+      let imagesProcessed = 0;
+      
       for (const imageUrl of inspection.images.slice(0, 5)) {
         try {
-          const base64Image = await firebaseUrlToBase64(imageUrl);
+          console.log(`🔍 PDF Export - Processing before image ${imagesProcessed + 1}:`, imageUrl);
+          
+          let base64Image: string;
+          
+          // Check if image is already base64 or needs conversion
+          if (imageUrl.startsWith('data:image/')) {
+            console.log(`🔍 PDF Export - Image is already base64, using directly`);
+            base64Image = imageUrl;
+          } else {
+            console.log(`🔍 PDF Export - Converting Firebase URL to base64`);
+            base64Image = await firebaseUrlToBase64(imageUrl);
+          }
+          
+          console.log(`🔍 PDF Export - Base64 conversion result:`, base64Image ? 'Success' : 'Failed');
+          
           if (base64Image) {
             const img = new window.Image();
             img.src = base64Image;
             await new Promise(resolve => { img.onload = resolve; });
+            
+            console.log(`🔍 PDF Export - Image loaded, dimensions:`, img.width, 'x', img.height);
+            
             const aspect = img.width / img.height;
             const maxWidth = 180;
             const maxHeight = 80;
             let width = maxWidth;
             let height = width / aspect;
+            
             if (height > maxHeight) {
               height = maxHeight;
               width = height * aspect;
             }
-            if (y + height > 280) {
-            doc.addPage();
-              y = 20;
-          }
-            doc.addImage(img, 'JPEG', 14, y, width, height);
-            y += height + 10;
-          }
-        } catch (error) {
-          console.error('Error adding image to PDF:', error);
-        }
-      }
-    }
-    // Add after correction images
-    if (inspection.afterImages && inspection.afterImages.length > 0) {
-      doc.text('After Inspection Correction Photos:', 14, doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 120 : 120);
-      let y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 130 : 130;
-      for (const imageUrl of inspection.afterImages.slice(0, 5)) {
-        try {
-          const base64Image = await firebaseUrlToBase64(imageUrl);
-          if (base64Image) {
-            const img = new window.Image();
-            img.src = base64Image;
-            await new Promise(resolve => { img.onload = resolve; });
-            const aspect = img.width / img.height;
-            const maxWidth = 180;
-            const maxHeight = 80;
-            let width = maxWidth;
-            let height = width / aspect;
-            if (height > maxHeight) {
-              height = maxHeight;
-              width = height * aspect;
-            }
-            if (y + height > 280) {
+            
+            // Simple page break check
+            if (y + height > 250) {
               doc.addPage();
               y = 20;
             }
+            
             doc.addImage(img, 'JPEG', 14, y, width, height);
-            y += height + 10;
+            y += height + 15;
+            imagesProcessed++;
+            
+            console.log(`🔍 PDF Export - Successfully added before image ${imagesProcessed} to PDF`);
+          } else {
+            console.log(`🔍 PDF Export - Skipping before image ${imagesProcessed + 1} - no base64 data`);
           }
         } catch (error) {
-          console.error('Error adding after correction image to PDF:', error);
+          console.error(`🔍 PDF Export - Error adding before image ${imagesProcessed + 1} to PDF:`, error);
         }
       }
+      
+      console.log(`🔍 PDF Export - Total before images processed: ${imagesProcessed}`);
+    } else {
+      console.log('🔍 PDF Export - No before images found in inspection:', inspection.images);
+    }
+    
+    // Add after correction images with simple page management
+    if (inspection.afterImages && inspection.afterImages.length > 0) {
+      console.log('🔍 PDF Export - After images found:', inspection.afterImages.length);
+      console.log('🔍 PDF Export - After images data:', inspection.afterImages);
+      
+      // Always start on a new page for after images
+      doc.addPage();
+      doc.text('After Inspection Correction Photos:', 14, 20);
+      
+      let y = 30;
+      let imagesProcessed = 0;
+      
+      for (const imageUrl of inspection.afterImages.slice(0, 5)) {
+        try {
+          console.log(`🔍 PDF Export - Processing after image ${imagesProcessed + 1}:`, imageUrl);
+          
+          let base64Image: string;
+          
+          // Check if image is already base64 or needs conversion
+          if (imageUrl.startsWith('data:image/')) {
+            console.log(`🔍 PDF Export - Image is already base64, using directly`);
+            base64Image = imageUrl;
+          } else {
+            console.log(`🔍 PDF Export - Converting Firebase URL to base64`);
+            base64Image = await firebaseUrlToBase64(imageUrl);
+          }
+          
+          console.log(`🔍 PDF Export - Base64 conversion result:`, base64Image ? 'Success' : 'Failed');
+          
+          if (base64Image) {
+            const img = new window.Image();
+            img.src = base64Image;
+            await new Promise(resolve => { img.onload = resolve; });
+            
+            console.log(`🔍 PDF Export - Image loaded, dimensions:`, img.width, 'x', img.height);
+            
+            const aspect = img.width / img.height;
+            const maxWidth = 180;
+            const maxHeight = 80;
+            let width = maxWidth;
+            let height = width / aspect;
+            
+            if (height > maxHeight) {
+              height = maxHeight;
+              width = height * aspect;
+            }
+            
+            // Simple page break check
+            if (y + height > 250) {
+              doc.addPage();
+              y = 20;
+            }
+            
+            doc.addImage(img, 'JPEG', 14, y, width, height);
+            y += height + 15;
+            imagesProcessed++;
+            
+            console.log(`🔍 PDF Export - Successfully added after image ${imagesProcessed} to PDF`);
+          } else {
+            console.log(`🔍 PDF Export - Skipping after image ${imagesProcessed + 1} - no base64 data`);
+          }
+        } catch (error) {
+          console.error(`🔍 PDF Export - Error adding after correction image ${imagesProcessed + 1} to PDF:`, error);
+        }
+      }
+      
+      console.log(`🔍 PDF Export - Total after images processed: ${imagesProcessed}`);
+    } else {
+      console.log('🔍 PDF Export - No after images found in inspection:', inspection.afterImages);
     }
 
     // Save the PDF
+    console.log('🚀 PDF Export - About to save PDF');
     doc.save(`network-inspection-${inspection.id}.pdf`);
+    console.log('🚀 PDF Export - PDF saved successfully');
+    } catch (error) {
+      console.error('🚀 PDF Export - Error in PDF export:', error);
+      alert('Error generating PDF. Please check console for details.');
+    }
   };
 
   const exportToCSV = (inspection: NetworkInspection) => {
@@ -549,6 +656,8 @@ export function OverheadLineInspectionsTable({
       'Conductor Loose Connectors', 'Conductor Weak Jumpers', 'Conductor Burnt Lugs', 'Conductor Sagged Line', 'Conductor Undersized', 'Conductor Notes',
       // Lightning Arrester Condition
       'Arrester Broken/Cracked', 'Arrester Flash Over', 'Arrester No Earthing', 'Arrester Bypassed', 'Arrester No Arrester', 'Arrester Notes',
+      // Vegetation Conflicts
+      'Vegetation Climbers', 'Vegetation Trees', 'Vegetation Conflicts Notes',
       'Inspector Name'
     ];
     
@@ -605,6 +714,10 @@ export function OverheadLineInspectionsTable({
       inspection.lightningArresterCondition?.bypassed ? 'Yes' : 'No',
       inspection.lightningArresterCondition?.noArrester ? 'Yes' : 'No',
       inspection.lightningArresterCondition?.notes || 'N/A',
+      // Vegetation Conflicts
+      inspection.vegetationConflicts?.climbers ? 'Yes' : 'No',
+      inspection.vegetationConflicts?.trees ? 'Yes' : 'No',
+      inspection.vegetationConflicts?.notes || 'N/A',
       inspection.inspector.name
     ]);
     
@@ -645,6 +758,8 @@ export function OverheadLineInspectionsTable({
       'Conductor Loose Connectors', 'Conductor Weak Jumpers', 'Conductor Burnt Lugs', 'Conductor Sagged Line', 'Conductor Undersized', 'Conductor Notes',
       // Lightning Arrester Condition
       'Arrester Broken/Cracked', 'Arrester Flash Over', 'Arrester No Earthing', 'Arrester Bypassed', 'Arrester No Arrester', 'Arrester Notes',
+      // Vegetation Conflicts
+      'Vegetation Climbers', 'Vegetation Trees', 'Vegetation Conflicts Notes',
       'Inspector Name'
     ];
     
@@ -701,6 +816,10 @@ export function OverheadLineInspectionsTable({
       inspection.lightningArresterCondition?.bypassed ? 'Yes' : 'No',
       inspection.lightningArresterCondition?.noArrester ? 'Yes' : 'No',
       inspection.lightningArresterCondition?.notes || 'N/A',
+      // Vegetation Conflicts
+      inspection.vegetationConflicts?.climbers ? 'Yes' : 'No',
+      inspection.vegetationConflicts?.trees ? 'Yes' : 'No',
+      inspection.vegetationConflicts?.notes || 'N/A',
       inspection.inspector.name
     ]);
     

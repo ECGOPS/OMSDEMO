@@ -160,6 +160,9 @@ export interface SubstationInspection {
   correctLabelling?: string;
   images?: string[];
   afterImages?: string[];
+  imageMigrationCompleted?: boolean;
+  imageMigrationDate?: string;
+  batchNumber?: number;
 }
 
 export interface SecondarySubstationInspection {
@@ -194,4 +197,7 @@ export interface SecondarySubstationInspection {
   paintWork: InspectionItem[];
   images?: string[];
   afterImages?: string[];
+  imageMigrationCompleted?: boolean;
+  imageMigrationDate?: string;
+  batchNumber?: number;
 }

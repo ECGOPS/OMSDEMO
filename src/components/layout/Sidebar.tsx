@@ -223,6 +223,12 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           show: user?.role === "system_admin",
         },
         {
+          title: "Substation Migration",
+          icon: Upload,
+          href: "/admin/substation-migration",
+          show: user?.role === "system_admin",
+        },
+        {
           title: "Feeder Offline Test",
           icon: Database,
           href: "/test/feeder-offline",

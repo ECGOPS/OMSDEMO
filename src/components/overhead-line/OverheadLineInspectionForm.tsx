@@ -209,6 +209,11 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         others: false,
         notes: ""
       },
+      vegetationConflicts: {
+        climbers: false,
+        trees: false,
+        notes: ""
+      },
       additionalNotes: "",
       images: [],
       afterImages: [],
@@ -353,7 +358,13 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         ...inspection,
         date: inspection.date ? inspection.date.split('T')[0] : new Date().toISOString().split('T')[0],
         time: inspection.time,
-        status: inspection.status || "pending"
+        status: inspection.status || "pending",
+        // Ensure backward compatibility for new fields
+        vegetationConflicts: {
+          climbers: inspection.vegetationConflicts?.climbers || false,
+          trees: inspection.vegetationConflicts?.trees || false,
+          notes: inspection.vegetationConflicts?.notes || ""
+        }
       }));
     }
   }, [inspection]);
@@ -512,6 +523,11 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           bypassed: formData.recloserCondition?.bypassed || false,
           others: formData.recloserCondition?.others || false,
           notes: formData.recloserCondition?.notes || ''
+        },
+        vegetationConflicts: {
+          climbers: formData.vegetationConflicts?.climbers || false,
+          trees: formData.vegetationConflicts?.trees || false,
+          notes: formData.vegetationConflicts?.notes || ''
         }
       };
 
@@ -1817,6 +1833,52 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     </Card>
   ), [formData]);
 
+  // Add vegetation conflicts section
+  const renderVegetationConflicts = useMemo(() => (
+    <Card>
+      <CardContent className="p-6">
+        <h3 className="text-lg font-semibold mb-4">Vegetation Conflicts</h3>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="vegetationClimbers"
+              checked={formData.vegetationConflicts.climbers}
+              onCheckedChange={(checked) => 
+                setFormData({
+                  ...formData,
+                  vegetationConflicts: { ...formData.vegetationConflicts, climbers: checked as boolean },
+                })
+              }
+            />
+            <Label htmlFor="vegetationClimbers">Climbers</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="vegetationTrees"
+              checked={formData.vegetationConflicts.trees}
+              onCheckedChange={(checked) => 
+                setFormData({
+                  ...formData,
+                  vegetationConflicts: { ...formData.vegetationConflicts, trees: checked as boolean },
+                })
+              }
+            />
+            <Label htmlFor="vegetationTrees">Trees</Label>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vegetationNotes">Notes</Label>
+            <Textarea
+              id="vegetationNotes"
+              value={formData.vegetationConflicts.notes}
+              onChange={(e) => setFormData({ ...formData, vegetationConflicts: { ...formData.vegetationConflicts, notes: e.target.value } })}
+              placeholder="Enter any vegetation-related observations or notes..."
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  ), [formData]);
+
   const renderAdditionalNotes = useMemo(() => (
     <Card>
       <CardContent className="p-6">
@@ -2670,6 +2732,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         {renderDropOutFuseCondition}
         {renderTransformerCondition}
         {renderRecloserCondition}
+        {renderVegetationConflicts}
         {renderAdditionalNotes}
         {renderImageUpload}
         {renderAfterImages}
