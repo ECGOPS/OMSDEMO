@@ -26,6 +26,8 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { FeederService } from "@/services/FeederService";
 import { processImageWithMetadata, captureImageWithMetadata } from "@/utils/imageUtils";
+import { storage } from "@/config/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 interface OverheadLineInspectionFormProps {
   inspection?: NetworkInspection | null;
@@ -74,6 +76,37 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const [gpsAccuracy, setGpsAccuracy] = useState<number | undefined>(undefined);
   
   const feederService = FeederService.getInstance();
+
+  // Function to upload image to cloud storage
+  const uploadImageToStorage = async (base64Image: string, inspectionId: string, imageIndex: number): Promise<string> => {
+    try {
+      // Convert base64 to blob
+      const byteString = atob(base64Image.split(',')[1]);
+      const mimeString = base64Image.split(',')[0].split(':')[1].split(';')[0];
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      
+      const blob = new Blob([ab], { type: mimeString });
+      
+      // Generate unique filename
+      const fileName = `overhead-line-inspections/${inspectionId}/image_${imageIndex}_${Date.now()}.jpg`;
+      const storageRef = ref(storage, fileName);
+      
+      // Upload to Firebase Storage
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading image to storage:', error);
+      // Return original base64 if upload fails
+      return base64Image;
+    }
+  };
 
   const defaultInsulatorCondition = {
     insulatorType: "",
@@ -482,14 +515,34 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         }
       };
 
-      const finalData = Object.fromEntries(
-        Object.entries(cleanData)
-          .map(([key, value]) => [key, cleanValue(value)])
-          .filter(([_, value]) => value !== undefined)
-      ) as NetworkInspection;
-
       const isOnline = offlineStorage.isInternetAvailable();
       console.log('[OverheadLineInspectionForm] Internet available:', isOnline);
+
+      // For existing inspections, convert images to URLs first
+      let finalImages = cleanData.images;
+      if (inspection && isOnline && finalImages && Array.isArray(finalImages) && finalImages.length > 0) {
+        try {
+          const imageUrls = await Promise.all(
+            finalImages.map(async (image, index) => {
+              if (typeof image === 'string' && image.startsWith('data:image')) {
+                // Convert base64 to URL using existing inspection ID
+                return await uploadImageToStorage(image, inspection.id, index);
+              }
+              return image; // Already a URL
+            })
+          );
+          finalImages = imageUrls;
+        } catch (error) {
+          console.error('Error converting images to URLs:', error);
+          // Continue with original images if conversion fails
+        }
+      }
+
+      const finalData = Object.fromEntries(
+        Object.entries(cleanData)
+          .map(([key, value]) => [key, key === 'images' ? finalImages : cleanValue(value)])
+          .filter(([_, value]) => value !== undefined)
+      ) as NetworkInspection;
 
       if (isOnline) {
         if (inspection) {
@@ -510,8 +563,34 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
             }
           }
         } else {
+          // For new inspections, create document first, then upload images
           const { id, ...dataWithoutId } = finalData;
-          await addNetworkInspection(dataWithoutId);
+          
+          // Create the inspection first to get a real ID
+          const newInspectionId = await addNetworkInspection(dataWithoutId);
+          
+          // Now upload images using the real inspection ID
+          if (isOnline && finalImages && Array.isArray(finalImages) && finalImages.length > 0) {
+            try {
+              const imageUrls = await Promise.all(
+                finalImages.map(async (image, index) => {
+                  if (typeof image === 'string' && image.startsWith('data:image')) {
+                    // Convert base64 to URL using the new inspection ID
+                    return await uploadImageToStorage(image, newInspectionId, index);
+                  }
+                  return image; // Already a URL
+                })
+              );
+              
+              // Update the inspection with the image URLs
+              const updatedData = { ...dataWithoutId, images: imageUrls };
+              await updateNetworkInspection(newInspectionId, updatedData);
+            } catch (error) {
+              console.error('Error uploading images for new inspection:', error);
+              // Continue with base64 images if upload fails
+            }
+          }
+          
           toast({ title: "Success", description: "Inspection created successfully" });
         }
       } else {
@@ -2323,7 +2402,11 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       }
     } catch (err) {
       setIsCapturingAfter(false);
-      toast.error("Failed to access camera for after-correction photo.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to access camera for after-correction photo."
+      });
     }
   };
   const stopCameraAfter = () => {

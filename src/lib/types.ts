@@ -534,6 +534,11 @@ export interface NetworkInspection {
   additionalNotes: string;
   images: string[];
   afterImages: string[];
+  
+  // Migration tracking properties
+  imageMigrationCompleted?: boolean;
+  imageMigrationDate?: string;
+  batchNumber?: number;
 }
 
 export interface SecurityEvent {

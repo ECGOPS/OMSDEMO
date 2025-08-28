@@ -24,6 +24,8 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { exportOverheadLineInspectionsToExcel } from '@/utils/excelExport';
 import { calculateFeederLengthForFeeder } from '@/utils/calculations';
+import LazyImage from '@/components/ui/LazyImage';
+import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 
 interface OverheadLineInspectionsTableProps {
   inspections: NetworkInspection[];
@@ -45,6 +47,12 @@ export function OverheadLineInspectionsTable({
   const [sortedInspections, setSortedInspections] = useState([...inspections]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Export progress state
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportStage, setExportStage] = useState('');
+  const [showExportProgress, setShowExportProgress] = useState(false);
 
   // Update sorted inspections whenever the inspections prop changes
   useEffect(() => {
@@ -157,6 +165,64 @@ export function OverheadLineInspectionsTable({
       // Scroll to top of table when changing pages
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  };
+
+  /**
+   * Convert Firebase Storage URL to base64 using Firebase SDK (bypasses CORS)
+   */
+  const firebaseUrlToBase64 = async (storageUrl: string): Promise<string> => {
+    try {
+      // Extract the path from the Firebase Storage URL
+      // URL format: https://firebasestorage.googleapis.com/v0/b/bucket/o/path%2Fto%2Fimage?alt=media&token=...
+      const url = new URL(storageUrl);
+      const pathMatch = url.pathname.match(/\/o\/(.+)/);
+      
+      if (!pathMatch) {
+        console.warn('Could not extract path from Firebase Storage URL:', storageUrl);
+        return '';
+      }
+      
+      // Decode the path (remove %2F encoding)
+      const imagePath = decodeURIComponent(pathMatch[1]);
+      
+      // Use Firebase SDK to get the image
+      const storage = getStorage();
+      const imageRef = ref(storage, imagePath);
+      
+      // Get download URL (this bypasses CORS)
+      const downloadURL = await getDownloadURL(imageRef);
+      
+      // Fetch the image using the download URL
+      const response = await fetch(downloadURL);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      return await blobToBase64(blob);
+    } catch (error) {
+      console.error('Error converting Firebase Storage URL to base64:', error);
+      return '';
+    }
+  };
+
+  /**
+   * Convert blob to base64 data URL
+   */
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        if (result && typeof result === 'string') {
+          resolve(result);
+        } else {
+          reject(new Error('Failed to convert blob to base64'));
+        }
+      };
+      reader.onerror = () => reject(new Error('FileReader error'));
+      reader.readAsDataURL(blob);
+    });
   };
 
   const exportToPDF = async (inspection: NetworkInspection) => {
@@ -403,24 +469,27 @@ export function OverheadLineInspectionsTable({
       let y = doc.lastAutoTable.finalY + 25;
       for (const imageUrl of inspection.images.slice(0, 5)) {
         try {
-          const img = new window.Image();
-          img.src = imageUrl;
-          await new Promise(resolve => { img.onload = resolve; });
-          const aspect = img.width / img.height;
-          const maxWidth = 180;
-          const maxHeight = 80;
-          let width = maxWidth;
-          let height = width / aspect;
-          if (height > maxHeight) {
-            height = maxHeight;
-            width = height * aspect;
+          const base64Image = await firebaseUrlToBase64(imageUrl);
+          if (base64Image) {
+            const img = new window.Image();
+            img.src = base64Image;
+            await new Promise(resolve => { img.onload = resolve; });
+            const aspect = img.width / img.height;
+            const maxWidth = 180;
+            const maxHeight = 80;
+            let width = maxWidth;
+            let height = width / aspect;
+            if (height > maxHeight) {
+              height = maxHeight;
+              width = height * aspect;
+            }
+            if (y + height > 280) {
+            doc.addPage();
+              y = 20;
           }
-          if (y + height > 280) {
-          doc.addPage();
-            y = 20;
-        }
-          doc.addImage(img, 'JPEG', 14, y, width, height);
-          y += height + 10;
+            doc.addImage(img, 'JPEG', 14, y, width, height);
+            y += height + 10;
+          }
         } catch (error) {
           console.error('Error adding image to PDF:', error);
         }
@@ -432,24 +501,27 @@ export function OverheadLineInspectionsTable({
       let y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 130 : 130;
       for (const imageUrl of inspection.afterImages.slice(0, 5)) {
         try {
-          const img = new window.Image();
-          img.src = imageUrl;
-          await new Promise(resolve => { img.onload = resolve; });
-          const aspect = img.width / img.height;
-          const maxWidth = 180;
-          const maxHeight = 80;
-          let width = maxWidth;
-          let height = width / aspect;
-          if (height > maxHeight) {
-            height = maxHeight;
-            width = height * aspect;
+          const base64Image = await firebaseUrlToBase64(imageUrl);
+          if (base64Image) {
+            const img = new window.Image();
+            img.src = base64Image;
+            await new Promise(resolve => { img.onload = resolve; });
+            const aspect = img.width / img.height;
+            const maxWidth = 180;
+            const maxHeight = 80;
+            let width = maxWidth;
+            let height = width / aspect;
+            if (height > maxHeight) {
+              height = maxHeight;
+              width = height * aspect;
+            }
+            if (y + height > 280) {
+              doc.addPage();
+              y = 20;
+            }
+            doc.addImage(img, 'JPEG', 14, y, width, height);
+            y += height + 10;
           }
-          if (y + height > 280) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.addImage(img, 'JPEG', 14, y, width, height);
-          y += height + 10;
         } catch (error) {
           console.error('Error adding after correction image to PDF:', error);
         }
@@ -662,13 +734,28 @@ export function OverheadLineInspectionsTable({
         return;
       }
       
-      toast.loading('Generating Excel file...');
-      await exportOverheadLineInspectionsToExcel(dataToExport);
-      toast.dismiss();
+      // Show progress UI
+      setIsExporting(true);
+      setShowExportProgress(true);
+      setExportProgress(0);
+      setExportStage('Preparing export...');
+      
+      // Progress callback function
+      const onProgress = (progress: { current: number; total: number; percentage: number; stage: string }) => {
+        setExportProgress(progress.percentage);
+        setExportStage(progress.stage);
+      };
+      
+      await exportOverheadLineInspectionsToExcel(dataToExport, undefined, onProgress);
+      
+      // Hide progress and show success
+      setIsExporting(false);
+      setShowExportProgress(false);
       toast.success('Excel file generated successfully!');
     } catch (error) {
       console.error('Error exporting to Excel:', error);
-      toast.dismiss();
+      setIsExporting(false);
+      setShowExportProgress(false);
       toast.error('Failed to generate Excel file. Please try again.');
     }
   };
@@ -676,15 +763,32 @@ export function OverheadLineInspectionsTable({
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={exportAllToCSV} variant="outline">
+        <Button onClick={exportAllToCSV} variant="outline" disabled={isExporting}>
           <FileDown className="mr-2 h-4 w-4" />
           Export All to CSV
         </Button>
-        <Button onClick={exportAllToExcel} variant="outline" className="ml-2">
+        <Button onClick={exportAllToExcel} variant="outline" className="ml-2" disabled={isExporting}>
           <FileDown className="mr-2 h-4 w-4" />
-          Export All to Excel
+          {isExporting ? 'Exporting...' : 'Export All to Excel'}
         </Button>
       </div>
+      
+      {/* Export Progress Indicator */}
+      {showExportProgress && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-blue-900">Exporting to Excel...</h3>
+            <span className="text-sm text-blue-700">{exportProgress}%</span>
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${exportProgress}%` }}
+            />
+          </div>
+          <p className="text-xs text-blue-700 mt-2">{exportStage}</p>
+        </div>
+      )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -699,6 +803,7 @@ export function OverheadLineInspectionsTable({
               <TableHead>Estimated Feeder Length (km)</TableHead>
               <TableHead>Voltage Level</TableHead>
               <TableHead>Reference Pole</TableHead>
+              <TableHead>Images</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -739,6 +844,30 @@ export function OverheadLineInspectionsTable({
                   </TableCell>
                   <TableCell>{inspection.voltageLevel}</TableCell>
                   <TableCell>{inspection.referencePole}</TableCell>
+                  <TableCell>
+                    {inspection.images && inspection.images.length > 0 ? (
+                      <div className="flex gap-1">
+                        {inspection.images.slice(0, 3).map((image, imgIdx) => (
+                          <div key={imgIdx} className="w-8 h-8 rounded overflow-hidden border">
+                            <LazyImage
+                              src={image}
+                              alt={`Image ${imgIdx + 1}`}
+                              className="w-full h-full object-cover"
+                              width={32}
+                              height={32}
+                            />
+                          </div>
+                        ))}
+                        {inspection.images.length > 3 && (
+                          <div className="w-8 h-8 bg-gray-100 flex items-center justify-center text-xs text-gray-500 border rounded">
+                            +{inspection.images.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-sm">No images</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       className={

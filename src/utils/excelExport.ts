@@ -1,7 +1,7 @@
-import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { NetworkInspection } from '@/lib/types';
 import ExcelJS from 'exceljs';
+import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 
 /**
  * Convert base64 image to blob
@@ -23,33 +23,86 @@ const base64ToBlob = (base64: string, mimeType: string = 'image/jpeg'): Blob => 
 };
 
 /**
- * Convert image URL to base64
+ * Convert blob to base64 data URL
  */
-const imageUrlToBase64 = async (url: string): Promise<string> => {
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      if (result && typeof result === 'string') {
+        resolve(result);
+      } else {
+        reject(new Error('Failed to convert blob to base64'));
+      }
+    };
+    reader.onerror = () => reject(new Error('FileReader error'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Convert Firebase Storage URL to base64 using Firebase SDK (bypasses CORS)
+ */
+async function firebaseUrlToBase64(storageUrl: string): Promise<string> {
   try {
+    // Extract the path from the Firebase Storage URL
+    // URL format: https://firebasestorage.googleapis.com/v0/b/bucket/o/path%2Fto%2Fimage?alt=media&token=...
+    const url = new URL(storageUrl);
+    const pathMatch = url.pathname.match(/\/o\/(.+)/);
+    
+    if (!pathMatch) {
+      console.warn('Could not extract path from Firebase Storage URL:', storageUrl);
+      return '';
+    }
+    
+    // Decode the path (remove %2F encoding)
+    const imagePath = decodeURIComponent(pathMatch[1]);
+    
+    // Use Firebase SDK to get the image
+    const storage = getStorage();
+    const imageRef = ref(storage, imagePath);
+    
+    // Get download URL (this bypasses CORS)
+    const downloadURL = await getDownloadURL(imageRef);
+    
+    // Fetch the image using the download URL
+    const response = await fetch(downloadURL);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`);
+    }
+    
+    const blob = await response.blob();
+    return await blobToBase64(blob);
+  } catch (error) {
+    console.error('Error converting Firebase Storage URL to base64:', error);
+    return '';
+  }
+}
+
+/**
+ * Convert any image URL to base64, handling Firebase Storage URLs specially
+ */
+async function imageUrlToBase64(url: string): Promise<string> {
+  try {
+    // Check if it's a Firebase Storage URL
+    if (url.includes('firebasestorage.googleapis.com')) {
+      return await firebaseUrlToBase64(url);
+    }
+    
+    // For other URLs, use regular fetch
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`Failed to fetch image: ${response.status}`);
     }
+    
     const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        if (result && typeof result === 'string') {
-          resolve(result);
-        } else {
-          reject(new Error('Failed to convert image to base64'));
-        }
-      };
-      reader.onerror = () => reject(new Error('FileReader error'));
-      reader.readAsDataURL(blob);
-    });
+    return await blobToBase64(blob);
   } catch (error) {
     console.error('Error converting image URL to base64:', error);
     return '';
   }
-};
+}
 
 // Browser-compatible base64 to buffer conversion
 function base64ToBuffer(base64: string): Uint8Array {
@@ -107,17 +160,35 @@ const splitIntoChunks = (str: string, chunkSize: number = 30000): string[] => {
  */
 export const exportOverheadLineInspectionsToExcel = async (
   inspections: NetworkInspection[],
-  filename: string = 'network-inspections.xlsx'
+  filename: string = 'network-inspections.xlsx',
+  onProgress?: (progress: { current: number; total: number; percentage: number; stage: string }) => void
 ) => {
   try {
     console.log('ExcelJS export utility called with:', inspections.length, 'inspections');
     
+    // Initialize progress tracking
+    let currentProgress = 0;
+    const totalSteps = inspections.length * 2 + 5; // Each inspection has 2 image processing steps + 5 setup steps
+    
+    const updateProgress = (stage: string, increment: number = 1) => {
+      currentProgress += increment;
+      const percentage = Math.round((currentProgress / totalSteps) * 100);
+      onProgress?.({
+        current: currentProgress,
+        total: totalSteps,
+        percentage,
+        stage
+      });
+    };
+    
     // Create a new workbook
     const workbook = new ExcelJS.Workbook();
+    updateProgress('Creating workbook...');
     console.log('Workbook created');
     
     // Create the main worksheet
     const worksheet = workbook.addWorksheet('Network Inspections');
+    updateProgress('Setting up worksheet...');
     console.log('Worksheet created');
     
     // Define headers
@@ -212,12 +283,14 @@ export const exportOverheadLineInspectionsToExcel = async (
     };
 
     console.log('Processing inspection data...');
+    updateProgress('Processing inspection data...');
     
     // Process each inspection
     for (let index = 0; index < inspections.length; index++) {
       const inspection = inspections[index];
       try {
         console.log(`Processing inspection ${index + 1}/${inspections.length}:`, inspection.id);
+        updateProgress(`Processing inspection ${index + 1}/${inspections.length}...`);
         
         // Process images
         const images = Array.isArray(inspection.images) ? inspection.images : [];
@@ -232,7 +305,12 @@ export const exportOverheadLineInspectionsToExcel = async (
                 } else if (image.startsWith('http')) {
                   console.log(`Converting image ${imgIndex + 1} from URL:`, image);
                   const base64 = await imageUrlToBase64(image);
-                  return base64ToBuffer(base64);
+                  if (base64 && base64.startsWith('data:')) {
+                    return base64ToBuffer(base64);
+                  } else {
+                    console.log(`⚠️ Skipping image ${imgIndex + 1} - could not convert URL to base64`);
+                    return null;
+                  }
                 }
               }
               return null;
@@ -249,6 +327,7 @@ export const exportOverheadLineInspectionsToExcel = async (
         }
 
         // Process afterImages
+        updateProgress(`Processing after images for inspection ${index + 1}...`);
         const afterImageBuffers = await Promise.all(
           afterImages.slice(0, 5).map(async (image, imgIndex) => {
             try {
@@ -257,7 +336,12 @@ export const exportOverheadLineInspectionsToExcel = async (
                   return base64ToBuffer(image);
                 } else if (image.startsWith('http')) {
                   const base64 = await imageUrlToBase64(image);
-                  return base64ToBuffer(base64);
+                  if (base64 && base64.startsWith('data:')) {
+                    return base64ToBuffer(base64);
+                  } else {
+                    console.log(`⚠️ Skipping after image ${imgIndex + 1} - could not convert URL to base64`);
+                    return null;
+                  }
                 }
               }
               return null;
@@ -586,17 +670,22 @@ export const exportOverheadLineInspectionsToExcel = async (
       }
     }
 
+    updateProgress('Generating Excel file...');
     console.log('Generating Excel file...');
     // Generate Excel file
     const buffer = await workbook.xlsx.writeBuffer();
+    updateProgress('Creating file buffer...');
     console.log('Excel buffer created, size:', buffer.byteLength);
     
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    updateProgress('Preparing file for download...');
     console.log('Blob created, size:', blob.size);
     
     // Save file
+    updateProgress('Downloading file...');
     console.log('Saving file:', filename);
     saveAs(blob, filename);
+    updateProgress('Export completed!', 0); // Don't increment, just update stage
     console.log('File saved successfully');
     
     return true;
@@ -611,8 +700,9 @@ export const exportOverheadLineInspectionsToExcel = async (
  */
 export const exportSingleInspectionToExcel = async (
   inspection: NetworkInspection,
-  filename?: string
+  filename?: string,
+  onProgress?: (progress: { current: number; total: number; percentage: number; stage: string }) => void
 ) => {
   const defaultFilename = `inspection-${inspection.id}-${new Date().toISOString().split('T')[0]}.xlsx`;
-  return exportOverheadLineInspectionsToExcel([inspection], filename || defaultFilename);
+  return exportOverheadLineInspectionsToExcel([inspection], filename || defaultFilename, onProgress);
 }; 

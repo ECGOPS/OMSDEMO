@@ -18,6 +18,7 @@ import {
   LogOut,
   Music,
   Database,
+  Upload,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { PermissionService } from "@/services/PermissionService";
@@ -213,6 +214,12 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           title: "Music Management",
           icon: Music,
           href: "/admin/music",
+          show: user?.role === "system_admin",
+        },
+        {
+          title: "Image Migration",
+          icon: Upload,
+          href: "/admin/image-migration",
           show: user?.role === "system_admin",
         },
         {

@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Music files rules
+    match /music/{fileName} {
+      // Allow read access to all authenticated users
+      allow read: if isAuthenticated();
+      // Allow write access to authenticated users (temporarily)
+      allow write: if isAuthenticated();
+    }
+
+    // Inspection images rules
+    match /overhead-line-inspections/{inspectionId}/{imageFile} {
+      // Allow public read access to inspection images
+      allow read: if true;
+      // Only authenticated users can write
+      allow write: if isAuthenticated();
+    }
+    
+    // Substation inspection images rules
+    match /substation-inspections/{inspectionId}/{imageFile} {
+      // Allow public read access to substation inspection images
+      allow read: if true;
+      // Only authenticated users can write
+      allow write: if isAuthenticated();
+    }
+    
+    // Default deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
