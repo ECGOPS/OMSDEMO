@@ -41,6 +41,7 @@ export default function OverheadLineInspectionPage() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedFeeder, setSelectedFeeder] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   const navigate = useNavigate();
@@ -147,9 +148,14 @@ export default function OverheadLineInspectionPage() {
     if (selectedFeeder) {
       filtered = filtered.filter(inspection => inspection.feederName === selectedFeeder);
     }
+
+    // Apply status filter
+    if (selectedStatus) {
+      filtered = filtered.filter(inspection => inspection.status === selectedStatus);
+    }
     
     return filtered;
-  }, [networkInspections, offlineInspections, user, selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, regions, districts]);
+  }, [networkInspections, offlineInspections, user, selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, selectedStatus, regions, districts]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredInspections.length / pageSize);
@@ -161,7 +167,7 @@ export default function OverheadLineInspectionPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, networkInspections]);
+  }, [selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, selectedStatus, networkInspections]);
 
   // Reset all filters
   const handleResetFilters = () => {
@@ -170,6 +176,7 @@ export default function OverheadLineInspectionPage() {
     setSelectedRegion(null);
     setSelectedDistrict(null);
     setSelectedFeeder(null);
+    setSelectedStatus(null);
   };
 
   const handleAddInspection = () => {
@@ -313,7 +320,7 @@ export default function OverheadLineInspectionPage() {
             )}
           </div>
 
-          {/* Reset Filters Button */}
+                    {/* Reset Filters Button */}
           <div className="flex flex-col sm:flex-row justify-end gap-4 mb-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 w-full sm:w-auto">
               <div className="space-y-2 w-full sm:w-[200px]">
@@ -345,15 +352,44 @@ export default function OverheadLineInspectionPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button
-                variant="outline"
-                onClick={handleResetFilters}
-                disabled={!selectedDate && !selectedMonth && !selectedRegion && !selectedDistrict && !selectedFeeder}
-                className="w-full sm:w-auto"
-              >
-                Reset All Filters
-              </Button>
+              <div className="space-y-2 w-full sm:w-[200px]">
+                <Label>Filter by Status</Label>
+                <Select
+                  value={selectedStatus || "all-statuses"}
+                  onValueChange={(value) => {
+                    if (value === "all-statuses") {
+                      setSelectedStatus(null);
+                    } else {
+                      setSelectedStatus(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all-statuses">All Statuses</SelectItem>
+                    {Array.from(new Set(filteredInspections
+                      .map(inspection => inspection.status)
+                      .filter(Boolean)))
+                      .sort()
+                      .map(status => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+            <Button
+              variant="outline"
+              onClick={handleResetFilters}
+              disabled={!selectedDate && !selectedMonth && !selectedRegion && !selectedDistrict && !selectedFeeder && !selectedStatus}
+              className="w-full sm:w-auto"
+            >
+              Reset All Filters
+            </Button>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
