@@ -48,6 +48,11 @@ export default function OverheadLineInspectionPage() {
   const offlineStorage = OfflineInspectionService.getInstance();
   const [offlineInspections, setOfflineInspections] = useState<NetworkInspection[]>([]);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncTotal, setSyncTotal] = useState(0);
+  const [syncCompleted, setSyncCompleted] = useState(0);
+  const [syncFailed, setSyncFailed] = useState(0);
+  const [showSyncProgress, setShowSyncProgress] = useState(false);
 
   // Load offline inspections
   useEffect(() => {
@@ -224,6 +229,51 @@ export default function OverheadLineInspectionPage() {
     }
   };
 
+  const handleManualSync = async () => {
+    if (isSyncing) return;
+    try {
+      const pending = await offlineStorage.getPendingInspections();
+      if (!navigator.onLine) {
+        toast.error("You're offline. Connect to the internet to sync.");
+        return;
+      }
+      if (pending.length === 0) {
+        toast.info("No offline inspections to sync");
+        return;
+      }
+      setIsSyncing(true);
+      setShowSyncProgress(true);
+      setSyncTotal(pending.length);
+      setSyncCompleted(0);
+      setSyncFailed(0);
+
+      const onSynced = (event: Event) => {
+        const e = event as CustomEvent<any>;
+        if (e.detail?.status === 'success') {
+          setSyncCompleted(prev => prev + 1);
+        } else if (e.detail?.status === 'error') {
+          setSyncFailed(prev => prev + 1);
+        }
+      };
+      window.addEventListener('inspectionSynced', onSynced as EventListener);
+      try {
+        await offlineStorage.syncPendingInspections();
+        if (syncFailed === 0) {
+          toast.success("Sync completed");
+        } else {
+          toast.success("Sync completed with some errors");
+        }
+      } finally {
+        window.removeEventListener('inspectionSynced', onSynced as EventListener);
+        setIsSyncing(false);
+        setTimeout(() => setShowSyncProgress(false), 1500);
+      }
+    } catch (error) {
+      setIsSyncing(false);
+      toast.error("Failed to start sync");
+    }
+  };
+
   return (
     <AccessControlWrapper type="inspection">
       <Layout>
@@ -242,12 +292,35 @@ export default function OverheadLineInspectionPage() {
                   )}
                 </p>
               )}
+              {showSyncProgress && (
+                <div className="mt-3 space-y-1">
+                  <div className="h-2 w-full max-w-md bg-secondary rounded">
+                    <div
+                      className="h-2 bg-primary rounded"
+                      style={{ width: `${syncTotal ? Math.min(100, Math.round(((syncCompleted + syncFailed) / syncTotal) * 100)) : 0}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Syncing {syncCompleted + syncFailed}/{syncTotal}
+                    {syncFailed > 0 ? ` • Errors: ${syncFailed}` : ''}
+                  </p>
+                </div>
+              )}
             </div>
             {(user?.role === 'global_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager' || user?.role === 'technician' || user?.role === 'system_admin') && (
-              <Button onClick={handleAddInspection} className="mt-4 md:mt-0">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                New Inspection
-              </Button>
+              <div className="flex gap-2 mt-4 md:mt-0">
+                <Button
+                  variant="outline"
+                  onClick={handleManualSync}
+                  disabled={isSyncing || offlineInspections.length === 0 || isOffline}
+                >
+                  {isSyncing ? 'Syncing…' : `Sync ${offlineInspections.length > 0 ? `(${offlineInspections.length})` : ''}`}
+                </Button>
+                <Button onClick={handleAddInspection}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Inspection
+                </Button>
+              </div>
             )}
           </div>
 
