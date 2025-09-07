@@ -145,6 +145,197 @@ export default function CreateLoadMonitoringPage() {
     avgPhaseCurrent: 0
   });
 
+  // --- Diagnosis helper ---
+  const diagnosis = (() => {
+    const feederLegs = formData.feederLegs || [];
+    if (feederLegs.length === 0) {
+      return { messages: ["Add feeder leg readings to see diagnosis."], problemLegIndex: undefined };
+    }
+
+    const messages: string[] = [];
+    let problemLegIndex: number | undefined = undefined;
+
+    // Check for overloaded phases (exceeding 80% of rated load per phase)
+    // Use the actual transformer rating (KVA) - the ratedLoad is already per-phase current
+    const transformerRating = Number(formData.rating) || 0;
+    const ratedLoadPerPhase = transformerRating * 1.334; // This is already the per-phase current (267A for 200KVA)
+    const overloadThreshold = ratedLoadPerPhase * 0.8;
+
+    // Identify leg with highest phase imbalance and overloaded phases
+    let worstImbalance = -1;
+    feederLegs.forEach((leg, idx) => {
+      const r = Number(leg.redPhaseCurrent) || 0;
+      const y = Number(leg.yellowPhaseCurrent) || 0;
+      const b = Number(leg.bluePhaseCurrent) || 0;
+      const maxP = Math.max(r, y, b);
+      const minP = Math.min(r, y, b);
+      const perc = maxP > 0 ? ((maxP - minP) / maxP) * 100 : 0;
+      if (perc > worstImbalance) {
+        worstImbalance = perc;
+        problemLegIndex = idx;
+      }
+
+      // Check for overloaded phases on this leg
+      const phases = [
+        { name: 'Red', current: r },
+        { name: 'Yellow', current: y },
+        { name: 'Blue', current: b }
+      ];
+      
+      phases.forEach(phase => {
+        if (phase.current > overloadThreshold) {
+          const overloadPercent = ((phase.current / ratedLoadPerPhase) * 100).toFixed(1);
+          messages.push(`⚠️ OVERLOAD: ${phase.name} phase on Leg ${idx + 1} is at ${overloadPercent}% capacity (${phase.current.toFixed(1)}A).`);
+        }
+      });
+    });
+
+    if (problemLegIndex !== undefined) {
+      const leg = feederLegs[problemLegIndex];
+      const r = Number(leg.redPhaseCurrent) || 0;
+      const y = Number(leg.yellowPhaseCurrent) || 0;
+      const b = Number(leg.bluePhaseCurrent) || 0;
+      const maxP = Math.max(r, y, b);
+      const minP = Math.min(r, y, b);
+      const perc = maxP > 0 ? ((maxP - minP) / maxP) * 100 : 0;
+      if (perc >= 30) {
+        messages.push(`⚖️ IMBALANCE: Leg ${problemLegIndex + 1} has ${perc.toFixed(1)}% phase imbalance.`);
+      }
+    }
+
+    // Check neutral per leg vs share of rated neutral
+    const perLegNeutralThreshold = (loadInfo.tenPercentFullLoadNeutral || 0) / Math.max(1, feederLegs.length);
+    feederLegs.forEach((leg, idx) => {
+      const n = Number(leg.neutralCurrent) || 0;
+      if (n > perLegNeutralThreshold && perLegNeutralThreshold > 0) {
+        messages.push(`🔌 HIGH NEUTRAL: Leg ${idx + 1} neutral current is ${n.toFixed(1)}A (exceeds safe limit).`);
+      }
+    });
+
+    if (messages.length === 0) {
+      messages.push("✅ No issues detected. All phases are balanced and within safe limits.");
+    } else {
+      // Show current phase distribution for each problematic leg
+      feederLegs.forEach((leg, idx) => {
+        const r = Number(leg.redPhaseCurrent) || 0;
+        const y = Number(leg.yellowPhaseCurrent) || 0;
+        const b = Number(leg.bluePhaseCurrent) || 0;
+        const maxP = Math.max(r, y, b);
+        const minP = Math.min(r, y, b);
+        const perc = maxP > 0 ? ((maxP - minP) / maxP) * 100 : 0;
+        
+        if (perc >= 30 || maxP > overloadThreshold) {
+          messages.push("");
+          messages.push(`📊 CURRENT PHASE DISTRIBUTION ON LEG ${idx + 1}:`);
+          messages.push(`   Red Phase: ${r.toFixed(1)}A`);
+          messages.push(`   Yellow Phase: ${y.toFixed(1)}A`);
+          messages.push(`   Blue Phase: ${b.toFixed(1)}A`);
+          
+          // Check if this is a severe imbalance case
+          if (perc >= 80) {
+            messages.push("");
+            messages.push(`🚨 CRITICAL IMBALANCE DETECTED ON LEG ${idx + 1}!`);
+            messages.push(`   • Imbalance: ${perc.toFixed(1)}% (Severe - requires immediate attention)`);
+            messages.push(`   • This can cause transformer overheating and equipment damage`);
+            messages.push(`   • Neutral current will be excessive due to poor phase balance`);
+          }
+          
+          // Identify which phases need load reduction and which can accept more
+          const phases = [
+            { name: 'Red', current: r },
+            { name: 'Yellow', current: y },
+            { name: 'Blue', current: b }
+          ].sort((a, b) => b.current - a.current);
+          
+          const overloadedPhases = phases.filter(p => p.current > overloadThreshold);
+          const underloadedPhases = phases.filter(p => p.current < overloadThreshold);
+          
+          if (overloadedPhases.length > 0 && underloadedPhases.length > 0) {
+            messages.push("");
+            messages.push(`🔄 SPECIFIC ACTIONS FOR LEG ${idx + 1}:`);
+            
+            // Calculate total excess load and available capacity
+            const totalExcessLoad = overloadedPhases.reduce((sum, phase) => sum + (phase.current - overloadThreshold), 0);
+            const totalAvailableCapacity = underloadedPhases.reduce((sum, phase) => sum + (overloadThreshold - phase.current), 0);
+            
+            if (totalExcessLoad <= totalAvailableCapacity) {
+              // We can balance by moving loads
+              overloadedPhases.forEach(overloaded => {
+                const excessLoad = overloaded.current - overloadThreshold;
+                const targetPhases = underloadedPhases.map(p => p.name).join(' or ');
+                messages.push(`   • Move ${excessLoad.toFixed(1)}A from ${overloaded.name} phase to ${targetPhases} phase`);
+              });
+            } else {
+              // Cannot balance with current capacity - need to reduce total load
+              const totalCurrentLoad = r + y + b;
+              const targetBalancedLoad = totalCurrentLoad / 3;
+              const reductionNeeded = totalCurrentLoad - (overloadThreshold * 3);
+              
+              messages.push(`   ⚠️ CRITICAL: Cannot balance with current capacity!`);
+              messages.push(`   • Total load: ${totalCurrentLoad.toFixed(1)}A (needs ${(overloadThreshold * 3).toFixed(1)}A max)`);
+              messages.push(`   • Reduce total load by ${reductionNeeded.toFixed(1)}A`);
+              messages.push(`   • Target balanced load: ~${targetBalancedLoad.toFixed(1)}A per phase`);
+              
+              // Show which phases need the most reduction
+              overloadedPhases.forEach(overloaded => {
+                const reductionNeeded = overloaded.current - targetBalancedLoad;
+                if (reductionNeeded > 0) {
+                  messages.push(`   • Reduce ${overloaded.name} phase by ${reductionNeeded.toFixed(1)}A`);
+                }
+              });
+            }
+          } else if (perc >= 30) {
+            // Severe imbalance but no overload - focus on balancing
+            messages.push("");
+            messages.push(`🔄 BALANCING ACTIONS FOR LEG ${idx + 1}:`);
+            const targetLoad = (r + y + b) / 3;
+            
+            // Find phases that need to give up load and phases that can accept load
+            const heavyPhases = phases.filter(p => p.current > targetLoad);
+            const lightPhases = phases.filter(p => p.current < targetLoad);
+            
+            heavyPhases.forEach(heavyPhase => {
+              const excessLoad = heavyPhase.current - targetLoad;
+              if (excessLoad > 5) { // Only show if difference is significant
+                if (lightPhases.length === 1) {
+                  // Only one target phase - move all to it
+                  messages.push(`   • Move ${excessLoad.toFixed(1)}A from ${heavyPhase.name} phase to ${lightPhases[0].name} phase`);
+                } else if (lightPhases.length === 2) {
+                  // Two target phases - split the load
+                  const split1 = (excessLoad / 2).toFixed(1);
+                  const split2 = (excessLoad - parseFloat(split1)).toFixed(1);
+                  messages.push(`   • Move ${split1}A from ${heavyPhase.name} phase to ${lightPhases[0].name} phase`);
+                  messages.push(`   • Move ${split2}A from ${heavyPhase.name} phase to ${lightPhases[1].name} phase`);
+                } else {
+                  // Multiple target phases - show general guidance
+                  const targetPhases = lightPhases.map(p => p.name).join(' or ');
+                  messages.push(`   • Move ${excessLoad.toFixed(1)}A from ${heavyPhase.name} phase to ${targetPhases} phase`);
+                }
+              }
+            });
+          }
+        }
+      });
+      
+      messages.push("");
+      messages.push("🔧 URGENT BALANCING STEPS:");
+      messages.push("1. ⚠️ IMMEDIATE: Turn OFF single-phase loads on heaviest phases");
+      messages.push("2. 🔄 Reconnect them to the lightest phases (check circuit breakers/isolators)");
+      messages.push("3. 📊 Target: Aim for similar current values across all three phases");
+      messages.push("4. 🔍 Check for loose connections or faulty equipment");
+      messages.push("5. ⚡ Monitor neutral current - should be near zero when balanced");
+      messages.push("6. 🛠️ Consider installing load balancing equipment if imbalance persists");
+      messages.push("");
+      messages.push("⚠️ WARNING: Severe phase imbalance can cause:");
+      messages.push("   • Transformer overheating and premature failure");
+      messages.push("   • Voltage unbalance affecting connected equipment");
+      messages.push("   • Neutral conductor overload and potential fire hazard");
+      messages.push("   • Motor damage from unbalanced supply voltage");
+    }
+
+    return { messages, problemLegIndex };
+  })();
+
   // --- Form Handling Functions ---
   const addFeederLeg = () => {
     if ((formData.feederLegs?.length || 0) >= 8) {
@@ -779,6 +970,116 @@ export default function CreateLoadMonitoringPage() {
                     </p>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Diagnosis & Recommendations */}
+            <Card className="border-l-4 border-l-orange-500 dark:border-l-orange-400">
+              <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20">
+                <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+                  <div className="w-2 h-2 bg-orange-500 dark:bg-orange-400 rounded-full"></div>
+                  Diagnosis & Recommendations
+                </CardTitle>
+                <CardDescription className="text-orange-700 dark:text-orange-300">
+                  Comprehensive analysis of phase balance and load distribution issues
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {diagnosis.messages.map((message, i) => {
+                  // Determine message type for styling
+                  const isCritical = message.includes('🚨') || message.includes('CRITICAL');
+                  const isWarning = message.includes('⚠️') || message.includes('OVERLOAD') || message.includes('IMBALANCE');
+                  const isInfo = message.includes('📊') || message.includes('CURRENT PHASE DISTRIBUTION');
+                  const isAction = message.includes('🔄') || message.includes('BALANCING ACTIONS') || message.includes('SPECIFIC ACTIONS');
+                  const isStep = message.includes('🔧') || message.includes('URGENT BALANCING STEPS');
+                  const isAlert = message.includes('⚠️ WARNING:') || message.includes('can cause:');
+                  const isBullet = message.startsWith('   •') || message.startsWith('•');
+                  
+                  if (isCritical) {
+                    return (
+                      <div key={i} className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 bg-red-500 dark:bg-red-400 rounded-full flex items-center justify-center text-white text-sm font-bold">!</div>
+                          <div>
+                            <h4 className="font-semibold text-red-800 dark:text-red-200 mb-1">Critical Imbalance Detected</h4>
+                            <p className="text-red-700 dark:text-red-300 text-sm">{message.replace('🚨 CRITICAL IMBALANCE DETECTED ON LEG', 'Leg').replace('!', '')}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  if (isWarning) {
+                    return (
+                      <div key={i} className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 bg-yellow-500 dark:bg-yellow-400 rounded-full flex items-center justify-center text-white text-xs">⚠</div>
+                          <p className="text-yellow-800 dark:text-yellow-200 font-medium text-sm">{message}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  if (isInfo) {
+                    return (
+                      <div key={i} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                        <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
+                          <div className="w-4 h-4 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
+                          {message.replace('📊 ', '')}
+                        </h4>
+                      </div>
+                    );
+                  }
+                  
+                  if (isAction) {
+                    return (
+                      <div key={i} className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                        <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2 flex items-center gap-2">
+                          <div className="w-4 h-4 bg-green-500 dark:bg-green-400 rounded-full"></div>
+                          {message.replace('🔄 ', '')}
+                        </h4>
+                      </div>
+                    );
+                  }
+                  
+                  if (isStep) {
+                    return (
+                      <div key={i} className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                        <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-3 flex items-center gap-2">
+                          <div className="w-5 h-5 bg-purple-500 dark:bg-purple-400 rounded-full flex items-center justify-center text-white text-xs">🔧</div>
+                          {message.replace('🔧 ', '')}
+                        </h4>
+                      </div>
+                    );
+                  }
+                  
+                  if (isAlert) {
+                    return (
+                      <div key={i} className="bg-red-50 dark:bg-red-900/20 border-l-4 border-l-red-500 dark:border-l-red-400 p-4">
+                        <h4 className="font-bold text-red-800 dark:text-red-200 mb-2 flex items-center gap-2">
+                          <div className="w-5 h-5 bg-red-500 dark:bg-red-400 rounded-full flex items-center justify-center text-white text-xs">⚠</div>
+                          {message.replace('⚠️ WARNING: ', 'WARNING: ')}
+                        </h4>
+                      </div>
+                    );
+                  }
+                  
+                  if (isBullet) {
+                    return (
+                      <div key={i} className="ml-4 flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm">{message.replace('   • ', '')}</p>
+                      </div>
+                    );
+                  }
+                  
+                  // Default styling for other messages
+                  return (
+                    <div key={i} className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                      <p className="text-gray-800 dark:text-gray-200 text-sm">{message}</p>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
 
