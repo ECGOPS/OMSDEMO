@@ -41,6 +41,7 @@ export default function CreateLoadMonitoringPage() {
     gpsLocation: "", // Add gpsLocation
     rating: undefined,
     peakLoadStatus: "day",
+    ownership: "public", // Add ownership field
     feederLegs: [
       {
         id: uuidv4(),
@@ -599,6 +600,7 @@ export default function CreateLoadMonitoringPage() {
       gpsLocation: formData.gpsLocation || "", // Include gpsLocation
       rating: formData.rating,
       peakLoadStatus: formData.peakLoadStatus || "day",
+      ownership: formData.ownership || "public",
       feederLegs: processedFeederLegs,
       ratedLoad: loadInfo.ratedLoad,
       redPhaseBulkLoad: loadInfo.redPhaseBulkLoad,
@@ -817,6 +819,22 @@ export default function CreateLoadMonitoringPage() {
                       <SelectContent>
                         <SelectItem value="day">Day Peak</SelectItem>
                         <SelectItem value="night">Night Peak</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Ownership Select */}
+                  <div className="space-y-2">
+                    <Label htmlFor="ownership">Ownership</Label>
+                    <Select
+                      value={formData.ownership || "public"}
+                      onValueChange={(value) => handleInputChange('ownership', value as 'public' | 'private')}
+                    >
+                      <SelectTrigger id="ownership">
+                        <SelectValue placeholder="Select ownership" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">Public</SelectItem>
+                        <SelectItem value="private">Private</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

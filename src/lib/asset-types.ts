@@ -24,6 +24,7 @@ export interface LoadMonitoringData extends BaseRecord {
   gpsLocation?: string;
   rating: number;
   peakLoadStatus: 'day' | 'night';
+  ownership: 'public' | 'private';
   
   // Feeder Information
   feederLegs: FeederLeg[];

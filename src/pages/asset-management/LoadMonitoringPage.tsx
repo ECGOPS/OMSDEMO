@@ -420,6 +420,7 @@ export default function LoadMonitoringPage() {
       ["Location", record.location],
       ["Rating (KVA)", record.rating],
       ["Peak Load Status", record.peakLoadStatus],
+      ["Ownership", record.ownership || 'N/A'],
       [],
       ["Feeder Legs Information"],
       ["Leg", "Red Phase (A)", "Yellow Phase (A)", "Blue Phase (A)", "Neutral (A)"]
@@ -486,6 +487,7 @@ export default function LoadMonitoringPage() {
       "Location",
       "Rating (KVA)",
       "Peak Load Status",
+      "Ownership",
       "Created By",
       "Rated Load (A)",
       "Red Phase Bulk Load (A)",
@@ -511,6 +513,7 @@ export default function LoadMonitoringPage() {
         record.location || '',
         record.rating || '',
         record.peakLoadStatus || '',
+        record.ownership || 'N/A',
         record.createdBy?.name || 'Unknown',
         typeof record.ratedLoad === 'number' ? record.ratedLoad.toFixed(2) : '',
         typeof record.redPhaseBulkLoad === 'number' ? record.redPhaseBulkLoad.toFixed(2) : '',
