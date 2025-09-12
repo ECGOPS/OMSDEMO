@@ -369,12 +369,38 @@ export default function CreateLoadMonitoringPage() {
     }));
   };
 
+  // Validation function to limit input to 3 digits while preserving decimal places
+  const validateNumericInput = (value: string): string => {
+    // Allow empty string
+    if (value === '') return value;
+    
+    // Remove any non-numeric characters except decimal point
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    
+    // Ensure only one decimal point
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      return parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // Check if the integer part (before decimal) has more than 3 digits
+    const integerPart = parts[0];
+    if (integerPart.length > 3) {
+      return integerPart.slice(0, 3) + (parts[1] ? '.' + parts[1] : '');
+    }
+    
+    return cleaned;
+  };
+
   const updateFeederLeg = (id: string, field: keyof FeederLeg, value: string) => {
+    // Apply validation to limit to 3 digits while preserving decimal places
+    const validatedValue = validateNumericInput(value);
+    
     setFormData(prev => ({
       ...prev,
       feederLegs: prev.feederLegs?.map(leg =>
         leg.id === id
-          ? { ...leg, [field]: value === '' ? '' : (isNaN(Number(value)) ? value : Number(value)) }
+          ? { ...leg, [field]: validatedValue === '' ? '' : (isNaN(Number(validatedValue)) ? validatedValue : Number(validatedValue)) }
           : leg
       ) || []
     }));

@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       host: true,
-      port: 5173,
+      port: 5175,
       strictPort: true,
       cors: securityConfig.cors,
       headers: {
