@@ -1,0 +1,272 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isSystemAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'system_admin';
+    }
+    
+    function isGlobalEngineer() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'global_engineer';
+    }
+    
+    function isRegionalEngineer() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'regional_engineer';
+    }
+    
+    function isRegionalGeneralManager() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'regional_general_manager';
+    }
+    
+    function isDistrictEngineer() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'district_engineer';
+    }
+    
+    function isDistrictManager() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'district_manager';
+    }
+    
+    function isTechnician() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'technician';
+    }
+    
+    function isValidEmail(email) {
+      return email.matches('^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$');
+    }
+    
+    function isValidPhone(phone) {
+      return phone.matches('^\\+?[0-9]{10,15}$');
+    }
+    
+    function isValidDate(date) {
+      return date is timestamp;
+    }
+    
+    function isValidRegionId(regionId) {
+      return exists(/databases/$(database)/documents/regions/$(regionId));
+    }
+    
+    function isValidDistrictId(districtId) {
+      return exists(/databases/$(database)/documents/districts/$(districtId));
+    }
+    
+    // Helper function to check if staff ID is already in use
+    function isStaffIdInUse(staffId) {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.staffId == staffId;
+    }
+    
+    function isICT() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ict';
+    }
+    
+    // System collection
+    match /system/{documentId} {
+      allow read, write: if true;  // Allow public access
+    }
+
+    // User Logs collection
+    match /userLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
+    }
+
+    // Regions collection
+    match /regions/{regionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        ((isRegionalEngineer() || isRegionalGeneralManager()) && resource.data.name == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region)
+      );
+    }
+
+    // Districts collection
+    match /districts/{districtId} {
+      // SECURITY FIX: Require authentication for all operations
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        (isRegionalEngineer() && request.resource.data.regionId == get(/databases/$(database)/documents/regions/$(request.resource.data.regionId)).id) ||
+        (isRegionalGeneralManager() && request.resource.data.regionId == get(/databases/$(database)/documents/regions/$(request.resource.data.regionId)).id)
+      );
+      allow update: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        (isRegionalEngineer() && resource.data.regionId == get(/databases/$(database)/documents/regions/$(resource.data.regionId)).id) ||
+        (isRegionalGeneralManager() && resource.data.regionId == get(/databases/$(database)/documents/regions/$(resource.data.regionId)).id) ||
+        ((isDistrictEngineer() || isDistrictManager()) && resource.data.name == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district)
+      );
+      allow delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
+    }
+
+    // Staff IDs collection
+    match /staffIds/{staffId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // SECURITY FIX: Require authentication for all operations
+      allow read: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        (isRegionalEngineer() && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
+        (isRegionalGeneralManager() && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
+        ((isDistrictEngineer() || isDistrictManager()) && resource.data.district == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district) ||
+        (isICT() && (
+          (resource.data.district == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district) ||
+          (resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region)
+        )) ||
+        request.auth.uid == userId
+      );
+      
+      // SECURITY FIX: Only allow authenticated users to create accounts
+      // and only allow creating their own user document
+      allow create: if isAuthenticated() && request.auth.uid == userId && 
+        request.resource.data.keys().hasAll(['email', 'name', 'role']) &&
+        request.resource.data.email is string &&
+        request.resource.data.name is string &&
+        request.resource.data.role is string &&
+        isValidEmail(request.resource.data.email);
+        
+      allow update: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        (isRegionalEngineer() && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
+        (isRegionalGeneralManager() && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
+        ((isDistrictEngineer() || isDistrictManager()) && resource.data.district == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district) ||
+        (isICT() && (
+          (resource.data.district == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district) ||
+          (resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region)
+        )) ||
+        request.auth.uid == userId
+      );
+      allow delete: if isSystemAdmin();
+    }
+
+    // Permissions collection
+    match /permissions/{permissionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
+    }
+
+    // OP5 Faults collection
+    match /op5Faults/{faultId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Control Outages collection
+    match /controlOutages/{outageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        ((isRegionalEngineer() || isRegionalGeneralManager()) && request.resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
+        ((isDistrictEngineer() || isDistrictManager()) && request.resource.data.districtId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.districtId)
+      );
+      allow update: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        ((isRegionalEngineer() || isRegionalGeneralManager()) && resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
+        ((isDistrictEngineer() || isDistrictManager()) && resource.data.districtId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.districtId)
+      );
+      allow delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
+    }
+
+    // VIT Assets collection
+    match /vitAssets/{assetId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // VIT Inspections collection
+    match /vitInspections/{inspectionId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Load Monitoring collection
+    match /loadMonitoring/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Substation Inspection collection
+    match /substationInspections/{inspectionId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Overhead Line Inspections collection
+    match /overheadLineInspections/{inspectionId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Security Events collection
+    match /securityEvents/{eventId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Chat Messages collection
+    match /chat_messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && 
+        resource.data.senderId == request.auth.uid;
+    }
+
+    // Broadcast Messages collection
+    match /broadcastMessages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
+      allow update, delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
+    }
+
+    // Feeders collection
+    match /feeders/{feederId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        ((isRegionalEngineer() || isRegionalGeneralManager()) && request.resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
+        ((isDistrictEngineer() || isDistrictManager()) && request.resource.data.districtId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.districtId)
+      );
+      allow update: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        ((isRegionalEngineer() || isRegionalGeneralManager()) && resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
+        ((isDistrictEngineer() || isDistrictManager()) && resource.data.districtId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.districtId)
+      );
+      allow delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
+    }
+
+    // SMS Logs collection
+    match /sms_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        isRegionalEngineer() || 
+        isRegionalGeneralManager() || 
+        isDistrictEngineer() || 
+        isDistrictManager() || 
+        isTechnician()
+      );
+      allow update, delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
+    }
+  }
+} 

@@ -1,0 +1,39 @@
+{
+  "appId": "com.ecg.faultmaster",
+  "appName": "ECG NMS",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "url": "https://172.24.112.1:5174",
+    "cleartext": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 3000,
+      "launchAutoHide": true,
+      "backgroundColor": "#FFFFFF",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true,
+      "layoutName": "launch_screen",
+      "useDialog": false
+    }
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": "secure/keystore.jks",
+      "keystorePassword": "process.env.KEYSTORE_PASSWORD",
+      "keystoreAlias": "process.env.KEYSTORE_ALIAS",
+      "keystoreAliasPassword": "process.env.KEYSTORE_ALIAS_PASSWORD"
+    }
+  },
+  "ios": {
+    "contentInset": "always",
+    "allowsLinkPreview": true,
+    "scrollEnabled": true,
+    "backgroundColor": "#FFFFFF"
+  }
+} 
