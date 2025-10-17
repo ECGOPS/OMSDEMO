@@ -59,7 +59,7 @@ export default function DashboardPage() {
   
   const [filterRegion, setFilterRegion] = useState<string | undefined>(undefined);
   const [filterDistrict, setFilterDistrict] = useState<string | undefined>(undefined);
-  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "resolved">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "resolved">("pending");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [faults, setFaults] = useState<{op5Faults: OP5Fault[], controlOutages: ControlSystemOutage[]}>({
     op5Faults: [],
@@ -71,11 +71,11 @@ export default function DashboardPage() {
   // Advanced filter states
   const [filterFaultType, setFilterFaultType] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
-  const [selectedDay, setSelectedDay] = useState<Date | undefined>(new Date());
+  const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
   const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
   const [selectedMonthYear, setSelectedMonthYear] = useState<number | undefined>(undefined);
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
-  const [dateFilterType, setDateFilterType] = useState<"range" | "day" | "month" | "year">("day");
+  const [dateFilterType, setDateFilterType] = useState<"range" | "day" | "month" | "year">("range");
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
