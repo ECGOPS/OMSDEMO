@@ -475,8 +475,14 @@ export function StaffIdManagement() {
             successCount++;
           }
         } catch (error) {
-          errorCount++;
-          console.error(`Failed to add staff: ${name}`, error);
+          // Check if it's a duplicate error
+          if (error instanceof Error && error.message.includes("already exists")) {
+            duplicateCount++;
+            duplicateEntries.push(`${name} (Staff ID: ${customId || 'Generated ID'})`);
+          } else {
+            errorCount++;
+            console.error(`Failed to add staff: ${name}`, error);
+          }
         }
       }
       

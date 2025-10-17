@@ -85,9 +85,12 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
     }
 
-    // Regions collection
+    // ALL COLLECTIONS ARE SECURE (Require Authentication)
+    // Regions collection - SECURE (Cloud Function provides signup data)
     match /regions/{regionId} {
+      // Require authentication for all operations
       allow read: if isAuthenticated();
+      // Require authentication for write operations
       allow write: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
@@ -95,10 +98,11 @@ service cloud.firestore {
       );
     }
 
-    // Districts collection
+    // Districts collection - SECURE (Cloud Function provides signup data)
     match /districts/{districtId} {
-      // SECURITY FIX: Require authentication for all operations
+      // Require authentication for all operations
       allow read: if isAuthenticated();
+      // Require authentication for write operations
       allow create: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
@@ -121,9 +125,9 @@ service cloud.firestore {
       allow write: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
     }
 
-    // Users collection
+    // Users collection - SECURE SIGNUP ACCESS
     match /users/{userId} {
-      // SECURITY FIX: Require authentication for all operations
+      // Require authentication for read operations
       allow read: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
@@ -137,10 +141,10 @@ service cloud.firestore {
         request.auth.uid == userId
       );
       
-      // SECURITY FIX: Only allow authenticated users to create accounts
-      // and only allow creating their own user document
-      allow create: if isAuthenticated() && request.auth.uid == userId && 
-        request.resource.data.keys().hasAll(['email', 'name', 'role']) &&
+      // SECURITY: Allow authenticated signup with basic validation
+      // Staff ID validation is handled by Cloud Function API endpoints
+      allow create: if request.auth != null && 
+        request.auth.uid == userId &&
         request.resource.data.email is string &&
         request.resource.data.name is string &&
         request.resource.data.role is string &&
@@ -159,6 +163,20 @@ service cloud.firestore {
         request.auth.uid == userId
       );
       allow delete: if isSystemAdmin();
+    }
+
+    // Security Events collection - SECURE LOGGING ACCESS
+    match /securityEvents/{eventId} {
+      // Allow authenticated users to read security events
+      allow read: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() ||
+        isRegionalGeneralManager()
+      );
+      // Allow authenticated users to create security events (for logging)
+      allow create: if isAuthenticated();
+      // Only system admins can update/delete security events
+      allow update, delete: if isAuthenticated() && isSystemAdmin();
     }
 
     // Permissions collection

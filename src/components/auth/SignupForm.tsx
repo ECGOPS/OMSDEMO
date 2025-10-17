@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { UserRole } from "@/lib/types";
 import { toast } from "@/components/ui/sonner";
 import { Loader2 } from "lucide-react";
 import { Eye, EyeOff } from "lucide-react";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/config/firebase";
 
 export function SignupForm() {
   const [formData, setFormData] = useState({
@@ -34,17 +36,99 @@ export function SignupForm() {
     region: "",
     district: ""
   });
-  const { signup, verifyStaffId, staffIds } = useAuth();
-  const { 
-    regions, 
-    districts, 
-    isLoadingRegions, 
-    isLoadingDistricts,
-    regionsError,
-    districtsError,
-    retryRegionsAndDistricts
-  } = useData();
+  const { signup, staffIds } = useAuth();
+  // Use secure API endpoints for signup data (no authentication required)
+  const [signupRegions, setSignupRegions] = useState<any[]>([]);
+  const [signupDistricts, setSignupDistricts] = useState<any[]>([]);
+  const [isLoadingSignupData, setIsLoadingSignupData] = useState(true);
+  const [signupDataError, setSignupDataError] = useState<string | null>(null);
+  
+  // Debounce timer ref
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   const navigate = useNavigate();
+
+  // Load signup data via secure API endpoints (no authentication required)
+  useEffect(() => {
+    const loadSignupData = async () => {
+      try {
+        setIsLoadingSignupData(true);
+        setSignupDataError(null);
+
+        // Call secure API endpoint to get signup data
+        const getSignupData = httpsCallable(functions, 'getSignupData');
+        const result = await getSignupData();
+        
+        const { regions, districts } = result.data as any;
+        
+        setSignupRegions(regions);
+        setSignupDistricts(districts);
+        setIsLoadingSignupData(false);
+      } catch (error) {
+        console.error('Error loading signup data:', error);
+        setSignupDataError('Failed to load regions and districts. Please try again.');
+        setIsLoadingSignupData(false);
+      }
+    };
+
+    loadSignupData();
+  }, []);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Debounced staff ID validation
+  const debouncedValidateStaffId = useCallback((staffId: string) => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Set new timer
+    debounceTimerRef.current = setTimeout(async () => {
+      if (staffId.trim()) {
+        try {
+          const result = await verifyStaffIdSecure(staffId);
+          console.log('🔍 Staff ID validation result:', result);
+          
+          if (result.exists === true) {
+            if (result.canRegister) {
+              setIsFieldsLocked(true);
+              setErrors(prev => ({ ...prev, staffId: "" })); // Clear any previous errors
+              toast.success("Staff ID verified successfully!");
+              
+              // Pre-populate form with staff data
+              if (result.staffData) {
+                setFormData(prev => ({
+                  ...prev,
+                  name: result.staffData.name || "",
+                  role: result.staffData.role || "",
+                  region: result.staffData.region || "",
+                  district: result.staffData.district || ""
+                }));
+              }
+            } else {
+              setErrors(prev => ({ ...prev, staffId: "Staff ID is already registered" }));
+              toast.error("Staff ID is already registered");
+            }
+          } else {
+            setErrors(prev => ({ ...prev, staffId: "Staff ID not found" }));
+            toast.error("Staff ID not found");
+          }
+        } catch (error) {
+          console.error("Staff ID verification failed:", error);
+          setErrors(prev => ({ ...prev, staffId: (error as Error).message }));
+          toast.error((error as Error).message || "Failed to verify staff ID");
+        }
+      }
+    }, 500); // 500ms delay
+  }, []);
 
   const handleStaffIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newStaffId = e.target.value;
@@ -52,41 +136,43 @@ export function SignupForm() {
     setErrors(prev => ({ ...prev, staffId: "" }));
 
     // Clear previous information when a new staff ID is entered
-    if (newStaffId) {
-      const { isValid, staffInfo } = verifyStaffId(newStaffId);
+    setIsFieldsLocked(false);
+    setFormData(prev => ({ 
+      ...prev, 
+      staffId: newStaffId,
+      name: "",
+      role: "",
+      region: "",
+      district: ""
+    }));
+
+    // Use debounced validation
+    debouncedValidateStaffId(newStaffId);
+  };
+
+  // Secure staff ID verification using API endpoint
+  const verifyStaffIdSecure = async (staffId: string) => {
+    try {
+      const validateStaffId = httpsCallable(functions, 'validateStaffId');
+      const result = await validateStaffId({ staffId });
+      console.log('🔍 Raw API response:', result.data);
+      return result.data as any;
+    } catch (error: any) {
+      console.error('Error validating staff ID:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details
+      });
       
-      if (isValid && staffInfo) {
-        // Auto-populate fields
-        setFormData(prev => ({
-          ...prev,
-          name: staffInfo.name,
-          role: staffInfo.role,
-          region: staffInfo.region || "",
-          district: staffInfo.district || ""
-        }));
-        setIsFieldsLocked(true);
+      // Provide more specific error messages
+      if (error.code === 'functions/unavailable') {
+        throw new Error('Service temporarily unavailable. Please try again.');
+      } else if (error.code === 'functions/timeout') {
+        throw new Error('Request timed out. Please try again.');
       } else {
-        // Reset fields if staff ID is invalid
-        setFormData(prev => ({
-          ...prev,
-          name: "",
-          role: "",
-          region: "",
-          district: ""
-        }));
-        setIsFieldsLocked(false);
-        setErrors(prev => ({ ...prev, staffId: "Sorry, your staff ID was not found in the ECG Operations database. Please contact your administrator to complete your enrollment." }));
+        throw new Error('Failed to validate staff ID. Please try again.');
       }
-    } else {
-      // Reset fields if staff ID is empty
-      setFormData(prev => ({
-        ...prev,
-        name: "",
-        role: "",
-        region: "",
-        district: ""
-      }));
-      setIsFieldsLocked(false);
     }
   };
 
@@ -117,13 +203,13 @@ export function SignupForm() {
       newErrors.password = "Passwords do not match";
     }
 
-    // Staff ID validation
+    // Staff ID validation - use the secure API validation
     if (!formData.staffId) {
       newErrors.staffId = "Staff ID is required";
     } else {
-      const { isValid } = verifyStaffId(formData.staffId);
-      if (!isValid) {
-        newErrors.staffId = "Sorry, your staff ID was not found in the ECG Operations database. Please contact your administrator to complete your enrollment.";
+      // Check if staff ID was already verified during input
+      if (!isFieldsLocked) {
+        newErrors.staffId = "Please verify your staff ID first";
       }
     }
 
@@ -181,11 +267,11 @@ export function SignupForm() {
   };
 
   // Filter districts based on selected region
-  const filteredDistricts = districts.filter(
-    district => district.regionId === regions.find(r => r.name === formData.region)?.id
+  const filteredDistricts = signupDistricts.filter(
+    district => district.regionId === signupRegions.find(r => r.name === formData.region)?.id
   );
 
-  if (isLoadingRegions || isLoadingDistricts) {
+  if (isLoadingSignupData) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 p-8">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -194,11 +280,11 @@ export function SignupForm() {
     );
   }
 
-  if (regionsError || districtsError) {
+  if (signupDataError) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 p-8">
-        <p className="text-sm text-destructive">{regionsError || districtsError}</p>
-        <Button onClick={retryRegionsAndDistricts} variant="outline">
+        <p className="text-sm text-destructive">{signupDataError}</p>
+        <Button onClick={() => window.location.reload()} variant="outline">
           Retry Loading
         </Button>
       </div>
@@ -226,6 +312,9 @@ export function SignupForm() {
                 className="h-9 sm:h-10"
               />
               {errors.staffId && <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.staffId}</p>}
+              {isFieldsLocked && !errors.staffId && (
+                <p className="text-xs sm:text-sm text-green-600 mt-1">✅ Staff ID verified successfully!</p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 Used for ECG staff identity verification.
               </p>
@@ -293,7 +382,7 @@ export function SignupForm() {
                     <SelectValue placeholder="Select region" />
                   </SelectTrigger>
                   <SelectContent>
-                    {regions.map(region => (
+                    {signupRegions.map(region => (
                       <SelectItem key={region.id} value={region.name}>
                         {region.name}
                       </SelectItem>

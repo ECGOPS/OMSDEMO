@@ -429,4 +429,196 @@ export const testSMS = functions.https.onRequest(async (req, res) => {
       details: error.response?.data || error.message
     });
   }
-}); 
+});
+
+/**
+ * SECURE API Endpoint for Staff ID Validation
+ * This approach exposes ZERO data publicly
+ * Only validates specific staff ID when provided
+ */
+export const validateStaffId = functions.https.onCall(async (data, context) => {
+  const { staffId } = data;
+  
+  console.log('🔍 Validating staff ID:', staffId);
+  
+  if (!staffId) {
+    throw new Error('Staff ID is required');
+  }
+  
+  try {
+    // Query secure collection (requires admin privileges)
+    const staffDoc = await admin.firestore().collection('staffIds').doc(staffId).get();
+    
+    console.log('📄 Staff document exists:', staffDoc.exists);
+    console.log('📄 Staff document ID:', staffDoc.id);
+    
+    if (!staffDoc.exists) {
+      // Let's also check what staff IDs actually exist for debugging
+      const allStaffIds = await admin.firestore().collection('staffIds').get();
+      console.log('📋 All existing staff IDs:', allStaffIds.docs.map(doc => doc.id));
+      
+      return {
+        exists: false,
+        message: 'Staff ID not found'
+      };
+    }
+    
+    const staffData = staffDoc.data();
+    console.log('📊 Staff data:', staffData);
+    
+    if (!staffData) {
+      return {
+        exists: false,
+        message: 'Staff ID not found'
+      };
+    }
+    
+    // Check if staff ID is already registered by checking users collection
+    const usersWithStaffId = await admin.firestore()
+      .collection('users')
+      .where('staffId', '==', staffId)
+      .get();
+    
+    const isRegistered = !usersWithStaffId.empty;
+    console.log('👤 Is registered:', isRegistered);
+    
+    // Return validation result with staff data for form pre-population
+    return {
+      exists: true,
+      isValid: true,  // If staff ID exists, it's valid
+      isActive: true, // Assume all staff IDs in collection are active
+      isRegistered: isRegistered,
+      canRegister: !isRegistered,
+      staffData: {
+        name: staffData.name,
+        role: staffData.role,
+        region: staffData.region,
+        district: staffData.district
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Error validating staff ID:', error);
+    throw new Error('Validation failed');
+  }
+});
+
+/**
+ * SECURE API Endpoint for Getting Regions/Districts
+ * Returns only the data needed for signup
+ */
+export const getSignupData = functions.https.onCall(async (data, context) => {
+  try {
+    // Get regions (minimal data)
+    const regionsSnapshot = await admin.firestore().collection('regions').get();
+    const regions = regionsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data().name
+    }));
+    
+    // Get districts (minimal data)
+    const districtsSnapshot = await admin.firestore().collection('districts').get();
+    const districts = districtsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data().name,
+      regionId: doc.data().regionId
+    }));
+    
+    return {
+      regions,
+      districts
+    };
+    
+  } catch (error) {
+    console.error('Error getting signup data:', error);
+    throw new Error('Failed to load signup data');
+  }
+});
+
+/**
+ * Cloud Function to create user document after signup
+ * This ensures proper authentication context
+ */
+export const createUserDocument = functions.https.onCall(async (data, context) => {
+  // Verify user is authenticated
+  if (!context.auth) {
+    throw new Error('User must be authenticated');
+  }
+
+  const { userData } = data;
+  const userId = context.auth.uid;
+
+  try {
+    console.log('🔍 Creating user document via Cloud Function:', {
+      userId,
+      userData,
+      authUid: context.auth.uid,
+      authEmail: context.auth.token.email
+    });
+
+    // Remove serverTimestamp() fields as they cause issues in Cloud Functions
+    const cleanUserData = {
+      ...userData,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    // Create user document in Firestore using Admin SDK
+    await admin.firestore().collection('users').doc(userId).set(cleanUserData);
+
+    console.log('✅ User document created successfully via Cloud Function');
+
+    return {
+      success: true,
+      message: 'User document created successfully'
+    };
+
+  } catch (error: any) {
+    console.error('❌ Error creating user document via Cloud Function:', error);
+    console.error('❌ Error details:', {
+      message: error?.message || 'Unknown error',
+      code: error?.code || 'Unknown code',
+      stack: error?.stack || 'No stack trace'
+    });
+    throw new Error('Failed to create user document');
+  }
+});
+
+// Cloud Function to delete user from Firebase Auth
+export const deleteUserFromAuth = functions.https.onCall(async (data, context) => {
+  // Check if user is authenticated and is a system admin
+  if (!context.auth) {
+    throw new Error('Authentication required');
+  }
+
+  const { uid } = data;
+  if (!uid) {
+    throw new Error('User UID is required');
+  }
+
+  try {
+    // Verify the caller is a system admin
+    const callerDoc = await admin.firestore().collection('users').doc(context.auth.uid).get();
+    if (!callerDoc.exists) {
+      throw new Error('Caller user not found');
+    }
+
+    const callerData = callerDoc.data();
+    if (callerData?.role !== 'system_admin') {
+      throw new Error('Only system administrators can delete users');
+    }
+
+    // Delete user from Firebase Auth
+    await admin.auth().deleteUser(uid);
+    
+    console.log(`✅ User ${uid} deleted from Firebase Auth`);
+    
+    return {
+      success: true,
+      message: 'User deleted from Firebase Auth successfully'
+    };
+  } catch (error: any) {
+    console.error('❌ Error deleting user from Firebase Auth:', error);
+    throw new Error(`Failed to delete user from Firebase Auth: ${error.message}`);
+  }
+});

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, UserRole } from "@/lib/types";
 import { toast } from "@/components/ui/sonner";
 import { auth, db, functions } from "@/config/firebase";
+import { httpsCallable } from "firebase/functions";
 import { 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -28,7 +29,6 @@ import {
   Timestamp
 } from "firebase/firestore";
 import { StaffIdEntry } from "@/components/user-management/StaffIdManagement";
-import { httpsCallable } from "firebase/functions";
 import { securityMonitoringService, EVENT_TYPES } from "@/services/SecurityMonitoringService";
 import LoggingService from "@/services/LoggingService";
 import { resetFirestoreConnection } from '../utils/firestore';
@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         setStaffIds(staffIdsList);
       } catch (error) {
-        toast.error("Error loading staff IDs");
+        // toast.error("Error loading staff IDs"); // Disabled for signup page
       }
     };
 
@@ -162,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       },
       (error) => {
-        toast.error("Error in users connection");
+        // toast.error("Error in users connection"); // Disabled for signup page
       }
     );
 
@@ -177,11 +177,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           setStaffIds(staffIdsList);
         } catch (error) {
-          toast.error("Error loading staff IDs data");
+          // toast.error("Error loading staff IDs data"); // Disabled for signup page
         }
       },
       (error) => {
-        toast.error("Error in staff IDs connection");
+        // toast.error("Error in staff IDs connection"); // Disabled for signup page
       }
     );
 
@@ -322,6 +322,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string, name: string, role: UserRole, region?: string, district?: string, staffId?: string) => {
     try {
+      // Get signup data (regions/districts) via Cloud Function
+      const getSignupData = httpsCallable(functions, 'getSignupData');
+      const signupDataResult = await getSignupData();
+      const { regions: signupRegions, districts: signupDistricts } = signupDataResult.data as any;
+
       // SECURITY: Rate limiting check
       const rateLimitKey = `signup_${email}`;
       const now = Date.now();
@@ -374,39 +379,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Check if staff ID is already in use
+      // Validate staff ID using secure API endpoint
       if (staffId) {
-        const usersWithStaffId = await getDocs(query(collection(db, "users"), where("staffId", "==", staffId)));
-        if (!usersWithStaffId.empty) {
-          throw new Error('This staff ID is already in use by another user');
+        try {
+          const validateStaffId = httpsCallable(functions, 'validateStaffId');
+          const result = await validateStaffId({ staffId });
+          const validation = result.data as any;
+          
+          if (!validation.exists) {
+            throw new Error('Staff ID not found');
+          }
+          
+          if (!validation.isValid) {
+            throw new Error('Invalid staff ID');
+          }
+          
+          if (!validation.canRegister) {
+            throw new Error('Staff ID is already registered');
+          }
+        } catch (error: any) {
+          throw new Error(error.message || 'Staff ID validation failed');
         }
       }
 
-      // Initialize IDs
+      // Get region and district IDs from the signup data (already loaded by getSignupData)
       let regionId = '';
       let districtId = '';
 
-      // Only query for region if it's provided
+      // Find region ID from the signup data
       if (region) {
-        const regionQuery = query(collection(db, "regions"), where("name", "==", region));
-        const regionSnapshot = await getDocs(regionQuery);
-        if (!regionSnapshot.empty) {
-          regionId = regionSnapshot.docs[0].id;
+        const regionData = signupRegions.find(r => r.name === region);
+        if (regionData) {
+          regionId = regionData.id;
         } else {
           throw new Error(`Region "${region}" not found`);
         }
       }
 
-      // Only query for district if both district and regionId are provided
+      // Find district ID from the signup data
       if (district && regionId) {
-        const districtQuery = query(
-          collection(db, "districts"),
-          where("name", "==", district),
-          where("regionId", "==", regionId)
-        );
-        const districtSnapshot = await getDocs(districtQuery);
-        if (!districtSnapshot.empty) {
-          districtId = districtSnapshot.docs[0].id;
+        const districtData = signupDistricts.find(d => d.name === district && d.regionId === regionId);
+        if (districtData) {
+          districtId = districtData.id;
         } else {
           throw new Error(`District "${district}" not found in region "${region}"`);
         }
@@ -419,6 +433,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Wait for authentication state to propagate
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Ensure user is authenticated before proceeding
+      if (!auth.currentUser) {
+        throw new Error('Authentication failed');
+      }
+
+      console.log('🔍 Auth state after creation:', {
+        currentUser: auth.currentUser?.uid,
+        userUid: user.uid,
+        isAuthenticated: !!auth.currentUser
+      });
+
       // Create user document in Firestore
       const userData = {
         email,
@@ -429,16 +457,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         district: district || "",
         districtId: districtId || "",
         staffId: staffId || "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
         disabled: false,
         mustChangePassword: false
       };
 
       try {
-        // Use setDoc with merge option to handle potential race conditions
-        await setDoc(doc(db, "users", user.uid), userData, { merge: true });
+        console.log('🔍 Creating user document directly:', userData);
+        console.log('🔍 User UID:', user.uid);
+        console.log('🔍 Auth UID:', auth.currentUser?.uid);
+        
+        // Create user document directly in Firestore
+        await setDoc(doc(db, "users", user.uid), userData);
+        
+        console.log('✅ User document created successfully');
       } catch (firestoreError) {
+        console.error('❌ Firestore error:', firestoreError);
+        console.error('❌ Error code:', firestoreError.code);
+        console.error('❌ Error message:', firestoreError.message);
+        
         // If Firestore error occurs, handle it and clean up the auth user
         handleFirestoreError(firestoreError);
         await user.delete();
@@ -469,13 +505,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // SECURITY: Log successful signup for monitoring
       try {
-        await securityMonitoringService.logEvent(EVENT_TYPES.USER_SIGNUP, {
+        await securityMonitoringService.logEvent({
+          eventType: EVENT_TYPES.USER_SIGNUP,
           userId: user.uid,
           email: email,
           role: role,
           region: region || '',
           district: district || '',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          severity: 'low',
+          details: `Successful signup for ${email}`,
+          ipAddress: 'unknown',
+          userAgent: navigator.userAgent
         });
       } catch (logError) {
         console.warn('Failed to log signup event:', logError);
@@ -485,11 +526,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       // SECURITY: Log failed signup attempt for monitoring
       try {
-        await securityMonitoringService.logEvent(EVENT_TYPES.SIGNUP_FAILED, {
+        await securityMonitoringService.logEvent({
+          eventType: EVENT_TYPES.SIGNUP_FAILED,
+          userId: user?.uid || 'unknown',
           email: email,
           role: role,
           error: error.message || 'Unknown error',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          severity: 'high',
+          details: `Failed signup attempt for ${email}`,
+          ipAddress: 'unknown',
+          userAgent: navigator.userAgent
         });
       } catch (logError) {
         console.warn('Failed to log signup failure event:', logError);
@@ -610,6 +657,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Generate a random ID if not provided
       const id = entry.customId || Math.random().toString(36).substr(2, 9);
       
+      // Check for duplicate staff ID
+      const existingStaffId = await getDoc(doc(db, "staffIds", id));
+      if (existingStaffId.exists()) {
+        throw new Error(`Staff ID "${id}" already exists. Please use a different ID.`);
+      }
+      
       // Create a cleaned entry with no undefined values
       const cleanedEntry = {
         name: entry.name,
@@ -618,8 +671,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         district: entry.district || ""
       };
       
-      // Set the document with merge option to be safer
-      await setDoc(doc(db, "staffIds", id), cleanedEntry, { merge: true });
+      // Set the document
+      await setDoc(doc(db, "staffIds", id), cleanedEntry);
       
       setStaffIds(prev => [...prev, { id, ...cleanedEntry }]);
       toast.success("Staff ID added successfully");
@@ -631,6 +684,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error instanceof Error) {
         if (error.message.includes("permission")) {
           errorMessage = "Permission denied. Only system administrators can add staff IDs.";
+        } else if (error.message.includes("already exists")) {
+          errorMessage = error.message;
         }
       }
       
@@ -770,7 +825,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const userData = userDoc.data();
 
-      // Delete the user
+      // Delete the user from Firebase Auth first
+      try {
+        const deleteUserFromAuth = httpsCallable(functions, 'deleteUserFromAuth');
+        await deleteUserFromAuth({ uid: id });
+        console.log('✅ User deleted from Firebase Auth');
+      } catch (authError) {
+        console.error('❌ Failed to delete user from Firebase Auth:', authError);
+        // Continue with Firestore deletion even if Auth deletion fails
+        toast.error("Warning: User deleted from database but may still exist in Firebase Auth");
+      }
+
+      // Delete the user document from Firestore
       await deleteDoc(userRef);
 
       toast.success("User deleted successfully");

@@ -432,7 +432,8 @@ export function UsersList() {
         user.name.toLowerCase().includes(lowerCaseSearchTerm) ||
         user.email.toLowerCase().includes(lowerCaseSearchTerm) ||
         (user.region && user.region.toLowerCase().includes(lowerCaseSearchTerm)) ||
-        (user.district && user.district.toLowerCase().includes(lowerCaseSearchTerm))
+        (user.district && user.district.toLowerCase().includes(lowerCaseSearchTerm)) ||
+        (user.staffId && user.staffId.toLowerCase().includes(lowerCaseSearchTerm))
       );
     }
     if (roleFilter !== "all") {
@@ -468,7 +469,7 @@ export function UsersList() {
             <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search users..."
+              placeholder="Search users by name, email, region, district, or staff ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8 w-full bg-background h-9 text-sm"

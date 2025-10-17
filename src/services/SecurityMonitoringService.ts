@@ -6,6 +6,8 @@ export const EVENT_TYPES = {
   LOGIN_ATTEMPT: 'login_attempt',
   LOGIN_SUCCESS: 'login_success',
   LOGIN_FAILURE: 'login_failure',
+  USER_SIGNUP: 'user_signup',
+  SIGNUP_FAILED: 'signup_failed',
   SUSPICIOUS_ACTIVITY: 'suspicious_activity',
   PASSWORD_CHANGE: 'password_change',
   ROLE_CHANGE: 'role_change',
@@ -157,6 +159,10 @@ class SecurityMonitoringService {
         return 'User logged in successfully';
       case EVENT_TYPES.LOGIN_FAILURE:
         return 'Failed login attempt';
+      case EVENT_TYPES.USER_SIGNUP:
+        return 'User signed up successfully';
+      case EVENT_TYPES.SIGNUP_FAILED:
+        return 'Failed signup attempt';
       case EVENT_TYPES.PASSWORD_CHANGE:
         return 'User changed their password';
       case EVENT_TYPES.USER_DISABLED:
@@ -175,6 +181,7 @@ class SecurityMonitoringService {
   private getDefaultSeverity(eventType: EventType): SecurityEvent['severity'] {
     switch (eventType) {
       case EVENT_TYPES.LOGIN_FAILURE:
+      case EVENT_TYPES.SIGNUP_FAILED:
         return 'high';
       case EVENT_TYPES.SUSPICIOUS_ACTIVITY:
       case EVENT_TYPES.ROLE_CHANGE:
@@ -184,6 +191,7 @@ class SecurityMonitoringService {
         return 'medium';
       case EVENT_TYPES.LOGIN_ATTEMPT:
       case EVENT_TYPES.LOGIN_SUCCESS:
+      case EVENT_TYPES.USER_SIGNUP:
       case EVENT_TYPES.PASSWORD_CHANGE:
         return 'low';
       default:
