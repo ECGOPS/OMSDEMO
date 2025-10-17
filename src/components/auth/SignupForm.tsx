@@ -27,6 +27,7 @@ export function SignupForm() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isFieldsLocked, setIsFieldsLocked] = useState(false);
+  const [isValidatingStaffId, setIsValidatingStaffId] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({
@@ -92,7 +93,8 @@ export function SignupForm() {
     
     // Set new timer
     debounceTimerRef.current = setTimeout(async () => {
-      if (staffId.trim()) {
+      if (staffId.trim() && !isValidatingStaffId) {
+        setIsValidatingStaffId(true);
         try {
           const result = await verifyStaffIdSecure(staffId);
           console.log('🔍 Staff ID validation result:', result);
@@ -125,10 +127,12 @@ export function SignupForm() {
           console.error("Staff ID verification failed:", error);
           setErrors(prev => ({ ...prev, staffId: (error as Error).message }));
           toast.error((error as Error).message || "Failed to verify staff ID");
+        } finally {
+          setIsValidatingStaffId(false);
         }
       }
-    }, 500); // 500ms delay
-  }, []);
+    }, 800); // Increased delay to 800ms for better debouncing
+  }, [isValidatingStaffId]);
 
   const handleStaffIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newStaffId = e.target.value;
@@ -137,6 +141,7 @@ export function SignupForm() {
 
     // Clear previous information when a new staff ID is entered
     setIsFieldsLocked(false);
+    setIsValidatingStaffId(false);
     setFormData(prev => ({ 
       ...prev, 
       staffId: newStaffId,
@@ -312,7 +317,10 @@ export function SignupForm() {
                 className="h-9 sm:h-10"
               />
               {errors.staffId && <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.staffId}</p>}
-              {isFieldsLocked && !errors.staffId && (
+              {isValidatingStaffId && (
+                <p className="text-xs sm:text-sm text-blue-600 mt-1">🔄 Validating staff ID...</p>
+              )}
+              {isFieldsLocked && !errors.staffId && !isValidatingStaffId && (
                 <p className="text-xs sm:text-sm text-green-600 mt-1">✅ Staff ID verified successfully!</p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
