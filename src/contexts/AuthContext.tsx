@@ -42,6 +42,7 @@ export interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   users: User[];
+  usersLoading: boolean;
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   addUser: (user: Omit<User, "id">) => Promise<string>;
@@ -77,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
   const [staffIds, setStaffIds] = useState<StaffIdEntry[]>([]);
 
   useEffect(() => {
@@ -157,12 +159,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             usersList.push({ id: doc.id, ...doc.data() } as User);
           });
           setUsers(usersList);
+          setUsersLoading(false); // Set loading to false when users are loaded
         } catch (error) {
           toast.error("Error loading users data");
+          setUsersLoading(false); // Set loading to false even on error
         }
       },
       (error) => {
         // toast.error("Error in users connection"); // Disabled for signup page
+        setUsersLoading(false); // Set loading to false on error
       }
     );
 
@@ -879,6 +884,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         isAuthenticated: !!user,
         users,
+        usersLoading,
         setUsers,
         setUser,
         addUser,

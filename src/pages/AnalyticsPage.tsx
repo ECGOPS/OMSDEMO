@@ -84,7 +84,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function AnalyticsPage() {
   const { toast } = useToast();
-  const { isAuthenticated, user, users } = useAuth(); // Get the list of all users
+  const { isAuthenticated, user, users, usersLoading } = useAuth(); // Get the list of all users
   const navigate = useNavigate();
   const { regions, districts, getFilteredFaults, op5Faults, controlSystemOutages } = useData();
   const [filteredFaults, setFilteredFaults] = useState([]);
@@ -1834,8 +1834,28 @@ export default function AnalyticsPage() {
   // Add a helper function to find user name by ID
   const getUserNameById = (userId: string | undefined): string => {
     if (!userId || userId === 'offline_user' || userId === 'unknown') return userId || 'N/A';
+    
+    // If users data is not loaded yet, return a loading indicator
+    if (usersLoading || !users || users.length === 0) {
+      return 'Loading...';
+    }
+    
+    // Debug logging
+    console.log('getUserNameById - Looking for userId:', userId);
+    console.log('getUserNameById - Available users:', users);
+    console.log('getUserNameById - Users count:', users?.length);
+    
     const foundUser = users.find(u => u.id === userId);
-    return foundUser ? foundUser.name || foundUser.email || userId : userId;
+    console.log('getUserNameById - Found user:', foundUser);
+    
+    if (foundUser) {
+      const result = foundUser.name || foundUser.email || userId;
+      console.log('getUserNameById - Returning:', result);
+      return result;
+    }
+    
+    console.log('getUserNameById - User not found, returning userId:', userId);
+    return userId;
   };
   
   // Fetch load monitoring data with role-based filtering
