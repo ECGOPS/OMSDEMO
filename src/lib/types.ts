@@ -449,6 +449,7 @@ export interface NetworkInspection {
   // Head Gears Information
   poleCondition: {
     tilted: boolean;
+    broken: boolean;
     rotten: boolean;
     burnt: boolean;
     substandard: boolean;
@@ -487,6 +488,7 @@ export interface NetworkInspection {
     weakJumpers: boolean;
     burntLugs: boolean;
     saggedLine: boolean;
+    broken: boolean;
     undersized: boolean;
     notes: string;
   };

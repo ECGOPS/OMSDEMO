@@ -286,6 +286,7 @@ export function OverheadLineInspectionsTable({
     doc.text('Pole Condition', 14, doc.lastAutoTable.finalY + 15);
     const poleCondition = [
       ['Tilted:', inspection.poleCondition?.tilted ? 'Yes' : 'No'],
+      ['Broken:', inspection.poleCondition?.broken ? 'Yes' : 'No'],
       ['Rotten:', inspection.poleCondition?.rotten ? 'Yes' : 'No'],
       ['Burnt:', inspection.poleCondition?.burnt ? 'Yes' : 'No'],
       ['Substandard:', inspection.poleCondition?.substandard ? 'Yes' : 'No'],
@@ -363,6 +364,7 @@ export function OverheadLineInspectionsTable({
       ['Weak Jumpers:', inspection.conductorCondition?.weakJumpers ? 'Yes' : 'No'],
       ['Burnt Lugs:', inspection.conductorCondition?.burntLugs ? 'Yes' : 'No'],
       ['Sagged Line:', inspection.conductorCondition?.saggedLine ? 'Yes' : 'No'],
+      ['Broken:', inspection.conductorCondition?.broken ? 'Yes' : 'No'],
       ['Undersized:', inspection.conductorCondition?.undersized ? 'Yes' : 'No'],
       ['Notes:', inspection.conductorCondition?.notes || 'None'],
     ];
@@ -641,11 +643,11 @@ export function OverheadLineInspectionsTable({
 
   const exportToCSV = (inspection: NetworkInspection) => {
     const headers = [
-      'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole',
+      'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole', 'Additional Notes',
       'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Ground Condition',
       'GPS Location',
       // Pole Condition
-      'Pole Tilted', 'Pole Rotten', 'Pole Burnt', 'Pole Substandard', 'Pole Conflict with LV', 'Pole Condition Notes',
+      'Pole Tilted', 'Pole Broken', 'Pole Rotten', 'Pole Burnt', 'Pole Substandard', 'Pole Conflict with LV', 'Pole Condition Notes',
       // Stay Condition
       'Stay Required but Not Available', 'Stay Cut', 'Stay Misaligned', 'Stay Defective', 'Stay Condition Notes',
       // Cross Arm Condition
@@ -653,7 +655,7 @@ export function OverheadLineInspectionsTable({
       // Insulator Condition
       'Insulator Broken/Cracked', 'Insulator Burnt/Flash Over', 'Insulator Shattered', 'Insulator Defective Binding', 'Insulator Notes',
       // Conductor Condition
-      'Conductor Loose Connectors', 'Conductor Weak Jumpers', 'Conductor Burnt Lugs', 'Conductor Sagged Line', 'Conductor Undersized', 'Conductor Notes',
+      'Conductor Loose Connectors', 'Conductor Weak Jumpers', 'Conductor Burnt Lugs', 'Conductor Sagged Line', 'Conductor Broken', 'Conductor Undersized', 'Conductor Notes',
       // Lightning Arrester Condition
       'Arrester Broken/Cracked', 'Arrester Flash Over', 'Arrester No Earthing', 'Arrester Bypassed', 'Arrester No Arrester', 'Arrester Notes',
       // Vegetation Conflicts
@@ -667,6 +669,7 @@ export function OverheadLineInspectionsTable({
       inspection.feederName,
       inspection.voltageLevel,
       inspection.referencePole,
+      inspection.additionalNotes || 'N/A',
       inspection.status,
       inspection.date || format(new Date(), 'dd/MM/yyyy'),
       inspection.poleId,
@@ -676,6 +679,7 @@ export function OverheadLineInspectionsTable({
       `${inspection.latitude}, ${inspection.longitude}`,
       // Pole Condition
       inspection.poleCondition?.tilted ? 'Yes' : 'No',
+      inspection.poleCondition?.broken ? 'Yes' : 'No',
       inspection.poleCondition?.rotten ? 'Yes' : 'No',
       inspection.poleCondition?.burnt ? 'Yes' : 'No',
       inspection.poleCondition?.substandard ? 'Yes' : 'No',
@@ -705,6 +709,7 @@ export function OverheadLineInspectionsTable({
       inspection.conductorCondition?.weakJumpers ? 'Yes' : 'No',
       inspection.conductorCondition?.burntLugs ? 'Yes' : 'No',
       inspection.conductorCondition?.saggedLine ? 'Yes' : 'No',
+      inspection.conductorCondition?.broken ? 'Yes' : 'No',
       inspection.conductorCondition?.undersized ? 'Yes' : 'No',
       inspection.conductorCondition?.notes || 'N/A',
       // Lightning Arrester Condition
@@ -743,11 +748,11 @@ export function OverheadLineInspectionsTable({
   const exportAllToCSV = () => {
     const dataToExport = allInspections || inspections;
     const headers = [
-      'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole',
+      'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole', 'Additional Notes',
       'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Ground Condition',
       'GPS Location',
       // Pole Condition
-      'Pole Tilted', 'Pole Rotten', 'Pole Burnt', 'Pole Substandard', 'Pole Conflict with LV', 'Pole Condition Notes',
+      'Pole Tilted', 'Pole Broken', 'Pole Rotten', 'Pole Burnt', 'Pole Substandard', 'Pole Conflict with LV', 'Pole Condition Notes',
       // Stay Condition
       'Stay Required but Not Available', 'Stay Cut', 'Stay Misaligned', 'Stay Defective', 'Stay Condition Notes',
       // Cross Arm Condition
@@ -755,7 +760,7 @@ export function OverheadLineInspectionsTable({
       // Insulator Condition
       'Insulator Broken/Cracked', 'Insulator Burnt/Flash Over', 'Insulator Shattered', 'Insulator Defective Binding', 'Insulator Notes',
       // Conductor Condition
-      'Conductor Loose Connectors', 'Conductor Weak Jumpers', 'Conductor Burnt Lugs', 'Conductor Sagged Line', 'Conductor Undersized', 'Conductor Notes',
+      'Conductor Loose Connectors', 'Conductor Weak Jumpers', 'Conductor Burnt Lugs', 'Conductor Sagged Line', 'Conductor Broken', 'Conductor Undersized', 'Conductor Notes',
       // Lightning Arrester Condition
       'Arrester Broken/Cracked', 'Arrester Flash Over', 'Arrester No Earthing', 'Arrester Bypassed', 'Arrester No Arrester', 'Arrester Notes',
       // Vegetation Conflicts
@@ -769,6 +774,7 @@ export function OverheadLineInspectionsTable({
       inspection.feederName,
       inspection.voltageLevel,
       inspection.referencePole,
+      inspection.additionalNotes || 'N/A',
       inspection.status,
       inspection.date || format(new Date(), 'dd/MM/yyyy'),
       inspection.poleId,
@@ -778,6 +784,7 @@ export function OverheadLineInspectionsTable({
       `${inspection.latitude}, ${inspection.longitude}`,
       // Pole Condition
       inspection.poleCondition?.tilted ? 'Yes' : 'No',
+      inspection.poleCondition?.broken ? 'Yes' : 'No',
       inspection.poleCondition?.rotten ? 'Yes' : 'No',
       inspection.poleCondition?.burnt ? 'Yes' : 'No',
       inspection.poleCondition?.substandard ? 'Yes' : 'No',
@@ -807,6 +814,7 @@ export function OverheadLineInspectionsTable({
       inspection.conductorCondition?.weakJumpers ? 'Yes' : 'No',
       inspection.conductorCondition?.burntLugs ? 'Yes' : 'No',
       inspection.conductorCondition?.saggedLine ? 'Yes' : 'No',
+      inspection.conductorCondition?.broken ? 'Yes' : 'No',
       inspection.conductorCondition?.undersized ? 'Yes' : 'No',
       inspection.conductorCondition?.notes || 'N/A',
       // Lightning Arrester Condition
@@ -922,6 +930,7 @@ export function OverheadLineInspectionsTable({
               <TableHead>Estimated Feeder Length (km)</TableHead>
               <TableHead>Voltage Level</TableHead>
               <TableHead>Reference Pole</TableHead>
+              <TableHead>Additional Notes</TableHead>
               <TableHead>Images</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -963,6 +972,11 @@ export function OverheadLineInspectionsTable({
                   </TableCell>
                   <TableCell>{inspection.voltageLevel}</TableCell>
                   <TableCell>{inspection.referencePole}</TableCell>
+                  <TableCell className="max-w-xs">
+                    <div className="truncate" title={inspection.additionalNotes || ''}>
+                      {inspection.additionalNotes || 'N/A'}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {inspection.images && inspection.images.length > 0 ? (
                       <div className="flex gap-1">

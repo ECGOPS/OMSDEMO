@@ -15,6 +15,14 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Loader2, MapPin, Camera, Upload, X } from "lucide-react";
 import { NetworkInspection, ConditionStatus } from "@/lib/types";
 import { getRegions, getDistricts } from "@/lib/api";
@@ -58,6 +66,20 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   const offlineStorage = OfflineInspectionService.getInstance();
   const [offlineInspections, setOfflineInspections] = useState<NetworkInspection[]>([]);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+
+  const handleCancelClick = () => {
+    setShowCancelDialog(true);
+  };
+
+  const handleCancelConfirm = () => {
+    setShowCancelDialog(false);
+    onCancel();
+  };
+
+  const handleCancelCancel = () => {
+    setShowCancelDialog(false);
+  };
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
@@ -142,6 +164,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       groundCondition: "",
       poleCondition: {
         tilted: false,
+        broken: false,
         rotten: false,
         burnt: false,
         substandard: false,
@@ -169,6 +192,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         weakJumpers: false,
         burntLugs: false,
         saggedLine: false,
+        broken: false,
         undersized: false,
         notes: ""
       },
@@ -450,6 +474,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         // Ensure all condition objects are present with default values
         poleCondition: {
           tilted: formData.poleCondition?.tilted || false,
+          broken: formData.poleCondition?.broken || false,
           rotten: formData.poleCondition?.rotten || false,
           burnt: formData.poleCondition?.burnt || false,
           substandard: formData.poleCondition?.substandard || false,
@@ -484,6 +509,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           weakJumpers: formData.conductorCondition?.weakJumpers || false,
           burntLugs: formData.conductorCondition?.burntLugs || false,
           saggedLine: formData.conductorCondition?.saggedLine || false,
+          broken: formData.conductorCondition?.broken || false,
           undersized: formData.conductorCondition?.undersized || false,
           notes: formData.conductorCondition?.notes || ''
         },
@@ -703,11 +729,13 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         const feedersData = await feederService.getFeedersByRegion(region.id);
         
         console.log('Fetched feeders:', feedersData);
-        setFeeders(feedersData);
+        const sortedFeeders = feedersData.sort((a, b) => a.name.localeCompare(b.name));
+        console.log('Sorted feeders:', sortedFeeders.map(f => f.name));
+        setFeeders(sortedFeeders);
 
-        // If we have feeders and no feeder is selected, select the first one
-        if (feedersData.length > 0 && !formData.feederName) {
-          const firstFeeder = feedersData[0];
+        // If we have feeders and no feeder is selected, select the first one (alphabetically)
+        if (sortedFeeders.length > 0 && !formData.feederName) {
+          const firstFeeder = sortedFeeders[0];
           setFormData(prev => ({
             ...prev,
             feederName: firstFeeder.name,
@@ -836,7 +864,9 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
                 <SelectValue placeholder="Select feeder" />
               </SelectTrigger>
               <SelectContent>
-                {feeders.map((feeder) => (
+                {feeders
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((feeder) => (
                   <SelectItem key={`${feeder.id}-${feeder.name}`} value={feeder.name}>
                     {feeder.name} ({feeder.voltageLevel})
                   </SelectItem>
@@ -1020,6 +1050,19 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
               }
             />
             <Label htmlFor="poleTilted">Tilted</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="poleBroken"
+              checked={formData.poleCondition.broken}
+              onCheckedChange={(checked) => 
+                setFormData({
+                  ...formData,
+                  poleCondition: { ...formData.poleCondition, broken: checked as boolean },
+                })
+              }
+            />
+            <Label htmlFor="poleBroken">Broken Pole</Label>
           </div>
           <div className="flex items-center gap-2">
             <Checkbox
@@ -1247,6 +1290,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
       { value: 'pin', label: 'Pin Insulator' },
       { value: 'post', label: 'Post Insulator' },
       { value: 'strain', label: 'Strain Insulator' },
+      { value: 'shackle', label: 'Shackle Insulator' },
     ];
     const typeSelected = !!formData.insulatorCondition.insulatorType;
     return (
@@ -1405,6 +1449,19 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
               }
             />
             <Label htmlFor="conductorSaggedLine">Sagged Line</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="conductorBroken"
+              checked={formData.conductorCondition.broken}
+              onCheckedChange={(checked) => 
+                setFormData({
+                  ...formData,
+                  conductorCondition: { ...formData.conductorCondition, broken: checked as boolean },
+                })
+              }
+            />
+            <Label htmlFor="conductorBroken">Broken Conductor</Label>
           </div>
           <div className="flex items-center gap-2">
             <Checkbox
@@ -2714,7 +2771,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
             </div>
           )}
         </div>
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="outline" onClick={handleCancelClick}>
           Cancel
         </Button>
       </div>
@@ -2738,7 +2795,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
         {renderAfterImages}
 
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={handleCancelClick}>
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
@@ -2753,6 +2810,26 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
           </Button>
         </div>
       </form>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Inspection</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this inspection? All unsaved changes will be lost and cannot be recovered.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelCancel}>
+              Keep Editing
+            </Button>
+            <Button variant="destructive" onClick={handleCancelConfirm}>
+              Cancel Inspection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

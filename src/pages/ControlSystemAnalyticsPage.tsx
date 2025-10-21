@@ -609,27 +609,59 @@ export default function ControlSystemAnalyticsPage() {
       return sum + rural + urban + metro;
     }, 0);
     
+    console.log('🔍 Metrics Debug Summary:');
+    console.log('Total outages:', totalOutages);
+    console.log('Total customers affected:', totalCustomersAffected);
+    
     const totalUnservedEnergy = filteredData.reduce((sum, outage) => 
       sum + (outage.unservedEnergyMWh || 0), 0
     );
     
-    const avgOutageDuration = filteredData.reduce((sum, outage) => {
+    const totalOutageDuration = filteredData.reduce((sum, outage) => {
       if (outage.occurrenceDate && outage.restorationDate) {
         const duration = new Date(outage.restorationDate).getTime() - new Date(outage.occurrenceDate).getTime();
         return sum + duration;
       }
       return sum;
-    }, 0) / (totalOutages || 1);
+    }, 0);
+
+    const avgOutageDuration = totalOutageDuration / (totalOutages || 1);
+    
+    console.log('Total outage duration (ms):', totalOutageDuration);
+    console.log('Total outage duration (hours):', (totalOutageDuration / (1000 * 60 * 60)).toFixed(2));
+    console.log('Average outage duration (hours):', (avgOutageDuration / (1000 * 60 * 60)).toFixed(2));
 
     // Calculate Customer Interruption Duration (CID)
     const customerInterruptionDuration = filteredData.reduce((sum, outage) => {
       if (outage.occurrenceDate && outage.restorationDate) {
         const duration = (new Date(outage.restorationDate).getTime() - new Date(outage.occurrenceDate).getTime()) / (1000 * 60 * 60); // hours
         const { rural = 0, urban = 0, metro = 0 } = outage.customersAffected || {};
-        return sum + (duration * (rural + urban + metro));
+        const totalCustomers = rural + urban + metro;
+        const cidForThisOutage = duration * totalCustomers;
+        
+        // Debug logging for first few outages
+        if (sum === 0) {
+          console.log('🔍 CID Calculation Debug:');
+          console.log('Total outages to process:', filteredData.length);
+        }
+        if (filteredData.indexOf(outage) < 3) {
+          console.log(`Outage ${filteredData.indexOf(outage) + 1}:`, {
+            duration: duration.toFixed(2),
+            customers: { rural, urban, metro, total: totalCustomers },
+            cidForThisOutage: cidForThisOutage.toFixed(2),
+            runningSum: (sum + cidForThisOutage).toFixed(2)
+          });
+        }
+        
+        return sum + cidForThisOutage;
       }
       return sum;
     }, 0);
+    
+    console.log('🔍 Final CID Calculation:');
+    console.log('Customer Interruption Duration:', customerInterruptionDuration.toFixed(2), 'hours');
+    console.log('Expected CID (Customers × Avg Duration):', (totalCustomersAffected * (avgOutageDuration / (1000 * 60 * 60))).toFixed(2), 'hours');
+    console.log('Expected CID (Customers × Total Duration):', (totalCustomersAffected * (totalOutageDuration / (1000 * 60 * 60))).toFixed(2), 'hours');
 
     // Calculate Customer Interruption Frequency (CIF)
     const customerInterruptionFrequency = filteredData.reduce((sum, outage) => {
@@ -657,6 +689,7 @@ export default function ControlSystemAnalyticsPage() {
       totalOutages,
       totalCustomersAffected,
       totalUnservedEnergy,
+      totalOutageDuration: totalOutageDuration / (1000 * 60 * 60), // Convert to hours
       avgOutageDuration: avgOutageDuration / (1000 * 60 * 60), // Convert to hours
       customerInterruptionDuration,
       customerInterruptionFrequency,
@@ -2016,6 +2049,15 @@ export default function ControlSystemAnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-rose-700 dark:text-rose-300">{metrics.repairDurations.toFixed(2)} hrs</div>
+                </CardContent>
+              </Card>
+              <Card className="p-6 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle className="text-sm font-medium text-indigo-700 dark:text-indigo-300">Total Outage Duration</CardTitle>
+                  <Clock className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{metrics.totalOutageDuration.toFixed(2)} hrs</div>
                 </CardContent>
               </Card>
               <Card className="p-6 bg-cyan-50 dark:bg-cyan-950/50 hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition-colors">
