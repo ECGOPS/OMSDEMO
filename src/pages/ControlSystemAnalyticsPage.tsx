@@ -2030,7 +2030,8 @@ export default function ControlSystemAnalyticsPage() {
                   <Clock className="h-4 w-4 text-purple-500 dark:text-purple-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{metrics.customerInterruptionDuration.toFixed(2)} hrs</div>
+                  <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{metrics.customerInterruptionDuration.toFixed(2)} chr</div>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">customer hours</p>
                 </CardContent>
               </Card>
               <Card className="p-6 bg-orange-50 dark:bg-orange-950/50 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors">
