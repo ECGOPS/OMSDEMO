@@ -260,6 +260,7 @@ export const exportOverheadLineInspectionsToExcel = async (
       'GPS',
       'Location',
       'Additional Note',
+      '', // Empty column to align with BH
       // Images (Before Correction)
       'Before Image 1',
       'Before Image 2',
@@ -278,7 +279,8 @@ export const exportOverheadLineInspectionsToExcel = async (
     worksheet.addRow(headers);
     console.log('Headers added');
     console.log('Total columns:', headers.length);
-    console.log('Image columns are at positions 52-56 (0-indexed), which are Excel columns AZ-BD');
+    console.log('Before Image columns are at positions 60-64 (0-indexed), which are Excel columns BH-BL');
+    console.log('After Image columns are at positions 65-69 (0-indexed), which are Excel columns BM-BQ');
 
     // Style the header row
     const headerRow = worksheet.getRow(1);
@@ -463,8 +465,8 @@ export const exportOverheadLineInspectionsToExcel = async (
                 extension: 'jpeg',
               });
 
-              // Move image columns to start at column 56 (BD) - adjusted for vegetation conflicts
-              const imageCol = 56 + imgIndex; // Image columns start at column 56 (BD)
+              // Before images start at column 60 (BH) - adjusted to match header position
+              const imageCol = 60 + imgIndex; // Image columns start at column 60 (BH)
               const imageRow = rowNumber - 1; // Excel rows are 0-indexed
               
               console.log(`Positioning image ${imgIndex + 1} at column ${imageCol}, row ${imageRow}`);
@@ -504,8 +506,8 @@ export const exportOverheadLineInspectionsToExcel = async (
                 buffer: imageBuffer,
                 extension: 'jpeg',
               });
-              // After images start at column 61 (BG) - adjusted for vegetation conflicts
-              const imageCol = 61 + imgIndex;
+              // After images start at column 65 (BM) - matching header position
+              const imageCol = 65 + imgIndex;
               const imageRow = rowNumber - 1;
               worksheet.addImage(imageId, {
                 tl: { nativeCol: imageCol, nativeRow: imageRow, nativeColOff: 0, nativeRowOff: 0 },
@@ -517,17 +519,17 @@ export const exportOverheadLineInspectionsToExcel = async (
         }
 
         // Add clickable links row below the data row
-        const linkRow = new Array(66).fill(''); // Fill with empty cells up to after image columns (adjusted for vegetation conflicts)
+        const linkRow = new Array(70).fill(''); // Fill with empty cells up to after image columns
         for (let imgIndex = 0; imgIndex < Math.min(images.length, 5); imgIndex++) {
           const image = images[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            linkRow[56 + imgIndex] = `Click to open Image ${imgIndex + 1}`;
+            linkRow[60 + imgIndex] = `Click to open Image ${imgIndex + 1}`;
           }
         }
         for (let imgIndex = 0; imgIndex < Math.min(afterImages.length, 5); imgIndex++) {
           const image = afterImages[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            linkRow[61 + imgIndex] = `Click to open After Image ${imgIndex + 1}`;
+            linkRow[65 + imgIndex] = `Click to open After Image ${imgIndex + 1}`;
           }
         }
         
@@ -538,7 +540,7 @@ export const exportOverheadLineInspectionsToExcel = async (
         for (let imgIndex = 0; imgIndex < Math.min(images.length, 5); imgIndex++) {
           const image = images[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            const imageCol = 56 + imgIndex; // Image columns start at column 56 (BD) - adjusted for vegetation conflicts
+            const imageCol = 60 + imgIndex; // Image columns start at column 60 (BH)
             const cell = worksheet.getCell(linksRowNumber, imageCol + 1); // Excel is 1-indexed for cells
             
             // Add hyperlink to the cell
@@ -563,7 +565,7 @@ export const exportOverheadLineInspectionsToExcel = async (
         for (let imgIndex = 0; imgIndex < Math.min(afterImages.length, 5); imgIndex++) {
           const image = afterImages[imgIndex];
           if (typeof image === 'string' && image.startsWith('http')) {
-            const imageCol = 61 + imgIndex; // After images start at column 61 (BG) - adjusted for vegetation conflicts
+            const imageCol = 65 + imgIndex; // After images start at column 65 (BM)
             const cell = worksheet.getCell(linksRowNumber, imageCol + 1);
             cell.value = {
               text: `Click to open After Image ${imgIndex + 1}`,
@@ -639,10 +641,10 @@ export const exportOverheadLineInspectionsToExcel = async (
     worksheet.columns.forEach((column, index) => {
       if (index < 15) {
         column.width = 15;
-      } else if (index < 52) {
+      } else if (index < 60) {
         column.width = 12;
       } else {
-        // Image columns (52-66) - make them 4 cm wide (approximately 15.2 characters)
+        // Image columns (60-69) - make them 4 cm wide (approximately 15.2 characters)
         column.width = 15.2;
       }
     });

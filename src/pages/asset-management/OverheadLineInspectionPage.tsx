@@ -8,13 +8,14 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OverheadLineInspectionForm } from "@/components/overhead-line/OverheadLineInspectionForm";
 import { OverheadLineInspectionsTable } from "@/components/overhead-line/OverheadLineInspectionsTable";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { NetworkInspection } from "@/lib/types";
 import { OverheadLineInspectionDetails } from "@/components/overhead-line/OverheadLineInspectionDetails";
 import { AccessControlWrapper } from "@/components/access-control/AccessControlWrapper";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -42,6 +43,7 @@ export default function OverheadLineInspectionPage() {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedFeeder, setSelectedFeeder] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   const navigate = useNavigate();
@@ -158,9 +160,32 @@ export default function OverheadLineInspectionPage() {
     if (selectedStatus) {
       filtered = filtered.filter(inspection => inspection.status === selectedStatus);
     }
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(inspection => {
+        return (
+          inspection.id.toLowerCase().includes(lowerCaseSearchTerm) ||
+          inspection.feederName.toLowerCase().includes(lowerCaseSearchTerm) ||
+          inspection.region.toLowerCase().includes(lowerCaseSearchTerm) ||
+          inspection.district.toLowerCase().includes(lowerCaseSearchTerm) ||
+          inspection.voltageLevel.toLowerCase().includes(lowerCaseSearchTerm) ||
+          inspection.referencePole.toLowerCase().includes(lowerCaseSearchTerm) ||
+          inspection.poleId.toLowerCase().includes(lowerCaseSearchTerm) ||
+          inspection.inspector.name.toLowerCase().includes(lowerCaseSearchTerm) ||
+          inspection.inspector.email.toLowerCase().includes(lowerCaseSearchTerm) ||
+          (inspection.location && inspection.location.toLowerCase().includes(lowerCaseSearchTerm)) ||
+          (inspection.additionalNotes && inspection.additionalNotes.toLowerCase().includes(lowerCaseSearchTerm)) ||
+          (inspection.poleCondition?.notes && inspection.poleCondition.notes.toLowerCase().includes(lowerCaseSearchTerm)) ||
+          (inspection.conductorCondition?.notes && inspection.conductorCondition.notes.toLowerCase().includes(lowerCaseSearchTerm)) ||
+          (inspection.insulatorCondition?.notes && inspection.insulatorCondition.notes.toLowerCase().includes(lowerCaseSearchTerm))
+        );
+      });
+    }
     
     return filtered;
-  }, [networkInspections, offlineInspections, user, selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, selectedStatus, regions, districts]);
+  }, [networkInspections, offlineInspections, user, selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, selectedStatus, searchTerm, regions, districts]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredInspections.length / pageSize);
@@ -172,7 +197,7 @@ export default function OverheadLineInspectionPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, selectedStatus, networkInspections]);
+  }, [selectedDate, selectedMonth, selectedRegion, selectedDistrict, selectedFeeder, selectedStatus, searchTerm, networkInspections]);
 
   // Reset all filters
   const handleResetFilters = () => {
@@ -182,6 +207,7 @@ export default function OverheadLineInspectionPage() {
     setSelectedDistrict(null);
     setSelectedFeeder(null);
     setSelectedStatus(null);
+    setSearchTerm("");
   };
 
   const handleAddInspection = () => {
@@ -324,6 +350,19 @@ export default function OverheadLineInspectionPage() {
             )}
           </div>
 
+          {/* Search Bar */}
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search inspections by ID, feeder, region, district, inspector, location, notes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
           {/* Filters */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="space-y-2">
@@ -458,7 +497,7 @@ export default function OverheadLineInspectionPage() {
             <Button
               variant="outline"
               onClick={handleResetFilters}
-              disabled={!selectedDate && !selectedMonth && !selectedRegion && !selectedDistrict && !selectedFeeder && !selectedStatus}
+              disabled={!selectedDate && !selectedMonth && !selectedRegion && !selectedDistrict && !selectedFeeder && !selectedStatus && !searchTerm.trim()}
               className="w-full sm:w-auto"
             >
               Reset All Filters

@@ -251,6 +251,8 @@ export function OverheadLineInspectionsTable({
       ['Region:', inspection.region],
       ['District:', inspection.district],
       ['Feeder Name:', inspection.feederName],
+      ['Location:', inspection.location || 'Not specified'],
+      ['GPS Coordinates:', inspection.latitude && inspection.longitude ? `${inspection.latitude.toFixed(6)}, ${inspection.longitude.toFixed(6)}` : 'Not specified'],
       ['Voltage Level:', inspection.voltageLevel],
       ['Reference Pole:', inspection.referencePole],
       ['Status:', inspection.status],
@@ -643,7 +645,7 @@ export function OverheadLineInspectionsTable({
 
   const exportToCSV = (inspection: NetworkInspection) => {
     const headers = [
-      'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole', 'Additional Notes',
+      'Region', 'District', 'Feeder Name', 'Location', 'Voltage Level', 'Reference Pole', 'Additional Notes',
       'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Ground Condition',
       'GPS Location',
       // Pole Condition
@@ -667,6 +669,7 @@ export function OverheadLineInspectionsTable({
       inspection.region || 'Unknown',
       inspection.district || 'Unknown',
       inspection.feederName,
+      inspection.location || 'N/A',
       inspection.voltageLevel,
       inspection.referencePole,
       inspection.additionalNotes || 'N/A',
@@ -748,7 +751,7 @@ export function OverheadLineInspectionsTable({
   const exportAllToCSV = () => {
     const dataToExport = allInspections || inspections;
     const headers = [
-      'Region', 'District', 'Feeder Name', 'Voltage Level', 'Reference Pole', 'Additional Notes',
+      'Region', 'District', 'Feeder Name', 'Location', 'Voltage Level', 'Reference Pole', 'Additional Notes',
       'Status', 'Date', 'Pole ID', 'Pole Height', 'Pole Type', 'Ground Condition',
       'GPS Location',
       // Pole Condition
@@ -772,6 +775,7 @@ export function OverheadLineInspectionsTable({
       inspection.region || 'Unknown',
       inspection.district || 'Unknown',
       inspection.feederName,
+      inspection.location || 'N/A',
       inspection.voltageLevel,
       inspection.referencePole,
       inspection.additionalNotes || 'N/A',
@@ -927,6 +931,7 @@ export function OverheadLineInspectionsTable({
               <TableHead>Region</TableHead>
               <TableHead>District</TableHead>
               <TableHead>Feeder Name</TableHead>
+              <TableHead>Location</TableHead>
               <TableHead>Estimated Feeder Length (km)</TableHead>
               <TableHead>Voltage Level</TableHead>
               <TableHead>Reference Pole</TableHead>
@@ -961,6 +966,20 @@ export function OverheadLineInspectionsTable({
                   <TableCell>{inspection.region || "Unknown"}</TableCell>
                   <TableCell>{inspection.district || "Unknown"}</TableCell>
                   <TableCell>{inspection.feederName}</TableCell>
+                  <TableCell>
+                    {inspection.location ? (
+                      <div className="text-sm">
+                        {inspection.location}
+                      </div>
+                    ) : inspection.latitude && inspection.longitude ? (
+                      <div className="text-xs">
+                        <div>{inspection.latitude.toFixed(6)}</div>
+                        <div>{inspection.longitude.toFixed(6)}</div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-sm">No location</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {feederLength > 0 ? (
                       <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
@@ -1073,7 +1092,7 @@ export function OverheadLineInspectionsTable({
             })}
             {inspections.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                   No inspections found
                 </TableCell>
               </TableRow>
