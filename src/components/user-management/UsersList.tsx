@@ -77,6 +77,10 @@ export function UsersList() {
         return "bg-blue-100 text-blue-800 hover:bg-blue-100";
       case "global_engineer":
         return "bg-purple-100 text-purple-800 hover:bg-purple-100";
+      case "ashsub_t":
+        return "bg-orange-100 text-orange-800 hover:bg-orange-100";
+      case "accsub_t":
+        return "bg-indigo-100 text-indigo-800 hover:bg-indigo-100";
       case "system_admin":
         return "bg-red-100 text-red-800 hover:bg-red-100";
       case "technician":
@@ -100,6 +104,10 @@ export function UsersList() {
         return "Regional General Manager";
       case "global_engineer":
         return "Global Engineer";
+      case "ashsub_t":
+        return "AshSubT Engineer";
+      case "accsub_t":
+        return "AccSubT Engineer";
       case "system_admin":
         return "System Administrator";
       case "technician":
@@ -131,8 +139,8 @@ export function UsersList() {
       return;
     }
     
-    // For system admin and global engineer, skip region/district validation
-    if (newRole !== "system_admin" && newRole !== "global_engineer") {
+    // For system admin, global engineer, ashsub_t, and accsub_t, skip region/district validation
+    if (newRole !== "system_admin" && newRole !== "global_engineer" && newRole !== "ashsub_t" && newRole !== "accsub_t") {
       const validation = validateUserRoleAssignment(newRole, newRegion, newDistrict, regions, districts);
       if (!validation.isValid) {
         toast.error(validation.error);
@@ -155,8 +163,8 @@ export function UsersList() {
         name: newName,
         email: newEmail,
         role: newRole,
-        region: (newRole !== "system_admin" && newRole !== "global_engineer") ? newRegion : undefined,
-        regionId: (newRole !== "system_admin" && newRole !== "global_engineer") ? region?.id : undefined,
+        region: (newRole === "ashsub_t" || newRole === "accsub_t") ? newRegion : (newRole !== "system_admin" && newRole !== "global_engineer") ? newRegion : undefined,
+        regionId: (newRole === "ashsub_t" || newRole === "accsub_t") ? region?.id : (newRole !== "system_admin" && newRole !== "global_engineer") ? region?.id : undefined,
         district: (newRole === "district_engineer" || newRole === "technician") ? newDistrict : undefined,
         districtId: (newRole === "district_engineer" || newRole === "technician") ? district?.id : undefined,
         tempPassword: tempPass,
@@ -195,8 +203,8 @@ export function UsersList() {
       return;
     }
     
-    // For system admin and global engineer, skip region/district validation
-    if (newRole !== "system_admin" && newRole !== "global_engineer") {
+    // For system admin, global engineer, ashsub_t, and accsub_t, skip region/district validation
+    if (newRole !== "system_admin" && newRole !== "global_engineer" && newRole !== "ashsub_t" && newRole !== "accsub_t") {
       const validation = validateUserRoleAssignment(newRole, newRegion, newDistrict, regions, districts);
       if (!validation.isValid) {
         toast.error(validation.error);
@@ -228,8 +236,8 @@ export function UsersList() {
         name: newName,
         email: newEmail,
         role: newRole,
-        region: (newRole !== "system_admin" && newRole !== "global_engineer") ? newRegion : undefined,
-        regionId: (newRole !== "system_admin" && newRole !== "global_engineer") ? regionId : undefined,
+        region: (newRole === "ashsub_t" || newRole === "accsub_t") ? newRegion : (newRole !== "system_admin" && newRole !== "global_engineer") ? newRegion : undefined,
+        regionId: (newRole === "ashsub_t" || newRole === "accsub_t") ? regionId : (newRole !== "system_admin" && newRole !== "global_engineer") ? regionId : undefined,
         district: (newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ? newDistrict : undefined,
         districtId: (newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ? districtId : undefined
       });
@@ -497,6 +505,8 @@ export function UsersList() {
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="system_admin">System Admin</SelectItem>
                 <SelectItem value="global_engineer">Global Engineer</SelectItem>
+                <SelectItem value="ashsub_t">AshSubT Engineer</SelectItem>
+                <SelectItem value="accsub_t">AccSubT Engineer</SelectItem>
                 <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                 <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
                 <SelectItem value="project_engineer">Project Engineer</SelectItem>
@@ -753,6 +763,8 @@ export function UsersList() {
                   <SelectContent>
                     {isSystemAdmin && <SelectItem value="system_admin">System Administrator</SelectItem>}
                     <SelectItem value="global_engineer">Global Engineer</SelectItem>
+                    <SelectItem value="ashsub_t">AshSubT Engineer</SelectItem>
+                    <SelectItem value="accsub_t">AccSubT Engineer</SelectItem>
                     <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                     <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
                     <SelectItem value="project_engineer">Project Engineer</SelectItem>
@@ -764,7 +776,7 @@ export function UsersList() {
                 </Select>
               </div>
               
-              {(newRole === "regional_engineer" || newRole === "project_engineer" || newRole === "regional_general_manager" || newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ||
+              {(newRole === "regional_engineer" || newRole === "project_engineer" || newRole === "regional_general_manager" || newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician" || newRole === "ashsub_t" || newRole === "accsub_t") ||
                 (newRole === "ict" && (isSystemAdmin || isGlobalEngineer)) ? (
                 <div className="space-y-2">
                   <Label htmlFor="region">Region</Label>
@@ -963,6 +975,8 @@ export function UsersList() {
                     <>
                       <SelectItem value="system_admin">System Admin</SelectItem>
                       <SelectItem value="global_engineer">Global Engineer</SelectItem>
+                      <SelectItem value="ashsub_t">AshSubT Engineer</SelectItem>
+                      <SelectItem value="accsub_t">AccSubT Engineer</SelectItem>
                       <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                       <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
                       <SelectItem value="project_engineer">Project Engineer</SelectItem>
@@ -976,7 +990,7 @@ export function UsersList() {
               </Select>
             </div>
             
-            {((newRole === "regional_engineer" || newRole === "project_engineer" || newRole === "regional_general_manager" || newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician") ||
+            {((newRole === "regional_engineer" || newRole === "project_engineer" || newRole === "regional_general_manager" || newRole === "district_engineer" || newRole === "district_manager" || newRole === "technician" || newRole === "ashsub_t" || newRole === "accsub_t") ||
               (newRole === "ict" && (isSystemAdmin || isGlobalEngineer))) && (
               <div className="space-y-2">
                 <Label htmlFor="edit-region">Region</Label>

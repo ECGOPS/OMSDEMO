@@ -21,7 +21,9 @@ export class PermissionService {
     'ict': 2,
     'load_monitoring_edit': 2,
     'load_monitoring_delete': 3,
-    'admin': 5
+    'admin': 5,
+    'ashsub_t': 3,
+    'accsub_t': 3
   };
 
   private permissionChangeListeners: (() => void)[] = [];
@@ -30,9 +32,9 @@ export class PermissionService {
 
   private defaultFeaturePermissions: { [key: string]: UserRole[] } = {
     // Asset Management Features
-    'asset_management': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'asset_management_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'asset_management_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
+    'asset_management': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'asset_management_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'asset_management_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
     // User Logs Features
     'user_logs': ['system_admin'],
@@ -41,73 +43,73 @@ export class PermissionService {
     'user_logs_delete_all': ['system_admin'],
     
     // SMS Notification Features
-    'sms_notification': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'sms_notification_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'sms_notification_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
+    'sms_notification': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'sms_notification_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'sms_notification_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
-    'inspection_management': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'inspection_management_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'inspection_management_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
+    'inspection_management': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'inspection_management_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'inspection_management_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
-    'load_monitoring': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'load_monitoring_update': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'load_monitoring_delete': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
+    'load_monitoring': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'load_monitoring_update': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'load_monitoring_delete': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
-    'substation_inspection': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'substation_inspection_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'substation_inspection_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
+    'substation_inspection': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'substation_inspection_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'substation_inspection_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
-    'vit_inspection': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'vit_inspection_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'vit_inspection_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
+    'vit_inspection': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'vit_inspection_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'vit_inspection_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
-    'overhead_line_inspection': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'overhead_line_inspection_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'overhead_line_inspection_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
+    'overhead_line_inspection': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'overhead_line_inspection_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'overhead_line_inspection_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
     // Fault Management Features
-    'fault_reporting': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'fault_reporting_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'fault_reporting_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
+    'fault_reporting': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'fault_reporting_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'fault_reporting_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
-    'fault_analytics': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'fault_analytics_update': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'fault_analytics_delete': ['global_engineer', 'system_admin'],
+    'fault_analytics': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'fault_analytics_update': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'fault_analytics_delete': ['global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
-    'control_system_analytics': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'control_outage_management': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'control_outage_management_update': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'control_outage_management_delete': ['global_engineer', 'system_admin'],
+    'control_system_analytics': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'control_outage_management': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'control_outage_management_update': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'control_outage_management_delete': ['global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
-    'op5_fault_management': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'op5_fault_management_update': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'op5_fault_management_delete': ['global_engineer', 'system_admin'],
+    'op5_fault_management': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'op5_fault_management_update': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'op5_fault_management_delete': ['global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
     // Analytics Features
-    'analytics_dashboard': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'analytics_page': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'reliability_metrics': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'reliability_metrics_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'reliability_metrics_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'performance_reports': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'performance_reports_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'performance_reports_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
+    'analytics_dashboard': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'analytics_page': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'reliability_metrics': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'reliability_metrics_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'reliability_metrics_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'performance_reports': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'performance_reports_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'performance_reports_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
     // Feeder Management Features
-    'feeder_management': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'feeder_management_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'feeder_management_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'feeder_management_delete_all': ['global_engineer', 'system_admin'],
+    'feeder_management': ['technician', 'district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'feeder_management_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'feeder_management_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'feeder_management_delete_all': ['global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
     // User Management Features
     'user_management': ['global_engineer', 'system_admin', 'ict'],
     'user_management_update': ['global_engineer', 'system_admin', 'ict'],
     'user_management_delete': ['system_admin', 'ict'],
     
-    'district_population': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'district_population_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'district_population_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'system_admin'],
-    'district_population_reset': ['global_engineer', 'system_admin'],
+    'district_population': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'district_population_update': ['district_engineer', 'district_manager', 'regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'district_population_delete': ['regional_engineer', 'project_engineer', 'regional_general_manager', 'global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
+    'district_population_reset': ['global_engineer', 'ashsub_t', 'accsub_t', 'system_admin'],
     
     // System Administration Features
     'system_configuration': ['system_admin'],
@@ -179,6 +181,22 @@ export class PermissionService {
     ],
     technician: [
       'fault_reporting',
+      'view_analytics',
+      'view_logs',
+      'asset_management'
+    ],
+    ashsub_t: [
+      'fault_reporting',
+      'fault_approval',
+      'broadcast_messages',
+      'view_analytics',
+      'view_logs',
+      'asset_management'
+    ],
+    accsub_t: [
+      'fault_reporting',
+      'fault_approval',
+      'broadcast_messages',
       'view_analytics',
       'view_logs',
       'asset_management'
@@ -423,7 +441,7 @@ export class PermissionService {
     assetDistrict: string
   ): boolean {
     if (!userRole) return false;
-    if (userRole === 'system_admin' || userRole === 'global_engineer') return true;
+    if (userRole === 'system_admin' || userRole === 'global_engineer' || userRole === 'ashsub_t' || userRole === 'accsub_t') return true;
     if (userRole === 'regional_engineer' || userRole === 'project_engineer' || userRole === 'regional_general_manager') return userRegion === assetRegion;
     if (userRole === 'district_engineer' || userRole === 'technician' || userRole === 'district_manager') {
       return userRegion === assetRegion && userDistrict === assetDistrict;
@@ -439,7 +457,7 @@ export class PermissionService {
     assetDistrict: string
   ): boolean {
     if (!userRole) return false;
-    if (userRole === 'system_admin' || userRole === 'global_engineer') return true;
+    if (userRole === 'system_admin' || userRole === 'global_engineer' || userRole === 'ashsub_t' || userRole === 'accsub_t') return true;
     if (userRole === 'regional_engineer' || userRole === 'project_engineer') return userRegion === assetRegion;
     if (userRole === 'district_engineer') {
       return userRegion === assetRegion && userDistrict === assetDistrict;
@@ -455,7 +473,7 @@ export class PermissionService {
     assetDistrict: string
   ): boolean {
     if (!userRole) return false;
-    if (userRole === 'system_admin' || userRole === 'global_engineer') return true;
+    if (userRole === 'system_admin' || userRole === 'global_engineer' || userRole === 'ashsub_t' || userRole === 'accsub_t') return true;
     if (userRole === 'regional_engineer' || userRole === 'project_engineer') return userRegion === assetRegion;
     if (userRole === 'district_engineer') {
       return userRegion === assetRegion && userDistrict === assetDistrict;
@@ -469,7 +487,7 @@ export class PermissionService {
 
   public canManageDistrictPopulation(userRole: UserRole | null): boolean {
     if (!userRole) return false;
-    return userRole === 'district_engineer' || userRole === 'district_manager' || userRole === 'regional_engineer' || userRole === 'project_engineer' || userRole === 'regional_general_manager' || userRole === 'global_engineer' || userRole === 'system_admin';
+    return userRole === 'district_engineer' || userRole === 'district_manager' || userRole === 'regional_engineer' || userRole === 'project_engineer' || userRole === 'regional_general_manager' || userRole === 'global_engineer' || userRole === 'ashsub_t' || userRole === 'accsub_t' || userRole === 'system_admin';
   }
 
   public canResetDistrictPopulation(userRole: UserRole | null): boolean {
@@ -485,7 +503,7 @@ export class PermissionService {
     inspectionDistrict: string
   ): boolean {
     if (!userRole) return false;
-    if (userRole === 'system_admin' || userRole === 'global_engineer') return true;
+    if (userRole === 'system_admin' || userRole === 'global_engineer' || userRole === 'ashsub_t' || userRole === 'accsub_t') return true;
     if (userRole === 'regional_engineer' || userRole === 'project_engineer') return userRegion === inspectionRegion;
     if (userRole === 'district_engineer' || userRole === 'technician') {
       return userRegion === inspectionRegion && userDistrict === inspectionDistrict;
@@ -576,7 +594,7 @@ export class PermissionService {
     inspectionDistrict: string
   ): boolean {
     if (!userRole) return false;
-    if (userRole === 'system_admin' || userRole === 'global_engineer') return true;
+    if (userRole === 'system_admin' || userRole === 'global_engineer' || userRole === 'ashsub_t' || userRole === 'accsub_t') return true;
     if (userRole === 'regional_engineer' || userRole === 'project_engineer') return userRegion === inspectionRegion;
     if (userRole === 'district_engineer' || userRole === 'technician') {
       return userRegion === inspectionRegion && userDistrict === inspectionDistrict;
@@ -592,7 +610,7 @@ export class PermissionService {
     inspectionDistrict: string
   ): boolean {
     if (!userRole) return false;
-    if (userRole === 'system_admin' || userRole === 'global_engineer') return true;
+    if (userRole === 'system_admin' || userRole === 'global_engineer' || userRole === 'ashsub_t' || userRole === 'accsub_t') return true;
     if (userRole === 'regional_engineer' || userRole === 'project_engineer') return userRegion === inspectionRegion;
     if (userRole === 'district_engineer') {
       return userRegion === inspectionRegion && userDistrict === inspectionDistrict;

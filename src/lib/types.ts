@@ -16,6 +16,8 @@ export type UserRole =
   | "load_monitoring_delete"
   | "admin"
   | "project_engineer"
+  | "ashsub_t"
+  | "accsub_t"
   | null;
 
 export interface User {
@@ -82,6 +84,7 @@ export type GridCoOutageType =
   | "OTHER";
 
 export type UnplannedFaultType = 
+  | "UNDER INVESTIGATION"
   | "JUMPER CUT"
   | "CONDUCTOR CUT"
   | "MERGED CONDUCTOR"
@@ -100,6 +103,7 @@ export type UnplannedFaultType =
   | "OTHERS";
 
 export type EmergencyFaultType =
+  | "UNDER INVESTIGATION"
   | "MEND CABLE"
   | "WORK ON EQUIPMENT"
   | "FIRE"
@@ -412,7 +416,7 @@ export interface MaterialUsed {
   description?: string; // For Others
 }
 
-export type PoleHeight = "8m" | "9m" | "10m" | "11m" | "14m" | "others";
+export type PoleHeight = "8m" | "9m" | "10m" | "11m" | "14m" | "16m" | "18m" | "20m" | "24m" | "others";
 
 export type PoleType = "CP" | "WP" | "SP" | "ST"; // CP - Concrete, WP - Wood, SP - Steel Tubular, ST - Steel Tower
 
@@ -441,7 +445,7 @@ export interface NetworkInspection {
   };
   // Pole Information
   poleId: string;
-  poleHeight: "8m" | "9m" | "10m" | "11m" | "14m" | "others";
+  poleHeight: "8m" | "9m" | "10m" | "11m" | "14m" | "16m" | "18m" | "20m" | "24m" | "others";
   poleType: "CP" | "WP" | "SP" | "ST";
   groundCondition: string;
   items: InspectionItem[];

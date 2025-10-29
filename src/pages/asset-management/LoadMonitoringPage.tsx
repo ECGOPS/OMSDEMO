@@ -162,6 +162,25 @@ export default function LoadMonitoringPage() {
     }
   };
 
+  // Filter regions for new roles
+  const filteredRegions = useMemo(() => {
+    if (!user) return regions;
+    
+    if (user.role === 'global_engineer' || user.role === 'system_admin') {
+      return regions;
+    } else if (user.role === 'ashsub_t') {
+      return regions.filter(r => 
+        ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION'].includes(r.name)
+      );
+    } else if (user.role === 'accsub_t') {
+      return regions.filter(r => 
+        ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'].includes(r.name)
+      );
+    }
+    
+    return regions;
+  }, [regions, user]);
+  
   // Filter districts based on selected region
   const filteredDistricts = useMemo(() => {
     if (!selectedRegion) return districts;
@@ -176,6 +195,15 @@ export default function LoadMonitoringPage() {
     // Apply role-based filtering
     if (user?.role === 'regional_engineer' || user?.role === 'project_engineer') {
       filtered = filtered.filter(record => record.region === user.region);
+    } else if (user?.role === 'ashsub_t' || user?.role === 'accsub_t') {
+      // Filter by allowed regions for ashsub_t and accsub_t
+      const allowedRegionNames = user.role === 'ashsub_t' 
+        ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+        : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+      
+      filtered = filtered.filter(record => 
+        allowedRegionNames.includes(record.region)
+      );
     } else if (user?.role === 'district_engineer' || user?.role === 'technician') {
       filtered = filtered.filter(record => record.district === user.district);
     }
@@ -197,16 +225,18 @@ export default function LoadMonitoringPage() {
       });
     }
     
-    // Apply region filter (for global engineer and admin)
-    if (selectedRegion && (user?.role === 'global_engineer' || user?.role === 'system_admin')) {
+    // Apply region filter (for global engineer, admin, and new roles)
+    if (selectedRegion && (user?.role === 'global_engineer' || user?.role === 'system_admin' || user?.role === 'ashsub_t' || user?.role === 'accsub_t')) {
       filtered = filtered.filter(record => record.regionId === selectedRegion);
     }
     
-    // Apply district filter (for regional engineer and above)
+    // Apply district filter (for regional engineer and above, including new roles)
     if (selectedDistrict && 
         (user?.role === 'global_engineer' || 
          user?.role === 'system_admin' || 
-         user?.role === 'regional_engineer')) {
+         user?.role === 'regional_engineer' ||
+         user?.role === 'ashsub_t' ||
+         user?.role === 'accsub_t')) {
       filtered = filtered.filter(record => record.districtId === selectedDistrict);
     }
     
@@ -347,8 +377,10 @@ export default function LoadMonitoringPage() {
       await page.drawText(`Peak Load Status: ${record.peakLoadStatus}`, { x: 50, y: currentY, size: 10 });
       await page.drawText(`Ownership: ${record.ownership || 'N/A'}`, { x: 300, y: currentY, size: 10 });
       currentY -= 15;
-      await page.drawText(`Created By: ${record.createdBy?.name || 'Unknown'}`, { x: 50, y: currentY, size: 10 });
-      await page.drawText(`GPS Location: ${record.gpsLocation || 'N/A'}`, { x: 300, y: currentY, size: 10 });
+      await page.drawText(`Voltage Level: ${record.voltageLevel || 'N/A'}`, { x: 50, y: currentY, size: 10 });
+      await page.drawText(`Created By: ${record.createdBy?.name || 'Unknown'}`, { x: 300, y: currentY, size: 10 });
+      currentY -= 15;
+      await page.drawText(`GPS Location: ${record.gpsLocation || 'N/A'}`, { x: 50, y: currentY, size: 10 });
       currentY -= 25;
 
       // Add feeder legs information
@@ -501,6 +533,7 @@ export default function LoadMonitoringPage() {
       ["Rating (KVA)", record.rating],
       ["Peak Load Status", record.peakLoadStatus],
       ["Ownership", record.ownership || 'N/A'],
+      ["Voltage Level", record.voltageLevel || 'N/A'],
       [],
       ["Feeder Legs Information"],
       ["Leg", "Red Phase (A)", "Yellow Phase (A)", "Blue Phase (A)", "Neutral (A)"]
@@ -706,7 +739,7 @@ export default function LoadMonitoringPage() {
             </div>
             
             {/* Region Filter Dropdown */}
-            {(user?.role === 'global_engineer' || user?.role === 'system_admin' || user?.role === 'regional_engineer' || user?.role === 'project_engineer') && (
+            {(user?.role === 'global_engineer' || user?.role === 'system_admin' || user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'ashsub_t' || user?.role === 'accsub_t') && (
               <div className="space-y-2">
                 <Label>Region</Label>
                 <div className="w-full">
@@ -725,6 +758,12 @@ export default function LoadMonitoringPage() {
                               {region.name}
                             </SelectItem>
                           ))
+                        : (user?.role === 'ashsub_t' || user?.role === 'accsub_t')
+                        ? filteredRegions.map(region => (
+                            <SelectItem key={region.id} value={region.id}>
+                              {region.name}
+                            </SelectItem>
+                          ))
                         : regions.map(region => (
                             <SelectItem key={region.id} value={region.id}>
                               {region.name}
@@ -738,7 +777,9 @@ export default function LoadMonitoringPage() {
             
             {(user?.role === 'global_engineer' || 
               user?.role === 'system_admin' || 
-              user?.role === 'regional_engineer') && (
+              user?.role === 'regional_engineer' ||
+              user?.role === 'ashsub_t' ||
+              user?.role === 'accsub_t') && (
               <div className="space-y-2">
                 <Label>District</Label>
                 <div className="w-full">
@@ -810,11 +851,12 @@ export default function LoadMonitoringPage() {
                     <TableRow>
                       <TableHead className="whitespace-nowrap">Date</TableHead>
                       <TableHead className="whitespace-nowrap">Time</TableHead>
-                      <TableHead className="whitespace-nowrap">Substation</TableHead>
                       <TableHead className="whitespace-nowrap">Region</TableHead>
                       <TableHead className="whitespace-nowrap">District</TableHead>
+                      <TableHead className="whitespace-nowrap">Substation</TableHead>
                       <TableHead className="whitespace-nowrap">Rating (KVA)</TableHead>
-                      <TableHead className="whitespace-nowrap">Maximum Full Load</TableHead>
+                      <TableHead className="whitespace-nowrap">Voltage Level</TableHead>
+                      <TableHead className="whitespace-nowrap">Percentage Loading</TableHead>
                       <TableHead className="whitespace-nowrap">Full Load Status</TableHead>
                       <TableHead className="whitespace-nowrap">Peak Status</TableHead>
                       <TableHead className="whitespace-nowrap">Created By</TableHead>
@@ -834,14 +876,15 @@ export default function LoadMonitoringPage() {
                         >
                           <TableCell className="whitespace-nowrap">{format(new Date(record.date), 'MMM d, yyyy')}</TableCell>
                           <TableCell className="whitespace-nowrap">{formatTimeWithAMPM(record.time)}</TableCell>
+                          <TableCell className="whitespace-nowrap">{region?.name || 'Unknown'}</TableCell>
+                          <TableCell className="whitespace-nowrap">{district?.name || 'Unknown'}</TableCell>
                           <TableCell className="whitespace-nowrap">{
                             record.substationName && record.substationNumber
                               ? `${record.substationName} (${record.substationNumber})`
                               : record.substationName || record.substationNumber || "-"
                           }</TableCell>
-                          <TableCell className="whitespace-nowrap">{region?.name || 'Unknown'}</TableCell>
-                          <TableCell className="whitespace-nowrap">{district?.name || 'Unknown'}</TableCell>
                           <TableCell className="whitespace-nowrap">{record.rating}</TableCell>
+                          <TableCell className="whitespace-nowrap">{record.voltageLevel || 'N/A'}</TableCell>
                           <TableCell>
                             <Badge className={Number(formattedPercentageLoads[record.id]) >= 100 ? 'bg-red-500' : 
                                              Number(formattedPercentageLoads[record.id]) >= 70 ? 'bg-yellow-500' : 

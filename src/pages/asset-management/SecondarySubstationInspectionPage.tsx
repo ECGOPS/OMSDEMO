@@ -134,6 +134,7 @@ export default function SecondarySubstationInspectionPage() {
     areaFuse: [],
     arrestors: [],
     switchgear: [],
+    distributionEquipment: [],
     paintWork: []
   });
   const [categories, setCategories] = useState<Category[]>([]);
@@ -550,6 +551,20 @@ export default function SecondarySubstationInspectionPage() {
       ],
     },
     {
+      id: "distribution-equipment",
+      name: "Distribution Equipment",
+      items: [
+        { id: uuidv4(), name: "Type of distribution equipment", category: "distributionEquipment", options: ["Distribution Pillar (Fused)", "Distribution Panel (MCCB)", "Aerial Fuse"], status: undefined, remarks: "" },
+        { id: uuidv4(), name: "Number of circuit", category: "distributionEquipment", options: ["1", "2", "3", "4", "5", "6", "7", "8"], status: undefined, remarks: "" },
+        { id: uuidv4(), name: "If fuse state condition", category: "distributionEquipment", options: ["Good", "Linked"], status: undefined, remarks: "" },
+        { id: uuidv4(), name: "State number of fuse linked", category: "distributionEquipment", options: ["1", "2", "3", "4", "5", "6", "7", "8"], status: undefined, remarks: "" },
+        { id: uuidv4(), name: "Number of fuse holders", category: "distributionEquipment", options: ["1", "2", "3", "4", "5", "6", "7", "8"], status: undefined, remarks: "" },
+        { id: uuidv4(), name: "Is DP rusty", category: "distributionEquipment", options: ["Yes", "No"], status: undefined, remarks: "" },
+        { id: uuidv4(), name: "DP Plint condition", category: "distributionEquipment", options: ["Good", "Bad"], status: undefined, remarks: "" },
+        { id: uuidv4(), name: "DP Earth condition", category: "distributionEquipment", options: ["Intact", "Missing"], status: undefined, remarks: "" },
+      ],
+    },
+    {
       id: "paint-work",
       name: "Paint Work",
       items: [
@@ -661,13 +676,26 @@ export default function SecondarySubstationInspectionPage() {
   }, [user, regions, districts]);
 
    // Filter regions and districts based on user role (similar logic)
-  const filteredRegions = user?.role === "global_engineer"
+  const filteredRegions = (user?.role === "global_engineer" || user?.role === "system_admin")
     ? regions
+    : user?.role === "ashsub_t"
+    ? regions.filter(r => 
+        ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION'].includes(r.name)
+      )
+    : user?.role === "accsub_t"
+    ? regions.filter(r => 
+        ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'].includes(r.name)
+      )
     : regions.filter(r => user?.region ? r.name === user.region : true);
   
   const filteredDistricts = regionId
     ? districts.filter(d => {
         if (d.regionId !== regionId) return false;
+        
+        // For ashsub_t and accsub_t, show all districts in their allowed regions
+        if (user?.role === "ashsub_t" || user?.role === "accsub_t") {
+          return true; // All districts in selected region are visible
+        }
         
         if (user?.role === "district_engineer" || user?.role === "technician" || user?.role === "district_manager") {
           return d.name === user.district;
@@ -774,6 +802,7 @@ export default function SecondarySubstationInspectionPage() {
           areaFuse: initialFormData["area-fuse"],
           arrestors: initialFormData["arrestors"],
           switchgear: initialFormData["switchgear"],
+          distributionEquipment: initialFormData["distribution-equipment"],
           paintWork: initialFormData["paint-work"],
           siteCondition: initialFormData["site-condition"],
           type: "secondary"
@@ -855,6 +884,7 @@ export default function SecondarySubstationInspectionPage() {
         areaFuse: categories.find(c => c.id === 'area-fuse')?.items || [],
         arrestors: categories.find(c => c.id === 'arrestors')?.items || [],
         switchgear: categories.find(c => c.id === 'switchgear')?.items || [],
+        distributionEquipment: categories.find(c => c.id === 'distribution-equipment')?.items || [],
         paintWork: categories.find(c => c.id === 'paint-work')?.items || [],
         createdBy: formData.createdBy || user?.name || "Unknown",
         createdAt: formData.createdAt || new Date().toISOString(),
@@ -989,11 +1019,38 @@ export default function SecondarySubstationInspectionPage() {
         4: "area-fuse",
         5: "arrestors",
         6: "switchgear",
-        7: "paint-work",
-        8: "additional-notes" // Additional Notes on the last page
+        7: "distribution-equipment",
+        8: "paint-work",
+        9: "additional-notes" // Additional Notes on the last page
     };
     
     const categoryId = pageCategoryMap[page];
+    
+    // Handle Additional Notes page
+    if (categoryId === "additional-notes") {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Additional Notes</CardTitle>
+                    <CardDescription>Add any additional notes or observations</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="remarks">Additional Notes</Label>
+                            <Textarea
+                                id="remarks"
+                                value={formData.remarks || ''}
+                                onChange={(e) => handleInputChange("remarks", e.target.value)}
+                                placeholder="Add any additional notes or observations"
+                                className="h-32"
+                            />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
     
     if (categoryId === "basic-info") {
         return (
@@ -1004,16 +1061,26 @@ export default function SecondarySubstationInspectionPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Substation Type - Fixed to Secondary */}
+                        {/* Substation Type - Allow switching back to Primary */}
                         <div className="space-y-2">
                             <Label htmlFor="type">Substation Type</Label>
-                            <Input
-                                id="type"
-                                type="text"
-                                value="Secondary"
-                                disabled
-                                className="bg-muted font-medium"
-                            />
+                            <Select
+                                value="secondary"
+                                onValueChange={(value) => {
+                                    if (value === "primary") {
+                                        // Navigate back to the primary substation inspection form
+                                        navigate("/asset-management/substation-inspection");
+                                    }
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select substation type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="primary">Primary</SelectItem>
+                                    <SelectItem value="secondary">Secondary</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {/* Region */}
@@ -1194,34 +1261,42 @@ export default function SecondarySubstationInspectionPage() {
                                 </p>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="voltageLevel">Voltage Level</Label>
-                            <Input
-                                id="voltageLevel"
-                                type="text"
-                                value={formData.voltageLevel || ''}
-                                onChange={(e) => handleInputChange('voltageLevel', e.target.value)}
-                                required
-                                className="w-full"
-                                placeholder="Enter voltage level (e.g. 11kV, 33kV)"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="status">Status</Label>
-                            <Select
-                                value={formData.status || "Pending"}
-                                onValueChange={value => handleInputChange('status', value)}
-                                required
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Pending">Pending</SelectItem>
-                                    <SelectItem value="In Progress">In Progress</SelectItem>
-                                    <SelectItem value="Completed">Completed</SelectItem>
-                                </SelectContent>
-                            </Select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="voltageLevel">Voltage Level</Label>
+                                <Select
+                                    value={formData.voltageLevel || ""}
+                                    onValueChange={value => handleInputChange('voltageLevel', value)}
+                                    required
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select voltage level" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="0.433kV">0.433kV</SelectItem>
+                                        <SelectItem value="0.400kV">0.400kV</SelectItem>
+                                        <SelectItem value="11kV">11kV</SelectItem>
+                                        <SelectItem value="33kV">33kV</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="status">Status</Label>
+                                <Select
+                                    value={formData.status || "Pending"}
+                                    onValueChange={value => handleInputChange('status', value)}
+                                    required
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Pending">Pending</SelectItem>
+                                        <SelectItem value="In Progress">In Progress</SelectItem>
+                                        <SelectItem value="Completed">Completed</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
                 </CardContent>

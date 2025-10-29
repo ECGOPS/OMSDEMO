@@ -885,6 +885,8 @@ Admin User,system_admin,,,ECGADMIN`;
                       <>
                         <SelectItem value="system_admin">System Admin</SelectItem>
                         <SelectItem value="global_engineer">Global Engineer</SelectItem>
+                        <SelectItem value="ashsub_t">AshSubT Engineer</SelectItem>
+                        <SelectItem value="accsub_t">AccSubT Engineer</SelectItem>
                         <SelectItem value="regional_general_manager">Regional General Manager</SelectItem>
                         <SelectItem value="regional_engineer">Regional Engineer</SelectItem>
                         <SelectItem value="project_engineer">Project Engineer</SelectItem>
@@ -897,7 +899,7 @@ Admin User,system_admin,,,ECGADMIN`;
                   </SelectContent>
                 </Select>
               </div>
-              {newEntry.role !== "global_engineer" && newEntry.role !== "system_admin" && (
+              {newEntry.role !== "global_engineer" && newEntry.role !== "system_admin" && newEntry.role !== "ashsub_t" && newEntry.role !== "accsub_t" && (
                 <>
                   <div>
                     <Label>Region</Label>

@@ -15,6 +15,7 @@ const checklistCategories = [
   { key: "areaFuse", label: "Area Fuse" },
   { key: "arrestors", label: "Arrestors" },
   { key: "switchgear", label: "Switchgear" },
+  { key: "distributionEquipment", label: "Distribution Equipment" },
   { key: "paintWork", label: "Paint Work" },
 ];
 

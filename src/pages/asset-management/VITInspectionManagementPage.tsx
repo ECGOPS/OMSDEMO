@@ -263,6 +263,20 @@ export default function VITInspectionManagementPage() {
         console.warn("Regional/project engineer missing region assignment", user);
         filtered = [];
       }
+    } else if (user?.role === 'ashsub_t' || user?.role === 'accsub_t') {
+      // Filter by allowed regions for ashsub_t and accsub_t
+      const allowedRegionNames = user.role === 'ashsub_t' 
+        ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+        : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+      
+      // Get region IDs for the allowed regions
+      const allowedRegionIds = regions
+        .filter(r => allowedRegionNames.includes(r.name))
+        .map(r => r.id);
+      
+      filtered = filtered.filter(inspection => 
+        allowedRegionIds.includes(inspection.regionId || inspection.region)
+      );
     } else if (user?.role === 'district_engineer' || user?.role === 'technician' || user?.role === 'district_manager') {
       if (user.district && user.region) {
         filtered = filtered.filter(inspection => inspection.district === user.district && inspection.region === user.region);

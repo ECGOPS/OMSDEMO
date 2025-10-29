@@ -257,9 +257,39 @@ export default function PermissionManagementPage() {
     'regional_engineer',
     'project_engineer',
     'regional_general_manager',
+    'ashsub_t',
+    'accsub_t',
     'global_engineer',
     'system_admin'
   ];
+
+  // Format role names for display
+  const formatRoleName = (role: UserRole): string => {
+    switch (role) {
+      case 'ashsub_t':
+        return 'AshSubT Engineer';
+      case 'accsub_t':
+        return 'AccSubT Engineer';
+      case 'global_engineer':
+        return 'Global Engineer';
+      case 'system_admin':
+        return 'System Administrator';
+      case 'regional_general_manager':
+        return 'Regional General Manager';
+      case 'regional_engineer':
+        return 'Regional Engineer';
+      case 'project_engineer':
+        return 'Project Engineer';
+      case 'district_manager':
+        return 'District Manager';
+      case 'district_engineer':
+        return 'District Engineer';
+      case 'technician':
+        return 'Technician';
+      default:
+        return role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+  };
 
   // Initialize and listen for permission changes from Firestore
   useEffect(() => {
@@ -505,7 +535,7 @@ export default function PermissionManagementPage() {
                 {allRoles.map((role) => (
                   <div key={role} className="flex flex-col xs:flex-row xs:items-center justify-between p-3 bg-muted/50 rounded-lg gap-2 xs:gap-0">
                     <span className="font-medium mb-2 xs:mb-0">
-                      {role.replace('_', ' ').toUpperCase()}
+                      {formatRoleName(role)}
                     </span>
                     <div className="flex flex-wrap gap-3 xs:gap-4 w-full xs:w-auto">
                       <div className="flex items-center space-x-2">

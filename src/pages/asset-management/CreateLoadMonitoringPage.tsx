@@ -42,6 +42,7 @@ export default function CreateLoadMonitoringPage() {
     rating: undefined,
     peakLoadStatus: "day",
     ownership: "public", // Add ownership field
+    voltageLevel: "",
     feederLegs: [
       {
         id: uuidv4(),
@@ -627,6 +628,7 @@ export default function CreateLoadMonitoringPage() {
       rating: formData.rating,
       peakLoadStatus: formData.peakLoadStatus || "day",
       ownership: formData.ownership || "public",
+      voltageLevel: formData.voltageLevel || "",
       feederLegs: processedFeederLegs,
       ratedLoad: loadInfo.ratedLoad,
       redPhaseBulkLoad: loadInfo.redPhaseBulkLoad,
@@ -861,6 +863,24 @@ export default function CreateLoadMonitoringPage() {
                       <SelectContent>
                         <SelectItem value="public">Public</SelectItem>
                         <SelectItem value="private">Private</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Voltage Level Select */}
+                  <div className="space-y-2">
+                    <Label htmlFor="voltageLevel">Voltage Level</Label>
+                    <Select
+                      value={formData.voltageLevel || ""}
+                      onValueChange={(value) => handleInputChange('voltageLevel', value)}
+                    >
+                      <SelectTrigger id="voltageLevel">
+                        <SelectValue placeholder="Select voltage level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0.433kV">0.433kV</SelectItem>
+                        <SelectItem value="0.400kV">0.400kV</SelectItem>
+                        <SelectItem value="11kV">11kV</SelectItem>
+                        <SelectItem value="33kV">33kV</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

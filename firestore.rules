@@ -2,7 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    // Helper functions Signup cloud
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -40,6 +40,31 @@ service cloud.firestore {
     function isTechnician() {
       return isAuthenticated() && 
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'technician';
+    }
+    
+    function isAshSubT() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ashsub_t';
+    }
+    
+    function isAccSubT() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'accsub_t';
+    }
+    
+    // Helper function to check if a region name is allowed for AshSubT
+    function isAshSubTRegion(regionName) {
+      return regionName == 'SUBTRANSMISSION ASHANTI' ||
+             regionName == 'ASHANTI EAST REGION' ||
+             regionName == 'ASHANTI WEST REGION' ||
+             regionName == 'ASHANTI SOUTH REGION';
+    }
+    
+    // Helper function to check if a region name is allowed for AccSubT
+    function isAccSubTRegion(regionName) {
+      return regionName == 'ACCRA EAST REGION' ||
+             regionName == 'ACCRA WEST REGION' ||
+             regionName == 'SUBTRANSMISSION ACCRA';
     }
     
     function isValidEmail(email) {
@@ -94,7 +119,7 @@ service cloud.firestore {
       allow write: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
-        ((isRegionalEngineer() || isRegionalGeneralManager()) && resource.data.name == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region)
+        ((isRegionalEngineer() || isRegionalGeneralManager() || isAshSubT() || isAccSubT()) && resource.data.name == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region)
       );
     }
 
@@ -106,14 +131,12 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
-        (isRegionalEngineer() && request.resource.data.regionId == get(/databases/$(database)/documents/regions/$(request.resource.data.regionId)).id) ||
-        (isRegionalGeneralManager() && request.resource.data.regionId == get(/databases/$(database)/documents/regions/$(request.resource.data.regionId)).id)
+        ((isRegionalEngineer() || isRegionalGeneralManager() || isAshSubT() || isAccSubT()) && request.resource.data.regionId == get(/databases/$(database)/documents/regions/$(request.resource.data.regionId)).id)
       );
       allow update: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
-        (isRegionalEngineer() && resource.data.regionId == get(/databases/$(database)/documents/regions/$(resource.data.regionId)).id) ||
-        (isRegionalGeneralManager() && resource.data.regionId == get(/databases/$(database)/documents/regions/$(resource.data.regionId)).id) ||
+        ((isRegionalEngineer() || isRegionalGeneralManager() || isAshSubT() || isAccSubT()) && resource.data.regionId == get(/databases/$(database)/documents/regions/$(resource.data.regionId)).id) ||
         ((isDistrictEngineer() || isDistrictManager()) && resource.data.name == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district)
       );
       allow delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
@@ -131,8 +154,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
-        (isRegionalEngineer() && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
-        (isRegionalGeneralManager() && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
+        ((isRegionalEngineer() || isRegionalGeneralManager() || isAshSubT() || isAccSubT()) && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
         ((isDistrictEngineer() || isDistrictManager()) && resource.data.district == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district) ||
         (isICT() && (
           (resource.data.district == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district) ||
@@ -153,8 +175,7 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
-        (isRegionalEngineer() && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
-        (isRegionalGeneralManager() && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
+        ((isRegionalEngineer() || isRegionalGeneralManager() || isAshSubT() || isAccSubT()) && resource.data.region == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.region) ||
         ((isDistrictEngineer() || isDistrictManager()) && resource.data.district == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district) ||
         (isICT() && (
           (resource.data.district == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.district) ||
@@ -167,17 +188,19 @@ service cloud.firestore {
 
     // Security Events collection - SECURE LOGGING ACCESS
     match /securityEvents/{eventId} {
-      // Allow authenticated users to read security events
-      allow read: if isAuthenticated() && (
-        isSystemAdmin() || 
-        isGlobalEngineer() ||
-        isRegionalGeneralManager()
-      );
-      // Allow authenticated users to create security events (for logging)
-      allow create: if isAuthenticated();
-      // Only system admins can update/delete security events
-      allow update, delete: if isAuthenticated() && isSystemAdmin();
-    }
+        // Allow read only to privileged roles
+  allow read: if isAuthenticated() && (
+    isSystemAdmin() || 
+    isGlobalEngineer() || 
+    isRegionalGeneralManager()
+  );
+
+  // Allow anyone (even unauthenticated) to create/write security events
+  allow create: if true;
+
+  // Only system admins can update or delete
+  allow update, delete: if isAuthenticated() && isSystemAdmin();
+}
 
     // Permissions collection
     match /permissions/{permissionId} {
@@ -196,16 +219,23 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
-        ((isRegionalEngineer() || isRegionalGeneralManager()) && request.resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
+        ((isRegionalEngineer() || isRegionalGeneralManager() || isAshSubT() || isAccSubT()) && request.resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
         ((isDistrictEngineer() || isDistrictManager()) && request.resource.data.districtId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.districtId)
       );
       allow update: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
+        ((isRegionalEngineer() || isRegionalGeneralManager() || isAshSubT() || isAccSubT()) && resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
+        ((isDistrictEngineer() || isDistrictManager()) && resource.data.districtId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.districtId)
+      );
+      allow delete: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        (isAshSubT() && isAshSubTRegion(get(/databases/$(database)/documents/regions/$(resource.data.regionId)).data.name)) ||
+        (isAccSubT() && isAccSubTRegion(get(/databases/$(database)/documents/regions/$(resource.data.regionId)).data.name)) ||
         ((isRegionalEngineer() || isRegionalGeneralManager()) && resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
         ((isDistrictEngineer() || isDistrictManager()) && resource.data.districtId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.districtId)
       );
-      allow delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
     }
 
     // VIT Assets collection
@@ -260,13 +290,13 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
-        ((isRegionalEngineer() || isRegionalGeneralManager()) && request.resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
+        ((isRegionalEngineer() || isRegionalGeneralManager() || isAshSubT() || isAccSubT()) && request.resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
         ((isDistrictEngineer() || isDistrictManager()) && request.resource.data.districtId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.districtId)
       );
       allow update: if isAuthenticated() && (
         isSystemAdmin() || 
         isGlobalEngineer() || 
-        ((isRegionalEngineer() || isRegionalGeneralManager()) && resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
+        ((isRegionalEngineer() || isRegionalGeneralManager() || isAshSubT() || isAccSubT()) && resource.data.regionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.regionId) ||
         ((isDistrictEngineer() || isDistrictManager()) && resource.data.districtId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.districtId)
       );
       allow delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
@@ -280,11 +310,49 @@ service cloud.firestore {
         isGlobalEngineer() || 
         isRegionalEngineer() || 
         isRegionalGeneralManager() || 
+        isAshSubT() ||
+        isAccSubT() ||
         isDistrictEngineer() || 
         isDistrictManager() || 
         isTechnician()
       );
       allow update, delete: if isAuthenticated() && (isSystemAdmin() || isGlobalEngineer());
     }
+  
+// Music files collection
+    match /music_files/{documentId} {
+      allow read: if isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow write: if isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && isSystemAdmin();
+    }
+
+    // Report Uploads collection
+    match /report-uploads/{uploadId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        isRegionalEngineer() || 
+        isRegionalGeneralManager() || 
+        isDistrictEngineer() || 
+        isDistrictManager() || 
+        isTechnician()
+      );
+      allow update: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        isRegionalEngineer() || 
+        isRegionalGeneralManager() || 
+        isDistrictEngineer() || 
+        isDistrictManager()
+      );
+      allow delete: if isAuthenticated() && (
+        isSystemAdmin() || 
+        isGlobalEngineer() || 
+        isRegionalEngineer() || 
+        isRegionalGeneralManager() || 
+        isDistrictEngineer() || 
+        isDistrictManager()
+      );
+    }
   }
-} 
+}

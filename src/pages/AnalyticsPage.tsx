@@ -113,6 +113,36 @@ export default function AnalyticsPage() {
   const [isStartYearPickerOpen, setIsStartYearPickerOpen] = useState(false);
   const [isEndYearPickerOpen, setIsEndYearPickerOpen] = useState(false);
   const [startWeek, setStartWeek] = useState<number | undefined>(undefined);
+
+  // Local cache for resolving user names by UID when not present in AuthContext users array
+  const [userNameMap, setUserNameMap] = useState<Record<string, string>>({});
+
+  const fetchAndCacheUserName = async (userId: string) => {
+    if (!userId || userNameMap[userId]) return;
+    try {
+      // Lazy-load from Firestore if not in users array
+      const { db } = await import("@/config/firebase");
+      const { doc, getDoc } = await import("firebase/firestore");
+      const userRef = doc(db, "users", userId);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        const data = snap.data() as any;
+        const display = data?.name || data?.email || userId;
+        setUserNameMap(prev => ({ ...prev, [userId]: display }));
+      } else {
+        setUserNameMap(prev => ({ ...prev, [userId]: userId }));
+      }
+    } catch (e) {
+      setUserNameMap(prev => ({ ...prev, [userId]: userId }));
+    }
+  };
+
+  // When a fault is selected, resolve its createdBy/updatedBy names if missing
+  useEffect(() => {
+    if (!selectedFault) return;
+    if (selectedFault.createdBy) fetchAndCacheUserName(selectedFault.createdBy);
+    if (selectedFault.updatedBy) fetchAndCacheUserName(selectedFault.updatedBy);
+  }, [selectedFault]);
   const [endWeek, setEndWeek] = useState<number | undefined>(undefined);
   const [isStartWeekPickerOpen, setIsStartWeekPickerOpen] = useState(false);
   const [isEndWeekPickerOpen, setIsEndWeekPickerOpen] = useState(false);
@@ -1099,7 +1129,7 @@ export default function AnalyticsPage() {
         fault.faultType,
         fault.specificFaultType || 'N/A',
         duration.toFixed(2), // Format duration to 2 decimal places
-        getUserNameById(fault.createdBy),
+        getUserDisplayName(fault.createdBy),
         formatSafeDate(fault.createdAt),
         // Population affected
         fault.affectedPopulation?.rural || fault.customersAffected?.rural || 0,
@@ -1223,8 +1253,8 @@ export default function AnalyticsPage() {
           type: isOP5Fault ? 'OP5 Fault' : 'Control Outage',
           region: regions.find(r => r.id === fault.regionId)?.name || fault.regionId,
           district: districts.find(d => d.id === fault.districtId)?.name || fault.districtId,
-          createdBy: getUserNameById(fault.createdBy),
-          updatedBy: getUserNameById(fault.updatedBy)
+          createdBy: getUserDisplayName(fault.createdBy),
+          updatedBy: getUserDisplayName(fault.updatedBy)
         };
 
         // Log the processed fault
@@ -1857,6 +1887,57 @@ export default function AnalyticsPage() {
     console.log('getUserNameById - User not found, returning userId:', userId);
     return userId;
   };
+
+  // Enhanced helper function to get user name with better fallback
+  const getUserDisplayName = (userId: string | undefined): string => {
+    if (!userId) return 'Unknown';
+    
+    // Handle special cases
+    if (userId === 'offline_user' || userId === 'unknown') return 'Offline User';
+    
+    // Return from local cache if available (populated via Firestore on-demand)
+    if (userNameMap[userId]) return userNameMap[userId];
+
+    // If users data is not loaded yet, return a loading indicator
+    if (usersLoading) return 'Loading...';
+    
+    // If no users data available, return the userId as fallback
+    if (!users || users.length === 0) {
+      console.log('getUserDisplayName - No users available, userId:', userId);
+      return userId.length > 20 ? `${userId.substring(0, 20)}...` : userId;
+    }
+    
+    console.log('getUserDisplayName - Looking for userId:', userId);
+    console.log('getUserDisplayName - Total users:', users.length);
+    console.log('getUserDisplayName - All users:', users);
+    console.log('getUserDisplayName - Sample user:', users[0]);
+    console.log('getUserDisplayName - Checking user with id:', users[0]?.id);
+    console.log('getUserDisplayName - Checking if userId matches id');
+    
+    // The user id is the same as uid, so check both
+    const foundUser = users.find(u => {
+      const matchId = u.id === userId;
+      const matchUid = u.uid === userId;
+      const match = matchId || matchUid;
+      
+      console.log('getUserDisplayName - Checking user:', u.id, 'vs', userId, 'matchId:', matchId, 'matchUid:', matchUid);
+      
+      if (match) {
+        console.log('getUserDisplayName - Found user object:', u);
+      }
+      return match;
+    });
+    
+    if (foundUser) {
+      const result = foundUser.name || foundUser.email || 'Unknown User';
+      console.log('getUserDisplayName - Returning:', result);
+      return result;
+    }
+    
+    console.log('getUserDisplayName - User not found for userId:', userId);
+    // If not found, return a truncated version of the ID for better display
+    return userId.length > 20 ? `${userId.substring(0, 20)}...` : userId;
+  };
   
   // Fetch load monitoring data with role-based filtering
   useEffect(() => {
@@ -1978,10 +2059,10 @@ export default function AnalyticsPage() {
   const handleClearFilters = () => {
     // Apply role-based clear filter logic (same as Dashboard)
     if (user?.role === "global_engineer" || user?.role === "system_admin") {
-      setSelectedRegion("all");
-      setFilterRegion(undefined);
-      setSelectedDistrict("all");
-      setFilterDistrict(undefined);
+    setSelectedRegion("all");
+    setFilterRegion(undefined);
+    setSelectedDistrict("all");
+    setFilterDistrict(undefined);
     } else if (user?.role === "regional_engineer") {
       setSelectedDistrict("all");
       setFilterDistrict(undefined);
@@ -3431,7 +3512,7 @@ export default function AnalyticsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <span className="text-xs text-muted-foreground">Created By</span>
-                      <p className="text-sm">{getUserNameById(selectedFault.createdBy)}</p>
+                      <p className="text-sm">{getUserDisplayName(selectedFault.createdBy)}</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Created At</span>
@@ -3439,7 +3520,7 @@ export default function AnalyticsPage() {
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Updated By</span>
-                      <p className="text-sm">{getUserNameById(selectedFault.updatedBy)}</p>
+                      <p className="text-sm">{getUserDisplayName(selectedFault.updatedBy)}</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Updated At</span>
@@ -3559,7 +3640,7 @@ export default function AnalyticsPage() {
                                     <dd className="ml-0 sm:ml-4 text-sm sm:text-base text-gray-900 break-words dark:text-gray-200">
                                       { /* Use helper function for createdBy and updatedBy */ }
                                       { (key === 'createdBy' || key === 'updatedBy') 
-                                          ? getUserNameById(value as string) 
+                                          ? getUserDisplayName(value as string) 
                                           : formatValue(value)
                                       }
                                     </dd>

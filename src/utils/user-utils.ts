@@ -23,6 +23,42 @@ export function getUserRegionAndDistrict(
     return { regionId, districtId };
   }
 
+  // For ashsub_t and accsub_t roles, show all allowed regions - return first allowed region
+  if (user.role === "ashsub_t") {
+    const ashantiRegionNames = [
+      'SUBTRANSMISSION ASHANTI',
+      'ASHANTI EAST REGION',
+      'ASHANTI WEST REGION',
+      'ASHANTI SOUTH REGION'
+    ];
+    const ashantiRegion = regions.find(r => ashantiRegionNames.includes(r.name));
+    if (ashantiRegion) {
+      regionId = ashantiRegion.id;
+      const districtsInRegion = districts.filter(d => d.regionId === regionId);
+      if (districtsInRegion.length > 0) {
+        districtId = districtsInRegion[0].id;
+      }
+    }
+    return { regionId, districtId };
+  }
+
+  if (user.role === "accsub_t") {
+    const accraRegionNames = [
+      'ACCRA EAST REGION',
+      'ACCRA WEST REGION',
+      'SUBTRANSMISSION ACCRA'
+    ];
+    const accraRegion = regions.find(r => accraRegionNames.includes(r.name));
+    if (accraRegion) {
+      regionId = accraRegion.id;
+      const districtsInRegion = districts.filter(d => d.regionId === regionId);
+      if (districtsInRegion.length > 0) {
+        districtId = districtsInRegion[0].id;
+      }
+    }
+    return { regionId, districtId };
+  }
+
   // For district engineers, district managers and technicians, find both region and district
   if ((user.role === "district_engineer" || user.role === "district_manager" || user.role === "technician") && user.region && user.district) {
     const userRegion = regions.find(r => r.name === user.region);
@@ -103,4 +139,46 @@ export function getFilteredRegionsAndDistricts(
     : [];
 
   return { filteredRegions, filteredDistricts };
+}
+
+// Helper function to check if a region is allowed for specific roles
+export function isRegionAllowedForRole(role: UserRole | null, regionName: string): boolean {
+  if (!role) return false;
+  
+  // AshSubT role: Access only to Ashanti regions
+  if (role === "ashsub_t") {
+    const ashantiRegions = [
+      'SUBTRANSMISSION ASHANTI',
+      'ASHANTI EAST REGION',
+      'ASHANTI WEST REGION',
+      'ASHANTI SOUTH REGION'
+    ];
+    return ashantiRegions.includes(regionName);
+  }
+  
+  // AccSubT role: Access only to Accra regions
+  if (role === "accsub_t") {
+    const accraRegions = [
+      'ACCRA EAST REGION',
+      'ACCRA WEST REGION',
+      'SUBTRANSMISSION ACCRA'
+    ];
+    return accraRegions.includes(regionName);
+  }
+  
+  return true; // Other roles have different filtering logic elsewhere
+}
+
+// Helper function to check if user should see all data
+export function hasGlobalAccess(userRole: UserRole | null): boolean {
+  return userRole === "system_admin" || userRole === "global_engineer" || userRole === "ashsub_t" || userRole === "accsub_t";
+}
+
+// Helper function to check if user has regional access level
+export function hasRegionalAccess(userRole: UserRole | null): boolean {
+  return userRole === "regional_engineer" || 
+         userRole === "regional_general_manager" || 
+         userRole === "project_engineer" ||
+         userRole === "ashsub_t" ||
+         userRole === "accsub_t";
 } 

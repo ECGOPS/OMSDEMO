@@ -1050,7 +1050,7 @@ export function OverheadLineInspectionsTable({
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
-                        {(userRole === 'global_engineer' || userRole === 'district_engineer' || userRole === 'regional_engineer' || userRole === 'project_engineer' || userRole === 'technician' || userRole === 'system_admin') && (
+                        {(userRole === 'global_engineer' || userRole === 'district_engineer' || userRole === 'regional_engineer' || userRole === 'project_engineer' || userRole === 'technician' || userRole === 'system_admin' || userRole === 'ashsub_t' || userRole === 'accsub_t') && (
                           <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
                             onEdit(inspection);

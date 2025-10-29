@@ -579,6 +579,8 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
       { label: "Substation Name", value: inspection.substationName || "Not specified" },
       { label: "Type", value: inspection.type },
       { label: "Location", value: inspection.location || "Not specified" },
+      { label: "Voltage Level", value: inspection.voltageLevel || "Not specified" },
+      { label: "Status", value: inspection.status || "Not specified" },
       { label: "GPS Location", value: inspection.gpsLocation || "Not specified" }
     ];
 
@@ -661,6 +663,11 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
         title: 'Switchgear',
         key: 'switchgear',
         description: 'This section covers the inspection of switchgear and related components.'
+      },
+      {
+        title: 'Distribution Equipment',
+        key: 'distributionEquipment',
+        description: 'This section covers the inspection of distribution equipment including distribution pillars, panels, fuses, and earth conditions.'
       },
       {
         title: 'Paint Work',

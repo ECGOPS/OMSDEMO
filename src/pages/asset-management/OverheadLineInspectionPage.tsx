@@ -92,6 +92,25 @@ export default function OverheadLineInspectionPage() {
     };
   }, [offlineStorage]);
 
+  // Filter regions for new roles
+  const filteredRegions = useMemo(() => {
+    if (!user) return regions;
+    
+    if (user.role === 'global_engineer' || user.role === 'system_admin') {
+      return regions;
+    } else if (user.role === 'ashsub_t') {
+      return regions.filter(r => 
+        ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION'].includes(r.name)
+      );
+    } else if (user.role === 'accsub_t') {
+      return regions.filter(r => 
+        ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'].includes(r.name)
+      );
+    }
+    
+    return regions;
+  }, [regions, user]);
+  
   // Filter districts based on selected region
   const filteredDistricts = useMemo(() => {
     if (!selectedRegion) return districts;
@@ -113,6 +132,15 @@ export default function OverheadLineInspectionPage() {
       filtered = filtered.filter(inspection => inspection.district === user.district);
     } else if (user?.role === 'regional_engineer' || user?.role === 'project_engineer') {
       filtered = filtered.filter(inspection => inspection.region === user.region);
+    } else if (user?.role === 'ashsub_t' || user?.role === 'accsub_t') {
+      // Filter by allowed regions for ashsub_t and accsub_t
+      const allowedRegionNames = user.role === 'ashsub_t' 
+        ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+        : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+      
+      filtered = filtered.filter(inspection => 
+        allowedRegionNames.includes(inspection.region)
+      );
     }
     
     // Apply date filter
@@ -132,19 +160,21 @@ export default function OverheadLineInspectionPage() {
       });
     }
     
-    // Apply region filter (for global engineer and admin)
-    if (selectedRegion && (user?.role === 'global_engineer' || user?.role === 'system_admin')) {
+    // Apply region filter (for global engineer, admin, and new roles)
+    if (selectedRegion && (user?.role === 'global_engineer' || user?.role === 'system_admin' || user?.role === 'ashsub_t' || user?.role === 'accsub_t')) {
       const selectedRegionName = regions.find(r => r.id === selectedRegion)?.name;
       if (selectedRegionName) {
         filtered = filtered.filter(inspection => inspection.region === selectedRegionName);
       }
     }
     
-    // Apply district filter (for regional engineer and above)
+    // Apply district filter (for regional engineer and above, including new roles)
     if (selectedDistrict && 
         (user?.role === 'global_engineer' || 
          user?.role === 'system_admin' || 
-         user?.role === 'regional_engineer')) {
+         user?.role === 'regional_engineer' ||
+         user?.role === 'ashsub_t' ||
+         user?.role === 'accsub_t')) {
       const selectedDistrictName = districts.find(d => d.id === selectedDistrict)?.name;
       if (selectedDistrictName) {
         filtered = filtered.filter(inspection => inspection.district === selectedDistrictName);
@@ -333,7 +363,7 @@ export default function OverheadLineInspectionPage() {
                 </div>
               )}
             </div>
-            {(user?.role === 'global_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager' || user?.role === 'technician' || user?.role === 'system_admin') && (
+            {(user?.role === 'global_engineer' || user?.role === 'district_engineer' || user?.role === 'district_manager' || user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager' || user?.role === 'technician' || user?.role === 'system_admin' || user?.role === 'ashsub_t' || user?.role === 'accsub_t') && (
               <div className="flex gap-2 mt-4 md:mt-0">
                 <Button
                   variant="outline"
@@ -382,7 +412,7 @@ export default function OverheadLineInspectionPage() {
               />
             </div>
             
-            {(user?.role === 'global_engineer' || user?.role === 'system_admin') && (
+            {(user?.role === 'global_engineer' || user?.role === 'system_admin' || user?.role === 'ashsub_t' || user?.role === 'accsub_t') && (
               <div className="space-y-2">
                 <Label>Region</Label>
                 <div className="w-full">
@@ -394,11 +424,17 @@ export default function OverheadLineInspectionPage() {
                       <SelectValue placeholder="Select region" />
                     </SelectTrigger>
                     <SelectContent>
-                      {regions.map(region => (
-                        <SelectItem key={region.id} value={region.id}>
-                          {region.name}
-                        </SelectItem>
-                      ))}
+                      {(user?.role === 'ashsub_t' || user?.role === 'accsub_t')
+                        ? filteredRegions.map(region => (
+                            <SelectItem key={region.id} value={region.id}>
+                              {region.name}
+                            </SelectItem>
+                          ))
+                        : regions.map(region => (
+                            <SelectItem key={region.id} value={region.id}>
+                              {region.name}
+                            </SelectItem>
+                          ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -407,7 +443,9 @@ export default function OverheadLineInspectionPage() {
             
             {(user?.role === 'global_engineer' || 
               user?.role === 'system_admin' || 
-              user?.role === 'regional_engineer') && (
+              user?.role === 'regional_engineer' ||
+              user?.role === 'ashsub_t' ||
+              user?.role === 'accsub_t') && (
               <div className="space-y-2">
                 <Label>District</Label>
                 <div className="w-full">

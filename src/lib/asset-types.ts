@@ -25,6 +25,7 @@ export interface LoadMonitoringData extends BaseRecord {
   rating: number;
   peakLoadStatus: 'day' | 'night';
   ownership: 'public' | 'private';
+  voltageLevel?: string;
   
   // Feeder Information
   feederLegs: FeederLeg[];
@@ -195,6 +196,7 @@ export interface SecondarySubstationInspection {
   areaFuse: InspectionItem[];
   arrestors: InspectionItem[];
   switchgear: InspectionItem[];
+  distributionEquipment: InspectionItem[];
   paintWork: InspectionItem[];
   images?: string[];
   afterImages?: string[];

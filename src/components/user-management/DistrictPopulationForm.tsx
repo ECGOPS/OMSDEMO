@@ -155,18 +155,33 @@ export function DistrictPopulationForm() {
   };
   
   // Filter regions for regional and global engineers
-  const filteredRegions = user?.role === "global_engineer" 
+  const filteredRegions = (user?.role === "global_engineer" || user?.role === "system_admin")
     ? regions 
+    : user?.role === "ashsub_t"
+    ? regions.filter(r => 
+        ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION'].includes(r.name)
+      )
+    : user?.role === "accsub_t"
+    ? regions.filter(r => 
+        ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'].includes(r.name)
+      )
     : regions.filter(r => user?.region ? r.name === user.region : true);
   
   // Filter districts for district engineers and district managers
   const filteredDistricts = selectedRegion
     ? districts.filter(d => {
-        return d.regionId === selectedRegion && (
-          (user?.role === "district_engineer" || user?.role === "district_manager")
-            ? d.name === user.district 
-            : true
-        );
+        // First check if district belongs to selected region
+        if (d.regionId !== selectedRegion) return false;
+        
+        // For ashsub_t and accsub_t, show all districts in their allowed regions
+        if (user?.role === "ashsub_t" || user?.role === "accsub_t") {
+          return true; // All districts in selected region are visible
+        }
+        
+        // For district engineers and district managers, only show their assigned district
+        return (user?.role === "district_engineer" || user?.role === "district_manager")
+          ? d.name === user.district 
+          : true;
       })
     : [];
   
@@ -189,7 +204,7 @@ export function DistrictPopulationForm() {
               <Select 
                 value={selectedRegion} 
                 onValueChange={setSelectedRegion}
-                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "district_manager"}
+                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "district_manager" || user?.role === "regional_general_manager"}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select region" />

@@ -511,6 +511,27 @@ export default function EditInspectionPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="voltageLevel">Voltage Level</Label>
+                    <Select
+                      id="voltageLevel"
+                      value={formData.voltageLevel || ""}
+                      onValueChange={(value) => handleInputChange('voltageLevel', value)}
+                      required
+                    >
+                      <SelectTrigger id="voltageLevel">
+                        <SelectValue placeholder="Select voltage level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0.433kV">0.433kV</SelectItem>
+                        <SelectItem value="0.400kV">0.400kV</SelectItem>
+                        <SelectItem value="11kV">11kV</SelectItem>
+                        <SelectItem value="33kV">33kV</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
                     <Select

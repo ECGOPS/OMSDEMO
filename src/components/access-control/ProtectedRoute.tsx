@@ -59,7 +59,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole,
   }
 
   // Check region-based access
-  if (allowedRegion && user?.role !== 'global_engineer' && user?.role !== 'system_admin') {
+  if (allowedRegion && user?.role !== 'global_engineer' && user?.role !== 'system_admin' && user?.role !== 'ashsub_t' && user?.role !== 'accsub_t') {
     if (user?.region !== allowedRegion) {
       console.log(`Access denied: User's region ${user?.region} does not match required region ${allowedRegion}`);
       return <Navigate to="/unauthorized" replace />;

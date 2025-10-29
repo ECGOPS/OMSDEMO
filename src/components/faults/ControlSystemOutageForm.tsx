@@ -77,7 +77,7 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
   // Derived values
   const [durationHours, setDurationHours] = useState<number | null>(null);
   const [unservedEnergyMWh, setUnservedEnergyMWh] = useState<number | null>(null);
-  const [specificFaultType, setSpecificFaultType] = useState<UnplannedFaultType | EmergencyFaultType | undefined>(undefined);
+  const [specificFaultType, setSpecificFaultType] = useState<UnplannedFaultType | EmergencyFaultType | undefined>("UNDER INVESTIGATION");
   
   // New state variables for feeder/equipment details
   const [feederName, setFeederName] = useState<string>("");
@@ -211,6 +211,27 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
     // Global engineers and system admins can see all regions
     if (user?.role === "global_engineer" || user?.role === "system_admin") return true;
     
+    // AshSubT role: Access only to Ashanti regions
+    if (user?.role === "ashsub_t") {
+      const ashantiRegions = [
+        'SUBTRANSMISSION ASHANTI',
+        'ASHANTI EAST REGION',
+        'ASHANTI WEST REGION',
+        'ASHANTI SOUTH REGION'
+      ];
+      return ashantiRegions.includes(region.name);
+    }
+    
+    // AccSubT role: Access only to Accra regions
+    if (user?.role === "accsub_t") {
+      const accraRegions = [
+        'ACCRA EAST REGION',
+        'ACCRA WEST REGION',
+        'SUBTRANSMISSION ACCRA'
+      ];
+      return accraRegions.includes(region.name);
+    }
+    
     // Regional engineers, project engineers, and regional general managers can only see their assigned region
     if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") 
       return region.name === user.region;
@@ -230,6 +251,11 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
     // Global engineers and system admins can see all districts in the selected region
     if (user?.role === "global_engineer" || user?.role === "system_admin") 
       return district.regionId === regionId;
+    
+    // AshSubT and AccSubT roles can see all districts in their allowed regions
+    if (user?.role === "ashsub_t" || user?.role === "accsub_t") {
+      return district.regionId === regionId;
+    }
     
     // Regional engineers, project engineers, and regional general managers can see all districts in their region
     if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") 
@@ -311,20 +337,47 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
       return;
     }
     
-    if (!occurrenceDate || !faultType || !regionId || !districtId || !loadMW) {
-      toast.error("Please fill all required fields");
-      return;
+    // Collect all missing required fields
+    const missingFields: string[] = [];
+    
+    if (!regionId) {
+      missingFields.push("Region");
+    }
+    if (!districtId) {
+      missingFields.push("District");
+    }
+    if (!occurrenceDate) {
+      missingFields.push("Occurrence Date");
+    }
+    if (!faultType) {
+      missingFields.push("Type of Fault");
+    }
+    if ((faultType === "Unplanned" || faultType === "Emergency") && !specificFaultType) {
+      missingFields.push("Specific Fault Type");
+    }
+    if (!selectedFeeder || !feederName) {
+      missingFields.push("Feeder Name");
+    }
+    if (loadMW === null || loadMW <= 0) {
+      missingFields.push("Load (MW)");
     }
     
     // Validate that at least one affected population field is filled
     if (ruralAffected === null && urbanAffected === null && metroAffected === null) {
-      toast.error("Please fill at least one affected population field");
-      return;
+      missingFields.push("Affected Customers (at least one: Rural, Urban, or Metro)");
     }
 
     // Validate that at least one feeder customer field is filled
     if (metroFeederCustomers === null && urbanFeederCustomers === null && ruralFeederCustomers === null) {
-      toast.error("Please fill at least one Feeder Customers field");
+      missingFields.push("Feeder Customers (at least one: Metro, Urban, or Rural)");
+    }
+
+    // Show specific error message if there are missing fields
+    if (missingFields.length > 0) {
+      const errorMessage = missingFields.length === 1 
+        ? `Please fill the required field: ${missingFields[0]}`
+        : `Please fill the following required fields: ${missingFields.join(", ")}`;
+      toast.error(errorMessage);
       return;
     }
 
@@ -345,12 +398,6 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
     setIsSubmitting(true);
     
     try {
-      // Validation: Ensure specificFaultType is set when required
-      if ((faultType === "Unplanned" || faultType === "Emergency") && !specificFaultType) {
-        toast.error("Please select a Specific Fault Type before submitting.");
-        setIsSubmitting(false);
-        return;
-      }
 
       // Format dates
       const formattedOccurrenceDate = new Date(occurrenceDate).toISOString();
@@ -463,6 +510,8 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
   useEffect(() => {
     if (faultType !== "Unplanned" && faultType !== "Emergency") {
       setSpecificFaultType(undefined);
+    } else if (faultType === "Unplanned" || faultType === "Emergency") {
+      setSpecificFaultType("UNDER INVESTIGATION");
     }
   }, [faultType]);
 
@@ -605,50 +654,6 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
             </div>
           </div>
           
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Feeder Customers</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="metroFeederCustomers" className="text-sm font-medium">Metro Customers</Label>
-                <Input
-                  id="metroFeederCustomers"
-                  type="number"
-                  min="0"
-                  value={metroFeederCustomers === null ? "" : metroFeederCustomers}
-                  onChange={(e) => setMetroFeederCustomers(e.target.value === "" ? null : parseInt(e.target.value))}
-                  className="h-10"
-                  placeholder="Enter number of customers"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="urbanFeederCustomers" className="text-sm font-medium">Urban Customers</Label>
-                <Input
-                  id="urbanFeederCustomers"
-                  type="number"
-                  min="0"
-                  value={urbanFeederCustomers === null ? "" : urbanFeederCustomers}
-                  onChange={(e) => setUrbanFeederCustomers(e.target.value === "" ? null : parseInt(e.target.value))}
-                  className="h-10"
-                  placeholder="Enter number of customers"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="ruralFeederCustomers" className="text-sm font-medium">Rural Customers</Label>
-                <Input
-                  id="ruralFeederCustomers"
-                  type="number"
-                  min="0"
-                  value={ruralFeederCustomers === null ? "" : ruralFeederCustomers}
-                  onChange={(e) => setRuralFeederCustomers(e.target.value === "" ? null : parseInt(e.target.value))}
-                  className="h-10"
-                  placeholder="Enter number of customers"
-                />
-              </div>
-            </div>
-          </div>
-          
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="feederName" className="text-base font-medium">Feeder Name</Label>
@@ -770,7 +775,15 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
 
             <div className="space-y-3">
               <Label htmlFor="faultType" className="text-base font-medium">Type of Fault</Label>
-              <Select value={faultType} onValueChange={(value) => setFaultType(value as FaultType)} required>
+              <Select value={faultType} onValueChange={(value) => {
+                setFaultType(value as FaultType);
+                // Reset specificFaultType to "UNDER INVESTIGATION" when changing to Unplanned or Emergency
+                if (value === "Unplanned" || value === "Emergency") {
+                  setSpecificFaultType("UNDER INVESTIGATION");
+                } else {
+                  setSpecificFaultType(undefined);
+                }
+              }} required>
                 <SelectTrigger className="h-12 text-base bg-background/50 border-muted">
                   <SelectValue placeholder="Select fault type" />
                 </SelectTrigger>
@@ -783,68 +796,118 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Show specific fault type dropdown when Unplanned or Emergency is selected */}
+            {(faultType === "Unplanned" || faultType === "Emergency") ? (
+              <div className="space-y-3">
+                <Label htmlFor="specificFaultType" className="text-base font-medium">Specific Fault Type</Label>
+                <Select 
+                  value={specificFaultType} 
+                  onValueChange={(value) => setSpecificFaultType(
+                    faultType === "Unplanned" 
+                      ? value as UnplannedFaultType 
+                      : value as EmergencyFaultType
+                  )}
+                  required
+                >
+                  <SelectTrigger className="h-12 text-base bg-background/50 border-muted">
+                    <SelectValue placeholder="Select specific fault type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {faultType === "Unplanned" ? (
+                      <>
+                        <SelectItem value="UNDER INVESTIGATION">Under Investigation</SelectItem>
+                        <SelectItem value="JUMPER CUT">Jumper Cut</SelectItem>
+                        <SelectItem value="CONDUCTOR CUT">Conductor Cut</SelectItem>
+                        <SelectItem value="MERGED CONDUCTOR">Merged Conductor</SelectItem>
+                        <SelectItem value="HV/LV LINE CONTACT">HV/LV Line Contact</SelectItem>
+                        <SelectItem value="VEGETATION">Vegetation</SelectItem>
+                        <SelectItem value="CABLE FAULT">Cable Fault</SelectItem>
+                        <SelectItem value="TERMINATION FAILURE">Termination Failure</SelectItem>
+                        <SelectItem value="BROKEN POLES">Broken Poles</SelectItem>
+                        <SelectItem value="BURNT POLE">Burnt Pole</SelectItem>
+                        <SelectItem value="FAULTY ARRESTER/INSULATOR">Faulty Arrester/Insulator</SelectItem>
+                        <SelectItem value="EQIPMENT FAILURE">Equipment Failure</SelectItem>
+                        <SelectItem value="PUNCTURED CABLE">Punctured Cable</SelectItem>
+                        <SelectItem value="ANIMAL INTERRUPTION">Animal Interruption</SelectItem>
+                        <SelectItem value="BAD WEATHER">Bad Weather</SelectItem>
+                        <SelectItem value="TRANSIENT FAULTS">Transient Faults</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="UNDER INVESTIGATION">Under Investigation</SelectItem>
+                        <SelectItem value="MEND CABLE">Mend Cable</SelectItem>
+                        <SelectItem value="WORK ON EQUIPMENT">Work on Equipment</SelectItem>
+                        <SelectItem value="FIRE">Fire</SelectItem>
+                        <SelectItem value="IMPROVE HV">Improve HV</SelectItem>
+                        <SelectItem value="JUMPER REPLACEMENT">Jumper Replacement</SelectItem>
+                        <SelectItem value="MEND BROKEN">Mend Broken</SelectItem>
+                        <SelectItem value="MEND JUMPER">Mend Jumper</SelectItem>
+                        <SelectItem value="MEND TERMINATION">Mend Termination</SelectItem>
+                        <SelectItem value="BROKEN POLE">Broken Pole</SelectItem>
+                        <SelectItem value="BURNT POLE">Burnt Pole</SelectItem>
+                        <SelectItem value="ANIMAL CONTACT">Animal Contact</SelectItem>
+                        <SelectItem value="VEGETATION SAFETY">Vegetation Safety</SelectItem>
+                        <SelectItem value="TRANSFER/RESTORE">Transfer/Restore</SelectItem>
+                        <SelectItem value="TROUBLE SHOOTING">Trouble Shooting</SelectItem>
+                        <SelectItem value="MEND LOOSE">Mend Loose</SelectItem>
+                        <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                        <SelectItem value="REPLACE FUSE">Replace Fuse</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Empty div to maintain grid layout when Specific Fault Type is not shown */}
+              </div>
+            )}
           </div>
           
-          {/* Show specific fault type dropdown when Unplanned or Emergency is selected */}
-          {(faultType === "Unplanned" || faultType === "Emergency") && (
-            <div className="space-y-3">
-              <Label htmlFor="specificFaultType" className="text-base font-medium">Specific Fault Type</Label>
-              <Select 
-                value={specificFaultType} 
-                onValueChange={(value) => setSpecificFaultType(
-                  faultType === "Unplanned" 
-                    ? value as UnplannedFaultType 
-                    : value as EmergencyFaultType
-                )}
-                required
-              >
-                <SelectTrigger className="h-12 text-base bg-background/50 border-muted">
-                  <SelectValue placeholder="Select specific fault type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {faultType === "Unplanned" ? (
-                    <>
-                      <SelectItem value="JUMPER CUT">Jumper Cut</SelectItem>
-                      <SelectItem value="CONDUCTOR CUT">Conductor Cut</SelectItem>
-                      <SelectItem value="MERGED CONDUCTOR">Merged Conductor</SelectItem>
-                      <SelectItem value="HV/LV LINE CONTACT">HV/LV Line Contact</SelectItem>
-                      <SelectItem value="VEGETATION">Vegetation</SelectItem>
-                      <SelectItem value="CABLE FAULT">Cable Fault</SelectItem>
-                      <SelectItem value="TERMINATION FAILURE">Termination Failure</SelectItem>
-                      <SelectItem value="BROKEN POLES">Broken Poles</SelectItem>
-                      <SelectItem value="BURNT POLE">Burnt Pole</SelectItem>
-                      <SelectItem value="FAULTY ARRESTER/INSULATOR">Faulty Arrester/Insulator</SelectItem>
-                      <SelectItem value="EQIPMENT FAILURE">Equipment Failure</SelectItem>
-                      <SelectItem value="PUNCTURED CABLE">Punctured Cable</SelectItem>
-                      <SelectItem value="ANIMAL INTERRUPTION">Animal Interruption</SelectItem>
-                      <SelectItem value="BAD WEATHER">Bad Weather</SelectItem>
-                      <SelectItem value="TRANSIENT FAULTS">Transient Faults</SelectItem>
-                    </>
-                  ) : (
-                    <>
-                      <SelectItem value="MEND CABLE">Mend Cable</SelectItem>
-                      <SelectItem value="WORK ON EQUIPMENT">Work on Equipment</SelectItem>
-                      <SelectItem value="FIRE">Fire</SelectItem>
-                      <SelectItem value="IMPROVE HV">Improve HV</SelectItem>
-                      <SelectItem value="JUMPER REPLACEMENT">Jumper Replacement</SelectItem>
-                      <SelectItem value="MEND BROKEN">Mend Broken</SelectItem>
-                      <SelectItem value="MEND JUMPER">Mend Jumper</SelectItem>
-                      <SelectItem value="MEND TERMINATION">Mend Termination</SelectItem>
-                      <SelectItem value="BROKEN POLE">Broken Pole</SelectItem>
-                      <SelectItem value="BURNT POLE">Burnt Pole</SelectItem>
-                      <SelectItem value="ANIMAL CONTACT">Animal Contact</SelectItem>
-                      <SelectItem value="VEGETATION SAFETY">Vegetation Safety</SelectItem>
-                      <SelectItem value="TRANSFER/RESTORE">Transfer/Restore</SelectItem>
-                      <SelectItem value="TROUBLE SHOOTING">Trouble Shooting</SelectItem>
-                      <SelectItem value="MEND LOOSE">Mend Loose</SelectItem>
-                      <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                      <SelectItem value="REPLACE FUSE">Replace Fuse</SelectItem>
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Feeder Customers</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="metroFeederCustomers" className="text-sm font-medium">Metro Customers</Label>
+                <Input
+                  id="metroFeederCustomers"
+                  type="number"
+                  min="0"
+                  value={metroFeederCustomers === null ? "" : metroFeederCustomers}
+                  onChange={(e) => setMetroFeederCustomers(e.target.value === "" ? null : parseInt(e.target.value))}
+                  className="h-10"
+                  placeholder="Enter number of customers"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="urbanFeederCustomers" className="text-sm font-medium">Urban Customers</Label>
+                <Input
+                  id="urbanFeederCustomers"
+                  type="number"
+                  min="0"
+                  value={urbanFeederCustomers === null ? "" : urbanFeederCustomers}
+                  onChange={(e) => setUrbanFeederCustomers(e.target.value === "" ? null : parseInt(e.target.value))}
+                  className="h-10"
+                  placeholder="Enter number of customers"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ruralFeederCustomers" className="text-sm font-medium">Rural Customers</Label>
+                <Input
+                  id="ruralFeederCustomers"
+                  type="number"
+                  min="0"
+                  value={ruralFeederCustomers === null ? "" : ruralFeederCustomers}
+                  onChange={(e) => setRuralFeederCustomers(e.target.value === "" ? null : parseInt(e.target.value))}
+                  className="h-10"
+                  placeholder="Enter number of customers"
+                />
+              </div>
             </div>
-          )}
+          </div>
           
           <Tabs defaultValue="affected" className="w-full">
             <TabsList className="grid grid-cols-3 w-full max-w-lg mx-auto mb-8 gap-2 bg-transparent p-0">
@@ -1008,6 +1071,7 @@ export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictI
                       <SelectContent>
                         <SelectItem value="underground">Underground</SelectItem>
                         <SelectItem value="overhead">Overhead</SelectItem>
+                        <SelectItem value="mixed network">Mixed Network</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

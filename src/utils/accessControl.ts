@@ -6,6 +6,8 @@ const ROLE_HIERARCHY = {
   global_engineer: 4,
   regional_engineer: 3,
   regional_general_manager: 3,
+  ashsub_t: 3,
+  accsub_t: 3,
   district_engineer: 2,
   district_manager: 2,
   technician: 1
@@ -18,8 +20,29 @@ export const hasRoleAccess = (userRole: string, requiredRole: string): boolean =
 };
 
 // Check if user has access to a region
-export const hasRegionAccess = (user: User, targetRegionId: string): boolean => {
+export const hasRegionAccess = (user: User, targetRegionId: string, targetRegionName?: string): boolean => {
   if (!user) return false;
+  
+  // AshSubT role: Access only to Ashanti regions
+  if (user.role === 'ashsub_t') {
+    const ashantiRegions = [
+      'SUBTRANSMISSION ASHANTI',
+      'ASHANTI EAST REGION',
+      'ASHANTI WEST REGION',
+      'ASHANTI SOUTH REGION'
+    ];
+    return targetRegionName ? ashantiRegions.includes(targetRegionName) : false;
+  }
+  
+  // AccSubT role: Access only to Accra regions
+  if (user.role === 'accsub_t') {
+    const accraRegions = [
+      'ACCRA EAST REGION',
+      'ACCRA WEST REGION',
+      'SUBTRANSMISSION ACCRA'
+    ];
+    return targetRegionName ? accraRegions.includes(targetRegionName) : false;
+  }
   
   return user.role === 'system_admin' || 
          user.role === 'global_engineer' || 
@@ -35,7 +58,9 @@ export const hasDistrictAccess = (user: User, targetDistrictId: string): boolean
   if (!user) return false;
   
   return user.role === 'system_admin' || 
-         user.role === 'global_engineer' || 
+         user.role === 'global_engineer' ||
+         user.role === 'ashsub_t' ||
+         user.role === 'accsub_t' ||
          (user.role === 'district_engineer' && user.districtId === targetDistrictId) ||
          (user.role === 'district_manager' && user.districtId === targetDistrictId) ||
          (user.role === 'technician' && user.districtId === targetDistrictId);
@@ -45,7 +70,7 @@ export const hasDistrictAccess = (user: User, targetDistrictId: string): boolean
 export const canReadData = (user: User, data: any): boolean => {
   if (!user) return false;
 
-  if (user.role === 'system_admin' || user.role === 'global_engineer') {
+  if (user.role === 'system_admin' || user.role === 'global_engineer' || user.role === 'ashsub_t' || user.role === 'accsub_t') {
     return true;
   }
 
@@ -64,7 +89,7 @@ export const canReadData = (user: User, data: any): boolean => {
 export const canCreateData = (user: User, data: any): boolean => {
   if (!user) return false;
 
-  if (user.role === 'system_admin' || user.role === 'global_engineer') {
+  if (user.role === 'system_admin' || user.role === 'global_engineer' || user.role === 'ashsub_t' || user.role === 'accsub_t') {
     return true;
   }
 
@@ -83,7 +108,7 @@ export const canCreateData = (user: User, data: any): boolean => {
 export const canUpdateData = (user: User, data: any): boolean => {
   if (!user) return false;
 
-  if (user.role === 'system_admin' || user.role === 'global_engineer') {
+  if (user.role === 'system_admin' || user.role === 'global_engineer' || user.role === 'ashsub_t' || user.role === 'accsub_t') {
     return true;
   }
 
@@ -102,7 +127,7 @@ export const canUpdateData = (user: User, data: any): boolean => {
 export const canDeleteData = (user: User, data: any): boolean => {
   if (!user) return false;
 
-  if (user.role === 'system_admin' || user.role === 'global_engineer') {
+  if (user.role === 'system_admin' || user.role === 'global_engineer' || user.role === 'ashsub_t' || user.role === 'accsub_t') {
     return true;
   }
 
@@ -117,7 +142,7 @@ export const canDeleteData = (user: User, data: any): boolean => {
 export const filterDataByAccess = (user: User, data: any[]): any[] => {
   if (!user) return [];
 
-  if (user.role === 'system_admin' || user.role === 'global_engineer') {
+  if (user.role === 'system_admin' || user.role === 'global_engineer' || user.role === 'ashsub_t' || user.role === 'accsub_t') {
     return data;
   }
 

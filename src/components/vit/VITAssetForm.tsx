@@ -287,14 +287,27 @@ export function VITAssetForm({ asset, onSubmit, onCancel }: VITAssetFormProps) {
   }, [isFeederDropdownOpen]);
 
   // Filter regions and districts based on user role
-  const filteredRegions = user?.role === "global_engineer"
+  const filteredRegions = (user?.role === "global_engineer" || user?.role === "system_admin")
     ? regions
+    : user?.role === "ashsub_t"
+    ? regions.filter(r => 
+        ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION'].includes(r.name)
+      )
+    : user?.role === "accsub_t"
+    ? regions.filter(r => 
+        ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'].includes(r.name)
+      )
     : regions.filter(r => user?.region ? r.name === user.region : true);
   
   const filteredDistricts = regionId
     ? districts.filter(d => {
         // First check if district belongs to selected region
         if (d.regionId !== regionId) return false;
+        
+        // For ashsub_t and accsub_t, show all districts in their allowed regions
+        if (user?.role === "ashsub_t" || user?.role === "accsub_t") {
+          return true; // All districts in selected region are visible
+        }
         
         // For district engineers, technicians, and district managers, only show their assigned district
         if (user?.role === "district_engineer" || user?.role === "technician" || user?.role === "district_manager") {

@@ -90,7 +90,9 @@ const roleHierarchy: { [key in Exclude<UserRole, null>]: number } = {
   technician: 1,
   ict: 2,
   load_monitoring_edit: 2,
-  load_monitoring_delete: 3
+  load_monitoring_delete: 3,
+  ashsub_t: 3,
+  accsub_t: 3
 };
 
 // Role-based access validation

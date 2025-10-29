@@ -59,6 +59,25 @@ export default function InspectionManagementPage() {
   // New state for Substation Type filter
   const [selectedSubstationType, setSelectedSubstationType] = useState<string | null>(null);
 
+  // Filter regions for new roles
+  const filteredRegions = useMemo(() => {
+    if (!user) return regions;
+    
+    if (user.role === 'global_engineer' || user.role === 'system_admin') {
+      return regions;
+    } else if (user.role === 'ashsub_t') {
+      return regions.filter(r => 
+        ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION'].includes(r.name)
+      );
+    } else if (user.role === 'accsub_t') {
+      return regions.filter(r => 
+        ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'].includes(r.name)
+      );
+    }
+    
+    return regions;
+  }, [regions, user]);
+  
   // Filter districts based on selected region
   const filteredDistricts = useMemo(() => {
     if (!selectedRegion) return districts;
@@ -75,6 +94,15 @@ export default function InspectionManagementPage() {
       // See all
     } else if (user?.role === 'regional_engineer' || user?.role === 'project_engineer' || user?.role === 'regional_general_manager') {
       filtered = filtered.filter(inspection => inspection.region === user.region);
+    } else if (user?.role === 'ashsub_t' || user?.role === 'accsub_t') {
+      // Filter by allowed regions for ashsub_t and accsub_t
+      const allowedRegionNames = user.role === 'ashsub_t' 
+        ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+        : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+      
+      filtered = filtered.filter(inspection => 
+        allowedRegionNames.includes(inspection.region)
+      );
     } else if (user?.role === 'district_engineer' || user?.role === 'technician' || user?.role === 'district_manager') {
       filtered = filtered.filter(inspection => inspection.district === user.district);
     } else {
@@ -99,8 +127,8 @@ export default function InspectionManagementPage() {
       });
     }
     
-    // Apply region filter (for global engineer and admin)
-    if (selectedRegion && (user?.role === 'global_engineer' || user?.role === 'system_admin')) {
+    // Apply region filter (for global engineer, admin, and new roles)
+    if (selectedRegion && (user?.role === 'global_engineer' || user?.role === 'system_admin' || user?.role === 'ashsub_t' || user?.role === 'accsub_t')) {
       // Find the region name corresponding to the selectedRegion ID
       const regionName = regions.find(r => r.id === selectedRegion)?.name;
       if (regionName) {
@@ -108,11 +136,13 @@ export default function InspectionManagementPage() {
       }
     }
     
-    // Apply district filter (for regional engineer and above)
+    // Apply district filter (for regional engineer and above, including new roles)
     if (selectedDistrict && 
         (user?.role === 'global_engineer' || 
          user?.role === 'system_admin' || 
-         user?.role === 'regional_engineer')) {
+         user?.role === 'regional_engineer' ||
+         user?.role === 'ashsub_t' ||
+         user?.role === 'accsub_t')) {
       // Find the district name corresponding to the selectedDistrict ID
       const districtName = districts.find(d => d.id === selectedDistrict)?.name;
       if (districtName) {
@@ -138,6 +168,7 @@ export default function InspectionManagementPage() {
                           (inspection.areaFuse && inspection.areaFuse.length > 0) ||
                           (inspection.arrestors && inspection.arrestors.length > 0) ||
                           (inspection.switchgear && inspection.switchgear.length > 0) ||
+                          ((inspection as any).distributionEquipment && (inspection as any).distributionEquipment.length > 0) ||
                           (inspection.paintWork && inspection.paintWork.length > 0);
         
         if (selectedSubstationType === 'primary') {
@@ -241,6 +272,7 @@ export default function InspectionManagementPage() {
         { name: "Area Fuse", items: inspection.areaFuse || [] },
         { name: "Arrestors", items: inspection.arrestors || [] },
         { name: "Switchgear", items: inspection.switchgear || [] },
+        { name: "Distribution Equipment", items: (inspection as any).distributionEquipment || [] },
         { name: "Paint Work", items: inspection.paintWork || [] }
       ];
 
@@ -342,6 +374,7 @@ export default function InspectionManagementPage() {
                           (inspection.areaFuse && inspection.areaFuse.length > 0) ||
                           (inspection.arrestors && inspection.arrestors.length > 0) ||
                           (inspection.switchgear && inspection.switchgear.length > 0) ||
+                          ((inspection as any).distributionEquipment && (inspection as any).distributionEquipment.length > 0) ||
                           (inspection.paintWork && inspection.paintWork.length > 0);
 
       const items = isSecondary
@@ -351,6 +384,7 @@ export default function InspectionManagementPage() {
             ...(inspection.areaFuse || []).map(item => ({ ...item, category: "Area Fuse" })),
             ...(inspection.arrestors || []).map(item => ({ ...item, category: "Arrestors" })),
             ...(inspection.switchgear || []).map(item => ({ ...item, category: "Switchgear" })),
+            ...((inspection as any).distributionEquipment || []).map(item => ({ ...item, category: "Distribution Equipment" })),
             ...(inspection.paintWork || []).map(item => ({ ...item, category: "Paint Work" }))
           ]
         : [
@@ -784,7 +818,15 @@ export default function InspectionManagementPage() {
 
   // Check if user can delete an inspection
   const canDeleteInspection = (inspection: SubstationInspection) => {
-    return permissionService.canDeleteFeature(user?.role || null, 'inspection_management');
+    if (!user) return false;
+    // Use canDeleteInspection method which includes region/district checks and the new roles
+    return permissionService.canDeleteInspection(
+      user.role || null,
+      user.region || '',
+      user.district || '',
+      inspection.region || '',
+      inspection.district || ''
+    );
   };
 
   // Add online status listener
@@ -851,7 +893,7 @@ export default function InspectionManagementPage() {
             />
           </div>
           
-          {(user?.role === 'global_engineer' || user?.role === 'system_admin') && (
+          {(user?.role === 'global_engineer' || user?.role === 'system_admin' || user?.role === 'ashsub_t' || user?.role === 'accsub_t') && (
             <div className="space-y-2">
               <Label>Region</Label>
               <div className="w-full">
@@ -863,7 +905,7 @@ export default function InspectionManagementPage() {
                     <SelectValue placeholder="Select region" />
                   </SelectTrigger>
                   <SelectContent>
-                    {regions.map(region => (
+                    {filteredRegions.map(region => (
                       <SelectItem key={region.id} value={region.id}>
                         {region.name}
                       </SelectItem>
@@ -876,7 +918,9 @@ export default function InspectionManagementPage() {
           
           {(user?.role === 'global_engineer' || 
             user?.role === 'system_admin' || 
-            user?.role === 'regional_engineer') && (
+            user?.role === 'regional_engineer' ||
+            user?.role === 'ashsub_t' ||
+            user?.role === 'accsub_t') && (
             <div className="space-y-2">
               <Label>District</Label>
               <div className="w-full">
@@ -1051,21 +1095,21 @@ export default function InspectionManagementPage() {
                               Export to CSV
                             </DropdownMenuItem>
                             {canEditInspection(inspection) && (
+                              <DropdownMenuItem onClick={() => navigate(`/asset-management/edit-inspection/${inspection.id}`)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDeleteInspection(inspection) && (
                               <>
-                                <DropdownMenuItem onClick={() => navigate(`/asset-management/edit-inspection/${inspection.id}`)}>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit
+                                {(canEditInspection(inspection) || canDeleteInspection(inspection)) && <DropdownMenuSeparator />}
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(inspection.id)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
                                 </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {canDeleteInspection(inspection) && (
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDelete(inspection.id)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                )}
                               </>
                             )}
                           </DropdownMenuContent>

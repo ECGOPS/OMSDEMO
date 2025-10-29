@@ -124,6 +124,7 @@ export function FilterBar({
           setFilterRegion(userRegion.id);
         }
       }
+      // ashsub_t and accsub_t roles don't need initial region set - they see all their allowed regions
     }
   }, [user, regions, districts, setFilterRegion, setFilterDistrict]);
   
@@ -148,12 +149,12 @@ export function FilterBar({
   
   const handleClearFilters = () => {
     // Don't clear region/district for district/regional engineers and technicians
-    if (user?.role === "global_engineer" || user?.role === "system_admin") {
+    if (user?.role === "global_engineer" || user?.role === "system_admin" || user?.role === "ashsub_t" || user?.role === "accsub_t") {
       setSelectedRegion("");
       setFilterRegion("");
       setSelectedDistrict("");
       setFilterDistrict("");
-    } else if (user?.role === "regional_engineer") {
+    } else if (user?.role === "regional_engineer" || user?.role === "regional_general_manager" || user?.role === "project_engineer") {
       setSelectedDistrict("");
       setFilterDistrict("");
     }
@@ -171,6 +172,14 @@ export function FilterBar({
   // Filter regions based on user role
   const filteredRegions = (user?.role === "global_engineer" || user?.role === "system_admin")
     ? regions 
+    : user?.role === "ashsub_t"
+    ? regions.filter(r => 
+        ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION'].includes(r.name)
+      )
+    : user?.role === "accsub_t"
+    ? regions.filter(r => 
+        ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'].includes(r.name)
+      )
     : regions.filter(r => user?.region ? r.name === user.region : true);
   
   // Filter districts based on selected region and user role
@@ -182,6 +191,11 @@ export function FilterBar({
         // For district engineers, district managers and technicians, only show their assigned district
         if (user?.role === "district_engineer" || user?.role === "district_manager" || user?.role === "technician") {
           return d.name === user.district;
+        }
+        
+        // For ashsub_t and accsub_t, show all districts in their allowed regions
+        if (user?.role === "ashsub_t" || user?.role === "accsub_t") {
+          return true; // All districts in selected region are visible
         }
         
         // For regional engineers and regional general managers, only show districts in their region

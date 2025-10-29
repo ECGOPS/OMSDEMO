@@ -712,7 +712,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                   orderBy("createdAt", "desc")
                 );
               }
-            } else if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+            } else if (user.role === "regional_engineer" || user.role === "regional_general_manager" || user.role === "ashsub_t" || user.role === "accsub_t") {
               const userRegion = regions.find(r => r.name === user.region);
               if (userRegion) {
                 q = query(
@@ -851,6 +851,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // Apply role-based filtering
     if (user.role === "regional_engineer" || user.role === "district_engineer") {
       q = query(collection(db, "regions"), where("name", "==", user.region));
+    } else if (user.role === "ashsub_t" || user.role === "accsub_t") {
+      // For ashsub_t and accsub_t, filter by their specific regions
+      const allowedRegions = user.role === "ashsub_t" 
+        ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+        : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+      
+      // Use array-contains-any for multiple region names
+      q = query(collection(db, "regions"), where("name", "in", allowedRegions));
     }
 
     const unsubscribe = onSnapshot(q, 
@@ -882,6 +890,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (userRegion) {
         q = query(collection(db, "districts"), where("regionId", "==", userRegion.id));
       }
+    } else if (user.role === "ashsub_t" || user.role === "accsub_t") {
+      // For ashsub_t and accsub_t, filter districts by their specific regions
+      const allowedRegionNames = user.role === "ashsub_t" 
+        ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+        : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+      
+      const allowedRegionIds = regions
+        .filter(r => allowedRegionNames.includes(r.name))
+        .map(r => r.id);
+      
+      if (allowedRegionIds.length > 0) {
+        q = query(collection(db, "districts"), where("regionId", "in", allowedRegionIds));
+      }
     }
 
     const unsubscribe = onSnapshot(q, 
@@ -911,12 +932,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (user.role !== "system_admin" && user.role !== "global_engineer") {
       if (user.role === "district_engineer" || user.role === "technician" || user.role === "district_manager") {
         q = query(collection(db, "vitAssets"), where("district", "==", user.district));
-      } else if (
-        user.role === "regional_engineer" ||
-        user.role === "regional_general_manager" ||
-        user.role === "project_engineer" // <-- Added project_engineer here
-      ) {
+      } else if (user.role === "regional_engineer" || user.role === "regional_general_manager" || user.role === "project_engineer") {
         q = query(collection(db, "vitAssets"), where("region", "==", user.region));
+      } else if (user.role === "ashsub_t" || user.role === "accsub_t") {
+        // Filter by allowed regions for these roles
+        const allowedRegionNames = user.role === "ashsub_t" 
+          ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+          : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+        
+        q = query(collection(db, "vitAssets"), where("region", "in", allowedRegionNames));
       }
     }
 
@@ -996,6 +1020,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (userRegion) {
           q = query(collection(db, "op5Faults"), where("regionId", "==", userRegion.id));
         }
+      } else if (user.role === "ashsub_t" || user.role === "accsub_t") {
+        // Filter by allowed regions for these roles
+        const allowedRegionNames = user.role === "ashsub_t" 
+          ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+          : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+        
+        const allowedRegionIds = regions
+          .filter(r => allowedRegionNames.includes(r.name))
+          .map(r => r.id);
+        
+        if (allowedRegionIds.length > 0) {
+          q = query(collection(db, "op5Faults"), where("regionId", "in", allowedRegionIds));
+        }
       }
     }
 
@@ -1041,6 +1078,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (userRegion) {
           q = query(collection(db, "controlOutages"), where("regionId", "==", userRegion.id));
         }
+      } else if (user.role === "ashsub_t" || user.role === "accsub_t") {
+        // Filter by allowed regions for these roles
+        const allowedRegionNames = user.role === "ashsub_t" 
+          ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+          : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+        
+        const allowedRegionIds = regions
+          .filter(r => allowedRegionNames.includes(r.name))
+          .map(r => r.id);
+        
+        if (allowedRegionIds.length > 0) {
+          q = query(collection(db, "controlOutages"), where("regionId", "in", allowedRegionIds));
+        }
       }
     }
 
@@ -1085,6 +1135,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         q = query(collection(db, "vitInspections"), where("district", "==", user.district));
       } else if (user.role === "regional_engineer" || user.role === "project_engineer") {
         q = query(collection(db, "vitInspections"), where("region", "==", user.region));
+      } else if (user.role === "ashsub_t" || user.role === "accsub_t") {
+        // Filter by allowed regions for these roles
+        const allowedRegionNames = user.role === "ashsub_t" 
+          ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+          : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+        
+        // VIT inspections may have region stored as ID or name, so we check both
+        // First try to get region IDs
+        const allowedRegionIds = regions
+          .filter(r => allowedRegionNames.includes(r.name))
+          .map(r => r.id);
+        
+        // Use 'in' operator to filter by allowed regions (assuming region is stored as ID)
+        // If region is stored as name in vitInspections, we'd need a different approach
+        // For now, we'll use the region field and check for allowed region names
+        q = query(
+          collection(db, "vitInspections"),
+          where("region", "in", allowedRegionNames)
+        );
       }
     }
 
@@ -1163,7 +1232,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             orderBy("createdAt", "desc")
           );
         }
-      } else if (user.role === "regional_engineer" || user.role === "regional_general_manager") {
+      } else if (user.role === "regional_engineer" || user.role === "regional_general_manager" || user.role === "ashsub_t" || user.role === "accsub_t") {
         const userRegion = regions.find(r => r.name === user.region);
         if (userRegion) {
           q = query(
@@ -1218,6 +1287,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         q = query(
           collection(db, "overheadLineInspections"),
           where("region", "==", user.region),
+          orderBy("createdAt", "desc")
+        );
+      } else if (user.role === "ashsub_t" || user.role === "accsub_t") {
+        // Filter by allowed regions for these roles
+        const allowedRegionNames = user.role === "ashsub_t" 
+          ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+          : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+        
+        q = query(
+          collection(db, "overheadLineInspections"),
+          where("region", "in", allowedRegionNames),
           orderBy("createdAt", "desc")
         );
       }
@@ -1648,6 +1728,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             where("regionId", "==", userRegion.id)
           );
         }
+      } else if (user.role === "ashsub_t" || user.role === "accsub_t") {
+        // Filter by allowed regions for these roles
+        const allowedRegionNames = user.role === "ashsub_t" 
+          ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+          : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+        
+        const allowedRegionIds = regions
+          .filter(r => allowedRegionNames.includes(r.name))
+          .map(r => r.id);
+        
+        if (allowedRegionIds.length > 0) {
+          q = query(collection(db, "loadMonitoring"), where("regionId", "in", allowedRegionIds));
+        }
       }
     }
 
@@ -1696,7 +1789,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               where("regionId", "==", userRegion.id)
             );
           }
-        } else if (user?.role === "regional_engineer" || user?.role === "regional_general_manager") {
+        } else if (user?.role === "regional_engineer" || user?.role === "regional_general_manager" || user?.role === "ashsub_t" || user?.role === "accsub_t") {
           const userRegion = regions.find(r => r.name === user.region);
           if (userRegion) {
             q = query(

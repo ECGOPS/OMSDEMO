@@ -287,7 +287,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
   // Filter regions and districts based on user role
   const filteredRegions = useMemo(() => {
     if (!user) return [];
-    if (user.role === "global_engineer" || user.role === "system_admin") return regions;
+    if (user.role === "global_engineer" || user.role === "system_admin" || user.role === "ashsub_t" || user.role === "accsub_t") return regions;
     if ((user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") && user.region) {
       return regions.filter(r => r.name === user.region);
     }
@@ -302,7 +302,7 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
     const region = regions.find(r => r.name === formData.region);
     if (!region) return [];
 
-    if (user.role === "global_engineer" || user.role === "system_admin") {
+    if (user.role === "global_engineer" || user.role === "system_admin" || user.role === "ashsub_t" || user.role === "accsub_t") {
       return districts.filter(d => d.regionId === region.id);
     }
     if (user.role === "regional_engineer" || user.role === "project_engineer" || user.role === "regional_general_manager") {
@@ -990,6 +990,10 @@ export function OverheadLineInspectionForm({ inspection, onSubmit, onCancel }: O
                 <SelectItem value="10m">10m</SelectItem>
                 <SelectItem value="11m">11m</SelectItem>
                 <SelectItem value="14m">14m</SelectItem>
+                <SelectItem value="16m">16m</SelectItem>
+                <SelectItem value="18m">18m</SelectItem>
+                <SelectItem value="20m">20m</SelectItem>
+                <SelectItem value="24m">24m</SelectItem>
                 <SelectItem value="others">Others</SelectItem>
               </SelectContent>
             </Select>

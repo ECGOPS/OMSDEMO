@@ -474,8 +474,16 @@ export default function SubstationInspectionPage() {
   }, [user, regions, districts]);
 
   // Filter regions and districts based on user role
-  const filteredRegions = user?.role === "global_engineer"
+  const filteredRegions = (user?.role === "global_engineer" || user?.role === "system_admin")
     ? regions
+    : user?.role === "ashsub_t"
+    ? regions.filter(r => 
+        ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION'].includes(r.name)
+      )
+    : user?.role === "accsub_t"
+    ? regions.filter(r => 
+        ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'].includes(r.name)
+      )
     : regions.filter(r => user?.region ? r.name === user.region : true);
   
   const filteredDistricts = regionId
@@ -486,6 +494,11 @@ export default function SubstationInspectionPage() {
         // For district engineers, technicians, and district managers, only show their assigned district
         if (user?.role === "district_engineer" || user?.role === "technician" || user?.role === "district_manager") {
           return d.name === user.district;
+        }
+        
+        // For ashsub_t and accsub_t, show all districts in their allowed regions
+        if (user?.role === "ashsub_t" || user?.role === "accsub_t") {
+          return true; // All districts in selected region are visible
         }
         
         // For regional engineers and regional general managers, only show districts in their region
@@ -527,6 +540,17 @@ export default function SubstationInspectionPage() {
     }));
   };
 
+  // Ensure substationType is always "primary" for primary substation inspection page
+  useEffect(() => {
+    if (!id) {
+      // For new inspections, ensure it's always primary
+      setFormData(prev => ({
+        ...prev,
+        substationType: "primary"
+      }));
+    }
+  }, [id]);
+
   // Initialize formData with categories
   useEffect(() => {
     if (id) {
@@ -543,7 +567,7 @@ export default function SubstationInspectionPage() {
           substationNo: inspection.substationNo || "",
           substationName: inspection.substationName || "",
           type: inspection.type || "indoor",
-          substationType: inspection.substationType || "primary",
+          substationType: "primary", // Always primary for this page
           location: inspection.location || "",
           voltageLevel: inspection.voltageLevel || "",
           status: inspection.status || "Pending",
@@ -1080,11 +1104,14 @@ export default function SubstationInspectionPage() {
                 <div className="space-y-2">
                   <Label htmlFor="substationType">Substation Type</Label>
                   <Select
-                    value="primary"
+                    value={formData.substationType || "primary"}
                     onValueChange={(value) => {
                       if (value === "secondary") {
                         // Navigate to the secondary substation inspection form
                         navigate("/asset-management/secondary-substation-inspection");
+                      } else {
+                        // Update the formData to ensure it's set to primary
+                        setFormData(prev => ({ ...prev, substationType: "primary" }));
                       }
                     }}
                   >
@@ -1209,22 +1236,42 @@ export default function SubstationInspectionPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status || "Pending"}
-                    onValueChange={value => handleInputChange('status', value)}
-                    required
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="voltageLevel">Voltage Level</Label>
+                    <Select
+                      value={formData.voltageLevel || ""}
+                      onValueChange={value => handleInputChange('voltageLevel', value)}
+                      required
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select voltage level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0.433kV">0.433kV</SelectItem>
+                        <SelectItem value="0.400kV">0.400kV</SelectItem>
+                        <SelectItem value="11kV">11kV</SelectItem>
+                        <SelectItem value="33kV">33kV</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select
+                      value={formData.status || "Pending"}
+                      onValueChange={value => handleInputChange('status', value)}
+                      required
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -1293,17 +1340,6 @@ export default function SubstationInspectionPage() {
                       Click "Get Location" to capture GPS coordinates. The accuracy will be shown in meters. If the first attempt fails, try again.
                     </p>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="voltageLevel">Voltage Level</Label>
-                  <Input
-                    id="voltageLevel"
-                    type="text"
-                    value={formData.voltageLevel || ''}
-                    onChange={(e) => handleInputChange('voltageLevel', e.target.value)}
-                    required
-                  />
                 </div>
               </div>
             </CardContent>

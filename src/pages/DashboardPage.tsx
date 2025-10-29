@@ -120,20 +120,30 @@ export default function DashboardPage() {
       }
       
       // Only set region/district filters if user is not a system admin or global engineer
+      // For ashsub_t and accsub_t, we still want to set the initial region filter
       if (user.role !== 'system_admin' && user.role !== 'global_engineer') {
         const { regionId, districtId } = getUserRegionAndDistrict(user, regions, districts);
         if (!isProduction) {
-        console.log('[Dashboard] Region/District IDs:', { regionId, districtId });
+        console.log('[Dashboard] Region/District IDs:', { regionId, districtId, userRole: user.role });
         }
         
-        if (regionId) {
-          setFilterRegion(regionId);
-          setSelectedRegion(regionId);
-        }
-        
-        if (districtId) {
-          setFilterDistrict(districtId);
-          setSelectedDistrict(districtId);
+        // For ashsub_t and accsub_t, set the first allowed region as initial filter
+        if (user.role === 'ashsub_t' || user.role === 'accsub_t') {
+          if (regionId) {
+            setFilterRegion(regionId);
+            setSelectedRegion(regionId);
+          }
+        } else {
+          // For other roles
+          if (regionId) {
+            setFilterRegion(regionId);
+            setSelectedRegion(regionId);
+          }
+          
+          if (districtId) {
+            setFilterDistrict(districtId);
+            setSelectedDistrict(districtId);
+          }
         }
       }
     }
@@ -203,7 +213,11 @@ export default function DashboardPage() {
     });
     
     // Get filtered faults from context
-    const filteredFaults = getFilteredFaults(filterRegion, filterDistrict);
+    // For ashsub_t and accsub_t, if no region filter is set, don't apply region filter (data is already filtered server-side)
+    const regionFilterToUse = (user?.role === 'ashsub_t' || user?.role === 'accsub_t') && !filterRegion 
+      ? undefined 
+      : filterRegion;
+    const filteredFaults = getFilteredFaults(regionFilterToUse, filterDistrict);
     console.log('[Dashboard] Filtered faults from context:', { 
       op5Count: filteredFaults.op5Faults.length,
       controlCount: filteredFaults.controlOutages.length,

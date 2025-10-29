@@ -185,6 +185,21 @@ export default function VITInspectionPage() {
         const asset = vitAssets.find(a => a.id === inspection.vitAssetId);
         return asset?.region === user.region;
       });
+    } else if (user.role === "ashsub_t" || user.role === "accsub_t") {
+      // Filter by allowed regions for ashsub_t and accsub_t
+      const allowedRegionNames = user.role === "ashsub_t" 
+        ? ['SUBTRANSMISSION ASHANTI', 'ASHANTI EAST REGION', 'ASHANTI WEST REGION', 'ASHANTI SOUTH REGION']
+        : ['ACCRA EAST REGION', 'ACCRA WEST REGION', 'SUBTRANSMISSION ACCRA'];
+      
+      // Get region IDs for the allowed regions
+      const allowedRegionIds = regions
+        .filter(r => allowedRegionNames.includes(r.name))
+        .map(r => r.id);
+      
+      filtered = vitInspections.filter(inspection => {
+        const asset = vitAssets.find(a => a.id === inspection.vitAssetId);
+        return asset?.region && allowedRegionIds.includes(asset.region);
+      });
     } else if (user.role === "district_engineer" || user.role === "technician" || user.role === "district_manager") {
       filtered = vitInspections.filter(inspection => {
         const asset = vitAssets.find(a => a.id === inspection.vitAssetId);

@@ -124,8 +124,8 @@ export function FaultCard({ fault, type }: FaultCardProps) {
       return user.region === region?.name;
     }
     
-    // Global engineers and system admins can resolve anywhere
-    return user.role === "global_engineer" || user.role === "system_admin";
+    // Global engineers, AshSubT, AccSubT, and system admins can resolve anywhere
+    return user.role === "global_engineer" || user.role === "system_admin" || user.role === "ashsub_t" || user.role === "accsub_t";
   };
 
   const canEdit = () => {
@@ -154,8 +154,8 @@ export function FaultCard({ fault, type }: FaultCardProps) {
       return user.region === region?.name;
     }
     
-    // Global engineers and system admins can delete anywhere
-    return user.role === "global_engineer" || user.role === "system_admin";
+    // Global engineers, AshSubT, AccSubT, and system admins can delete anywhere
+    return user.role === "global_engineer" || user.role === "system_admin" || user.role === "ashsub_t" || user.role === "accsub_t";
   };
   
   const affectedPopulation = op5Fault?.affectedPopulation || { rural: 0, urban: 0, metro: 0 };

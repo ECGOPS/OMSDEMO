@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
@@ -30,6 +31,34 @@ service firebase.storage {
       allow write: if isAuthenticated();
     }
     
+    // VIT inspection images rules
+    match /vit-inspections/{inspectionId}/{imageFile} {
+      // Allow public read access to VIT inspection images
+      allow read: if true;
+      // Only authenticated users can write
+      allow write: if isAuthenticated();
+    }
+    
+    // VIT asset images rules
+    match /vit-assets/{assetId}/{imageFile} {
+      // Allow public read access to VIT asset images
+      allow read: if true;
+      // Only authenticated users can write
+      allow write: if isAuthenticated();
+    }
+    
+// Report uploads rules - organized by region/district/year/month
+match /reports/{regionName}/{districtName}/{year}/{monthName}/{fileName} {
+  // Allow read access to all authenticated users
+  allow read: if isAuthenticated();
+  // Only authenticated users can write
+  allow write: if isAuthenticated();
+}
+
+
+
+
+
     // Default deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

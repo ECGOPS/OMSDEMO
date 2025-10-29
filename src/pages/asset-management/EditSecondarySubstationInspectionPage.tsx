@@ -258,6 +258,28 @@ export default function EditSecondarySubstationInspectionPage() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           {renderPhotoSection()}
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Additional Notes</CardTitle>
+              <CardDescription>Add any additional notes or observations</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="remarks">Additional Notes</Label>
+                  <Textarea
+                    id="remarks"
+                    value={formData.remarks || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
+                    placeholder="Add any additional notes or observations"
+                    className="h-32"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
           <div className="flex justify-end space-x-4">
             <Button type="button" variant="outline" onClick={() => navigate(-1)}>
               Cancel

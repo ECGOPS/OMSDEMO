@@ -85,7 +85,7 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
         requiredRole === "global_engineer"
       );
     }
-    if (user.role === "global_engineer") {
+    if (user.role === "global_engineer" || user.role === "ashsub_t" || user.role === "accsub_t") {
       return true;
     }
     return false;

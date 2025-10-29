@@ -121,6 +121,27 @@ export function OP5Form({ defaultRegionId = "", defaultDistrictId = "", onSubmit
     // Global engineers and system admins can see all regions
     if (user?.role === "global_engineer" || user?.role === "system_admin") return true;
     
+    // AshSubT role: Access only to Ashanti regions
+    if (user?.role === "ashsub_t") {
+      const ashantiRegions = [
+        'SUBTRANSMISSION ASHANTI',
+        'ASHANTI EAST REGION',
+        'ASHANTI WEST REGION',
+        'ASHANTI SOUTH REGION'
+      ];
+      return ashantiRegions.includes(region.name);
+    }
+    
+    // AccSubT role: Access only to Accra regions
+    if (user?.role === "accsub_t") {
+      const accraRegions = [
+        'ACCRA EAST REGION',
+        'ACCRA WEST REGION',
+        'SUBTRANSMISSION ACCRA'
+      ];
+      return accraRegions.includes(region.name);
+    }
+    
     // Regional engineers and regional general managers can only see their assigned region
     if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") 
       return region.id === user.regionId;
@@ -140,6 +161,11 @@ export function OP5Form({ defaultRegionId = "", defaultDistrictId = "", onSubmit
     // Global engineers and system admins can see all districts in the selected region
     if (user?.role === "global_engineer" || user?.role === "system_admin") 
       return district.regionId === regionId;
+    
+    // AshSubT and AccSubT roles can see all districts in their allowed regions
+    if (user?.role === "ashsub_t" || user?.role === "accsub_t") {
+      return district.regionId === regionId;
+    }
     
     // Regional engineers and regional general managers can see all districts in their region
     if (user?.role === "regional_engineer" || user?.role === "project_engineer" || user?.role === "regional_general_manager") 

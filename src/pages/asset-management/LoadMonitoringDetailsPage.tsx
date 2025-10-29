@@ -271,6 +271,7 @@ export default function LoadMonitoringDetailsPage() {
                  <DetailItem label="Rating (KVA)" value={record.rating} />
                  <DetailItem label="Peak Load Status" value={record.peakLoadStatus} />
                  <DetailItem label="Ownership" value={record.ownership || 'N/A'} />
+                 <DetailItem label="Voltage Level" value={record.voltageLevel || 'N/A'} />
                  <div className="flex flex-col space-y-1">
                    <Label className="text-sm font-medium text-muted-foreground">Load Status</Label>
                    <Badge className={`w-fit ${
