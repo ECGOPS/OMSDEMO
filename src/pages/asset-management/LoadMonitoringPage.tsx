@@ -180,7 +180,7 @@ export default function LoadMonitoringPage() {
     
     return regions;
   }, [regions, user]);
-  
+
   // Filter districts based on selected region
   const filteredDistricts = useMemo(() => {
     if (!selectedRegion) return districts;
@@ -599,6 +599,7 @@ export default function LoadMonitoringPage() {
       "District",
       "Location",
       "Rating (KVA)",
+      "Voltage Level",
       "Peak Load Status",
       "Ownership",
       "Created By",
@@ -625,6 +626,7 @@ export default function LoadMonitoringPage() {
         record.district || '',
         record.location || '',
         record.rating || '',
+        record.voltageLevel || 'N/A',
         record.peakLoadStatus || '',
         record.ownership || 'N/A',
         record.createdBy?.name || 'Unknown',

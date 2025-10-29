@@ -525,10 +525,9 @@ export default function EditInspectionPage() {
                         <SelectValue placeholder="Select voltage level" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="0.433kV">0.433kV</SelectItem>
-                        <SelectItem value="0.400kV">0.400kV</SelectItem>
                         <SelectItem value="11kV">11kV</SelectItem>
                         <SelectItem value="33kV">33kV</SelectItem>
+                        <SelectItem value="69kV">69kV</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
