@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate, useLocation, NavLink } from "react-router-dom";
-import { Menu, User, LogOut, FileText, History, Music, Database, Upload } from "lucide-react";
+import { Menu, User, LogOut, FileText, History, Music, Database, Upload, Megaphone } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
@@ -262,6 +262,22 @@ export function Navbar() {
                     {user?.role === "system_admin" && (
                       <>
                         <NavLink 
+                          to="/admin/broadcasts"
+                          className={({ isActive }) =>
+                            cn(
+                              "px-3 py-2 rounded-md transition-colors",
+                              isActive 
+                                ? "bg-primary/10 text-primary font-medium" 
+                                : "text-foreground hover:text-primary hover:bg-primary/5"
+                            )
+                          }
+                        >
+                          <div className="flex items-center gap-2">
+                            <Megaphone className="h-4 w-4" />
+                            <span>Broadcasts</span>
+                          </div>
+                        </NavLink>
+                        <NavLink 
                           to="/user-management" 
                           className={({ isActive }) =>
                             cn(
@@ -384,6 +400,22 @@ export function Navbar() {
                     )}
                     {user?.role === "global_engineer" && (
                       <>
+                        <NavLink 
+                          to="/admin/broadcasts"
+                          className={({ isActive }) =>
+                            cn(
+                              "px-3 py-2 rounded-md transition-colors",
+                              isActive 
+                                ? "bg-primary/10 text-primary font-medium" 
+                                : "text-foreground hover:text-primary hover:bg-primary/5"
+                            )
+                          }
+                        >
+                          <div className="flex items-center gap-2">
+                            <Megaphone className="h-4 w-4" />
+                            <span>Broadcasts</span>
+                          </div>
+                        </NavLink>
                         <NavLink 
                           to="/user-management" 
                           className={({ isActive }) =>

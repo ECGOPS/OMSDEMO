@@ -11,6 +11,7 @@ import ProtectedRoute from './components/access-control/ProtectedRoute';
 import { PermissionService } from "@/services/PermissionService";
 import { useEffect, Suspense } from "react";
 import { lazyLoadRoute } from "./utils/routeUtils";
+import BroadcastPopup from '@/components/BroadcastPopup';
 
 // Lazy load pages with custom loading messages and suspense boundaries
 const HomePage = lazyLoadRoute(() => import("./pages/HomePage"), "Loading home page...");
@@ -52,6 +53,7 @@ const MusicManagementPage = lazyLoadRoute(() => import("@/pages/admin/MusicManag
 const ImageMigrationPage = lazyLoadRoute(() => import("@/pages/admin/ImageMigrationPage"), "Loading image migration...");
 const SubstationMigrationPage = lazyLoadRoute(() => import("@/pages/admin/SubstationMigrationPage"), "Loading substation migration...");
 const FeederOfflineTestPage = lazyLoadRoute(() => import("./pages/test/FeederOfflineTestPage"), "Loading feeder offline test...");
+const BroadcastManagerPage = lazyLoadRoute(() => import('./pages/admin/BroadcastManager'), 'Loading broadcast manager...');
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -284,6 +286,12 @@ function App() {
                       </ProtectedRoute>
                     } />
 
+                    <Route path="/admin/broadcasts" element={
+                      <ProtectedRoute requiredFeature="permission_management">
+                        <BroadcastManagerPage />
+                      </ProtectedRoute>
+                    } />
+
                     <Route path="/admin/image-migration" element={<ImageMigrationPage />} />
                     <Route path="/admin/substation-migration" element={<SubstationMigrationPage />} />
 
@@ -297,6 +305,8 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>
+                {/* Global announcement popup */}
+                <BroadcastPopup />
                 <Toaster />
                 <Sonner />
               </TooltipProvider>

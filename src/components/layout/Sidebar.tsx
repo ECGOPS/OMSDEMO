@@ -20,6 +20,7 @@ import {
   Database,
   Upload,
 } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import { useTheme } from "next-themes";
 import { PermissionService } from "@/services/PermissionService";
 import { useAudio } from "@/contexts/AudioContext";
@@ -209,6 +210,12 @@ export default function Sidebar({ onCollapseChange }: SidebarProps) {
           icon: Shield,
           href: "/test/security",
           show: user?.role === "system_admin",
+        },
+        {
+          title: "Broadcasts",
+          icon: Megaphone,
+          href: "/admin/broadcasts",
+          show: user?.role === "system_admin" || user?.role === "global_engineer",
         },
         {
           title: "Music Management",
